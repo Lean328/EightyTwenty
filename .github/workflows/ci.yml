@@ -24,6 +24,7 @@ jobs:
     env:
       DATABASE_URL: postgresql://bos:ci-only-password@localhost:5432/bos_ci
       DJANGO_SETTINGS_MODULE: config.settings
+      DEBUG: "True"  # CI is a developer environment, not the live server
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
