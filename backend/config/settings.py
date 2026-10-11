@@ -1,15 +1,31 @@
+"""
+The one settings file for every environment. Everything comes from environment variables
+(locally from backend/.env, on Render from the dashboard); DEBUG=True marks a developer's
+machine, and the test run (pytest) is isolated from real services at the bottom.
+"""
+
+import sys
 from datetime import timedelta
 from pathlib import Path
 
 import dj_database_url
 import environ
+from django.core.exceptions import ImproperlyConfigured
 
-BASE_DIR = Path(__file__).resolve().parent.parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env()
 environ.Env.read_env(BASE_DIR / ".env", overwrite=False)
-SECRET_KEY = env("SECRET_KEY", default="development-only-change-before-deploy-8t20")
-DEBUG = False
+TESTING = "pytest" in sys.modules
+DEBUG = env.bool("DEBUG", default=False)
+PUBLIC_DEV_KEY = "development-only-change-before-deploy-8t20"
+SECRET_KEY = env("SECRET_KEY", default=PUBLIC_DEV_KEY)
+# This fallback key is in the public repository: a live site using it lets anyone forge
+# a sign-in. Copy SECRET_KEY from backend/.env to the server instead.
+if not DEBUG and not TESTING and SECRET_KEY == PUBLIC_DEV_KEY:
+    raise ImproperlyConfigured("SECRET_KEY is missing: copy it from backend/.env to the server.")
 ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
+if render_host := env("RENDER_EXTERNAL_HOSTNAME", default=""):
+    ALLOWED_HOSTS.append(render_host)
 INSTALLED_APPS = [
     "apps.core.admin_site.BOSAdminConfig",
     "django.contrib.auth",
@@ -67,6 +83,8 @@ DATABASES = {"default": dj_database_url.parse(database_url, conn_max_age=0)}
 if DATABASES["default"]["ENGINE"].endswith("postgresql"):
     DATABASES["default"]["DISABLE_SERVER_SIDE_CURSORS"] = True
     DATABASES["default"].setdefault("OPTIONS", {})["prepare_threshold"] = None
+    if not DEBUG and not TESTING:
+        DATABASES["default"]["OPTIONS"]["sslmode"] = "require"
 AUTH_USER_MODEL = "accounts.User"
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
@@ -97,6 +115,8 @@ STORAGES = {
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 APPEND_SLASH = False
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
+if DEBUG:  # the static website preview on any local port may call the API
+    CORS_ALLOWED_ORIGIN_REGEXES = [r"^http://(localhost|127\.0\.0\.1)(:\d+)?$"]
 CORS_EXPOSE_HEADERS = ["ETag", "Retry-After"]
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 REST_FRAMEWORK = {
@@ -177,8 +197,11 @@ EMAIL_PROVIDER_API_KEY = env("EMAIL_PROVIDER_API_KEY", default="")
 EMAIL_FROM = env("EMAIL_FROM", default="EightyTwenty <no-reply@eightytwentyfood.com.au>")
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 CLIENT_BASE_URL = env("CLIENT_BASE_URL", default="http://localhost:5173").rstrip("/")
-# Where admin previews load images stored as website-relative paths (img/...).
-MEDIA_PREVIEW_BASE_URL = env("MEDIA_PREVIEW_BASE_URL", default=CLIENT_BASE_URL).rstrip("/")
+# Where admin previews load images stored as website-relative paths (img/...); locally the
+# static website preview serves them.
+MEDIA_PREVIEW_BASE_URL = env(
+    "MEDIA_PREVIEW_BASE_URL", default="http://127.0.0.1:8123" if DEBUG else CLIENT_BASE_URL
+).rstrip("/")
 TURNSTILE_SECRET_KEY = env("TURNSTILE_SECRET_KEY", default="")
 TURNSTILE_ENABLED = env.bool("TURNSTILE_ENABLED", default=False)
 TURNSTILE_ALLOWED_HOSTNAMES = env.list("TURNSTILE_ALLOWED_HOSTNAMES", default=[])
@@ -193,3 +216,31 @@ LOGGING = {
     "handlers": {"console": {"class": "logging.StreamHandler"}},
     "root": {"handlers": ["console"], "level": "INFO"},
 }
+
+# Live site (Render): HTTPS only.
+if not DEBUG and not TESTING:
+    SECURE_SSL_REDIRECT = True
+    SECURE_REDIRECT_EXEMPT = [r"^health$"]
+    SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
+    SECURE_HSTS_SECONDS = 31536000
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SESSION_COOKIE_SECURE = True
+    CSRF_COOKIE_SECURE = True
+
+# Test run: fast, and never touching real services, whatever backend/.env holds.
+if TESTING:
+    ALLOWED_HOSTS = ["testserver", "localhost"]
+    PASSWORD_HASHERS = ["django.contrib.auth.hashers.MD5PasswordHasher"]
+    EMAIL_BACKEND = "django.core.mail.backends.locmem.EmailBackend"
+    REST_FRAMEWORK = {**REST_FRAMEWORK, "DEFAULT_THROTTLE_CLASSES": []}
+    STORAGES = {"staticfiles": {"BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage"}}
+    MIDDLEWARE = [m for m in MIDDLEWARE if m != "whitenoise.middleware.WhiteNoiseMiddleware"]
+    JOB_TOKEN = "test-job-secret-not-for-production"
+    SUPABASE_URL = SUPABASE_SERVICE_ROLE_KEY = SUPABASE_PUBLIC_MEDIA_BASE = ""
+    EMAIL_PROVIDER_API_KEY = TURNSTILE_SECRET_KEY = ""
+    # backend/.env points at the shared Supabase database, so anything that is not a local
+    # PostgreSQL (CI, docker compose) becomes an in-memory SQLite database.
+    if DATABASES["default"]["ENGINE"].endswith("postgresql") and DATABASES["default"].get(
+        "HOST"
+    ) not in ("localhost", "127.0.0.1"):
+        DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}

@@ -130,7 +130,7 @@ Thư viện backend chính: `djangorestframework`, `djangorestframework-simplejw
 eightytwenty/
 ├── backend/                     # Django — BOS Backend
 │   ├── config/                  # settings/, urls.py, wsgi.py
-│   │   └── settings/ base.py · dev.py · prod.py
+│   │   └── settings.py (một file cho mọi môi trường)
 │   ├── apps/
 │   │   ├── core/                # base models (UUID, timestamps), SiteSettings, audit log, health
 │   │   ├── accounts/            # User, roles, staff↔location, customer profile, auth endpoints
@@ -392,7 +392,6 @@ Chỉ sửa `web/eightytwenty-data.js` (+ các hàm submit trong `index.html`):
 ### 10.6 Biến môi trường (backend)
 
 ```
-DJANGO_SETTINGS_MODULE=config.settings.prod
 SECRET_KEY=
 DEBUG=False
 ALLOWED_HOSTS=eightytwenty-api.onrender.com,api.eightytwentyfood.com.au

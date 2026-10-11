@@ -30,8 +30,8 @@ Hướng dẫn cho Claude (và AI agent khác) khi làm việc trong repo này. 
 ```
 EightyTwenty/
 ├── backend/
-│   ├── manage.py              # mặc định config.settings.dev; lệnh migrate tự dùng DATABASE_URL_MIGRATIONS
-│   ├── config/settings/       # base.py · dev.py · prod.py · test.py
+│   ├── manage.py              # luôn dùng config.settings; lệnh migrate tự dùng DATABASE_URL_MIGRATIONS
+│   ├── config/settings.py     # MỘT file settings cho mọi môi trường (DEBUG=True = máy dev; TESTING = đang chạy pytest)
 │   ├── config/urls.py         # TOÀN BỘ route (public/auth/me/bos router/jobs/schema) — file dùng chung
 │   ├── apps/
 │   │   ├── core/              # BaseModel/ManagedModel, SiteSettings (singleton, menu_version), AuditLog,
@@ -147,7 +147,7 @@ Website local: `.venv\Scripts\python -m http.server 8123 --bind 127.0.0.1 --dire
 ### Test
 - pytest + pytest-django + factory_boy; fixtures chung trong `tests/conftest.py` (`owner_client`, `branch`, `staff`, `dish`, `booking_data`...).
 - Logic tiền và cạnh tranh ghi (row lock, capacity) cần test trên PostgreSQL (`tests/test_postgres.py` tự skip trên SQLite).
-- Settings test: `config.settings.test` (MD5 hasher, locmem email, tắt throttle).
+- Settings: một file `config/settings.py` (11/10/2026, gộp base/dev/prod/test theo yêu cầu chủ dự án). Mọi giá trị từ env (`backend/.env` ở máy, dashboard Render ở server). `DEBUG=True` (chỉ trong `.env` dev) bật CORS mọi cổng localhost + `MEDIA_PREVIEW_BASE_URL` 127.0.0.1:8123; `DEBUG` tắt và không phải test → HTTPS/HSTS/cookie secure + `sslmode=require`. `TESTING` (`"pytest" in sys.modules`) → MD5 hasher, locmem email, tắt throttle, xóa credential Supabase/email/Turnstile, DB không phải Postgres localhost → SQLite RAM. Chốt chặn duy nhất: server (DEBUG tắt, không test) mà `SECRET_KEY` là key public `development-only…` → báo lỗi. `manage.py`/`wsgi.py` gán cứng `DJANGO_SETTINGS_MODULE=config.settings` (biến cũ `config.settings.prod` trên Render bị bỏ qua).
 
 ### Migration & dependency
 - Đổi model → tạo migration trong cùng thay đổi. Không sửa migration đã lên môi trường dùng chung. Migration `core/0002_lock_down_postgrest` + hook `post_migrate` khóa RLS/PostgREST — đừng phá.
@@ -184,12 +184,13 @@ Website local: `.venv\Scripts\python -m http.server 8123 --bind 127.0.0.1 --dire
 - Dữ liệu hiện có = nội dung website (`mock-data.js`), khách chưa gửi dữ liệu chính thức; sửa tiếp trực tiếp trong admin production. Snapshot demo `docs/examples/mock-snapshot.json` chỉ dùng cho dev/test.
 - Supabase Storage, Resend, Turnstile mới được mock trong test; chưa chạy end-to-end với provider. Đã thử thật: pooler `aws-0-ap-southeast-1.pooler.supabase.com` (6543 transaction / 5432 session, user `postgres.<ref>`) kết nối được; host trực tiếp `db.<ref>` chỉ IPv6 → Render không dùng được. Key mới `sb_secret_…` dùng được ở `SUPABASE_SERVICE_ROLE_KEY` (Storage trả 200 với header Bearer + apikey của code).
 - **Dev dùng chung database Supabase với production** (chủ dự án chọn, 10/10/2026): `backend/.env` có `DATABASE_URL` Supabase → runserver/admin ở máy = dữ liệu thật; `migrate` ở máy đổi schema production ngay (deploy code trước, migrate sau); mỗi request dev ~0,6–0,7 s (mỗi request mở kết nối TLS mới; `CONN_MAX_AGE` không giúp vì runserver mỗi request một thread — đã thử, đã bỏ). Thỉnh thoảng gặp `OperationalError ... SSL error: unexpected eof` = pooler/mạng chập chờn tạm thời, tải lại trang là được. `pytest` tự chuyển SQLite trong RAM khi DB không phải localhost (`config/settings/test.py`); docker compose Postgres local vẫn dùng được. `db.sqlite3` cũ còn trên đĩa, không dùng nữa.
-- File env local: `backend/.env` (dev, Supabase) và `backend/.env.production` (giá trị để dán vào Render, có SECRET_KEY/JOB_TOKEN đã sinh). Cả hai bị gitignore; không chép secret vào tài liệu. Hai file dùng **chung** `SECRET_KEY` ngẫu nhiên (64 ký tự) và `JOB_TOKEN` (11/10/2026, chủ dự án muốn prod giống dev). Không bao giờ dùng key `development-only…` cho production: key đó nằm trong repo public (`.env.example`, mặc định `base.py`) và `prod.py` cố ý chặn (build Render fail).
+- File env local: `backend/.env` (dev, Supabase) và `backend/.env.production` (giá trị để dán vào Render, có SECRET_KEY/JOB_TOKEN đã sinh). Cả hai bị gitignore; không chép secret vào tài liệu. Hai file dùng **chung** `SECRET_KEY` ngẫu nhiên (64 ký tự) và `JOB_TOKEN` (11/10/2026, chủ dự án muốn prod giống dev). Không bao giờ dùng key `development-only…` cho production: key đó nằm trong repo public (`.env.example`, mặc định `base.py`) và settings cố ý chặn khi chạy trên server (build Render fail).
 
 ## 8. Nhật ký thay đổi
 
 > Thêm một dòng mỗi khi code thay đổi (mới nhất ở trên): ngày — phạm vi — tóm tắt ngắn + file chính. Giữ ngắn gọn; chi tiết đã có trong code/tài liệu.
 
+- 2026-10-11 — config — Gộp `config/settings/{base,dev,prod,test}.py` thành một `config/settings.py` (file dùng chung): khác biệt theo `DEBUG` (env) và `TESTING`; bỏ kiểm tra JOB_TOKEN dài/Postgres bắt buộc, giữ chặn key public trên server. `manage.py`, `config/wsgi.py` luôn dùng `config.settings`; `pyproject.toml`, `.github/workflows/ci.yml`, `render.yaml` (bỏ `DJANGO_SETTINGS_MODULE`), `.env*` cập nhật. Thử: pytest 151 pass + 3 skip (có/không `.env`), mô phỏng prod (`check --deploy`, collectstatic, /health, admin, bootstrap 200, http→https 301). Postgres local chưa chạy lại (Docker tắt) — CI chạy Postgres 17.
 - 2026-10-11 — ops — Build Render đầu tiên fail vì `SECRET_KEY` dev bị `prod.py` chặn. Sinh 1 key ngẫu nhiên dùng chung cho `backend/.env` + `.env.production`, đồng bộ `JOB_TOKEN`; không đổi code. Repo: github.com/maiviet283/EightyTwenty (public), CI xanh.
 - 2026-10-11 — repo — Viết lại `.gitignore` gốc theo nhóm (secret `.env*`/`*.pem`/`*.key`, Python, Django `staticfiles`/`media`, dump/backup, Node/Vercel, `_image-originals`, log, OS/editor, `.claude/settings.local.json`, `note.txt` ghi chú riêng). Đã thử bằng git tạm: ~369 file/27 MB sẽ commit, không có `.env`, `.env.production`, `db.sqlite3`, `staticfiles`.
 - 2026-10-10 — admin — CSS: "Current photo" (`.bos-preview-frame`) thành khung vuông 14rem, ảnh `object-fit: cover` căn giữa (ảnh đầy đủ mở bằng lightbox); ô chọn ảnh 7rem; cửa sổ chọn ảnh: header + ô tìm kiếm `flex: none`, chỉ lưới cuộn (trước đó ô tìm kiếm bị co khi ảnh tải xong).

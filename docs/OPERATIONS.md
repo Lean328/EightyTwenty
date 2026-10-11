@@ -29,11 +29,11 @@ Có Blueprint `backend/render.yaml`; chọn đường dẫn này khi tạo Bluep
 Build migration chỉ dùng trong giai đoạn một service. Khi team có thay đổi schema phức tạp, cần migration tương thích phiên bản code cũ/mới và quy trình release có staging; không coi migrate tự động là thay thế review schema.
 
 ```sh
-python manage.py check --deploy --settings=config.settings.prod
-python manage.py createsuperuser --settings=config.settings.prod
+DEBUG=False python manage.py check --deploy
+python manage.py createsuperuser
 ```
 
-Kiểm tra security deployment có thể nhắc HSTS preload chưa bật. Preload không tự bật vì là quyết định ở cấp domain. Bản này không có Sentry SDK; SENTRY_DSN trong env là chỗ dành cho tích hợp sau.
+Chỉ có một file settings (`backend/config/settings.py`); máy dev khác server ở `DEBUG=True` trong `backend/.env`. Server không cần `DJANGO_SETTINGS_MODULE` (manage.py/wsgi luôn dùng `config.settings`). Kiểm tra security deployment có thể nhắc HSTS preload chưa bật. Preload không tự bật vì là quyết định ở cấp domain. Bản này không có Sentry SDK; SENTRY_DSN trong env là chỗ dành cho tích hợp sau.
 
 ## Email và job
 

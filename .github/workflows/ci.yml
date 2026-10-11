@@ -23,7 +23,7 @@ jobs:
         working-directory: backend
     env:
       DATABASE_URL: postgresql://bos:ci-only-password@localhost:5432/bos_ci
-      DJANGO_SETTINGS_MODULE: config.settings.test
+      DJANGO_SETTINGS_MODULE: config.settings
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5

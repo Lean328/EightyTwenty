@@ -11,8 +11,6 @@ services:
     envVars:
       - key: PYTHON_VERSION
         value: 3.12.9
-      - key: DJANGO_SETTINGS_MODULE
-        value: config.settings.prod
       - key: SECRET_KEY
         generateValue: true
       - key: JOB_TOKEN

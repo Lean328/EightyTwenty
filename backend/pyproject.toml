@@ -5,7 +5,7 @@ description = "EightyTwenty BOS backend and shared client API"
 requires-python = ">=3.12"
 
 [tool.pytest.ini_options]
-DJANGO_SETTINGS_MODULE = "config.settings.test"
+DJANGO_SETTINGS_MODULE = "config.settings"
 python_files = ["test_*.py"]
 testpaths = ["tests"]
 
