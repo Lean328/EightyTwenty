@@ -1,0 +1,58 @@
+# --- Secrets: never commit (backend/.env = dev, backend/.env.production = Render values) ---
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# --- Python ---
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# --- Django ---
+*.sqlite3
+*.sqlite3-journal
+backend/staticfiles/
+backend/media/
+
+# --- Database dumps and backups ---
+*.dump
+*.sql.gz
+backups/
+
+# --- Website / Node ---
+node_modules/
+.vercel/
+
+# --- Original photos (local backup only, not deployed) ---
+_image-originals/
+
+# --- Logs and temp files ---
+*.log
+*.tmp
+*.bak
+
+# --- OS and editors ---
+.DS_Store
+Thumbs.db
+desktop.ini
+.idea/
+.vscode/
+*.swp
+
+# --- Claude Code: keep shared config (.claude/launch.json), not personal settings ---
+.claude/settings.local.json
+
+# --- Personal notes ---
+note.txt

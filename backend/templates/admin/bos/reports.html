@@ -1,0 +1,193 @@
+{% extends "admin/base_site.html" %}
+{% load bos_admin %}
+
+{% block bodyclass %}{{ block.super }} bos-reports{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumbs"><a href="{% url 'admin:index' %}">Overview</a> &rsaquo; Reports</div>{% endblock %}
+{% block content_title %}{% endblock %}
+
+{% block content %}
+{% with b=bookings e=enquiries %}
+<div class="bos-page">
+  <header class="bos-page-head">
+    <div>
+      <p class="bos-eyebrow">Insights</p>
+      <h1>Reports</h1>
+      <p class="bos-lead">{{ period.start|date:"j M Y" }} – {{ period.end|date:"j M Y" }} · {{ period.length }} day{{ period.length|pluralize }}{% if selected_location %} · {{ selected_location.name }}{% elif bos_can.chain %} · all locations{% else %} · all your cafés{% endif %}. Compared with the {{ period.length }} days before.</p>
+    </div>
+    <div class="bos-page-tools">
+      <a class="bos-btn bos-btn-ghost" href="?{{ export_query }}">{% icon 'download' %} Export bookings CSV</a>
+      <button type="button" class="bos-btn bos-btn-ghost" onclick="window.print()">{% icon 'file-text' %} Print</button>
+    </div>
+  </header>
+
+  <div class="bos-toolbar">
+    <nav class="bos-segment" aria-label="Period">
+      {% for key, days in period_options.items %}
+        <a href="?period={{ key }}{% if selected_location %}&amp;location={{ selected_location.slug }}{% endif %}"{% if period.preset == key %} class="is-on" aria-current="true"{% endif %}>{% if days == 365 %}12 months{% else %}{{ days }} days{% endif %}</a>
+      {% endfor %}
+    </nav>
+    <form method="get" class="bos-toolbar-form" aria-label="Custom range and location">
+      <label class="bos-sr-only" for="rep-from">From</label>
+      <input type="date" id="rep-from" name="from" value="{{ period.start|date:'Y-m-d' }}" class="bos-field-sm">
+      <span class="bos-muted">to</span>
+      <label class="bos-sr-only" for="rep-to">To</label>
+      <input type="date" id="rep-to" name="to" value="{{ period.end|date:'Y-m-d' }}" class="bos-field-sm">
+      <label class="bos-sr-only" for="rep-location">Location</label>
+      <select id="rep-location" name="location" data-bos-select-label="Location">
+        <option value="">{% if bos_can.chain %}All locations{% else %}All my cafés{% endif %}</option>
+        {% for location in locations %}<option value="{{ location.slug }}"{% if selected_location.pk == location.pk %} selected{% endif %}>{{ location.name }}</option>{% endfor %}
+      </select>
+      <button type="submit" class="bos-btn bos-btn-primary">Apply</button>
+    </form>
+  </div>
+
+  <section class="bos-kpis" aria-label="Key figures">
+    <article class="bos-kpi">
+      <span class="bos-kpi-icon bos-tint-green">{% icon 'calendar' %}</span>
+      <p class="bos-kpi-label">Bookings</p>
+      <p class="bos-kpi-value">{{ b.total }}{% include "admin/includes/bos_delta.html" with value=b.total_delta %}</p>
+      <p class="bos-kpi-note">{{ b.previous_total }} in the previous period</p>
+    </article>
+    <article class="bos-kpi">
+      <span class="bos-kpi-icon bos-tint-orange">{% icon 'party' %}</span>
+      <p class="bos-kpi-label">Guests booked</p>
+      <p class="bos-kpi-value">{{ b.guests }}{% include "admin/includes/bos_delta.html" with value=b.guests_delta %}</p>
+      <p class="bos-kpi-note">{% if b.avg_party %}{{ b.avg_party }} guests per booking{% else %}Excludes declined & cancelled{% endif %}</p>
+    </article>
+    <article class="bos-kpi">
+      <span class="bos-kpi-icon bos-tint-violet">{% icon 'hourglass' %}</span>
+      <p class="bos-kpi-label">Booked ahead (median)</p>
+      <p class="bos-kpi-value">{% if b.median_lead is not None %}{{ b.median_lead|floatformat:"-1" }}<small> day{{ b.median_lead|pluralize }}</small>{% else %}—{% endif %}</p>
+      <p class="bos-kpi-note">From request to reservation date</p>
+    </article>
+    <article class="bos-kpi">
+      <span class="bos-kpi-icon bos-tint-berry">{% icon 'user-check' %}</span>
+      <p class="bos-kpi-label">No-show rate</p>
+      <p class="bos-kpi-value">{% if b.no_show_rate is not None %}{{ b.no_show_rate }}<small>%</small>{% else %}—{% endif %}</p>
+      <p class="bos-kpi-note">{% if b.no_show_rate is not None %}Of bookings marked seated or no-show{% else %}Mark guests seated / no-show to track{% endif %}</p>
+    </article>
+    <article class="bos-kpi">
+      <span class="bos-kpi-icon bos-tint-sky">{% icon 'inbox' %}</span>
+      <p class="bos-kpi-label">Enquiries</p>
+      <p class="bos-kpi-value">{{ e.total }}{% include "admin/includes/bos_delta.html" with value=e.total_delta %}</p>
+      <p class="bos-kpi-note">{{ e.open }} still open{% if e.win_rate is not None %} · {{ e.win_rate }}% won{% endif %}</p>
+    </article>
+  </section>
+
+  <div class="bos-report-grid">
+    <section class="bos-card bos-span-2">
+      <header class="bos-card-head">
+        <div><h2>Bookings over time</h2><p class="bos-card-sub">By reservation date, per {{ b.unit }} · all statuses</p></div>
+        {% if b.busiest %}<span class="bos-chip bos-tone-live">Busiest: {{ b.busiest }}</span>{% endif %}
+      </header>
+      {% include "admin/includes/bos_columns.html" with chart=b.chart label="Bookings per period" %}
+    </section>
+
+    <section class="bos-card">
+      <header class="bos-card-head"><div><h2>Outcome</h2><p class="bos-card-sub">Where each booking ended up{% if b.lost_rate is not None %} · {{ b.lost_rate }}% declined or cancelled{% endif %}</p></div></header>
+      {% include "admin/includes/bos_bars.html" with rows=b.statuses toned=True %}
+    </section>
+
+    <section class="bos-card bos-span-2">
+      <header class="bos-card-head"><div><h2>When guests come</h2><p class="bos-card-sub">Bookings by weekday and hour, excluding declined & cancelled</p></div></header>
+      <div class="bos-table-wrap">
+        <table class="bos-heatmap">
+          <thead><tr><th><span class="bos-sr-only">Day</span></th>{% for hour in b.hours %}<th scope="col">{{ hour }}</th>{% endfor %}</tr></thead>
+          <tbody>
+            {% for row in b.heatmap %}
+              <tr><th scope="row">{{ row.day }}</th>{% for cell in row.cells %}<td class="bos-heat-{{ cell.level }}" title="{{ row.day }} {{ cell.hour }}:00 · {{ cell.count }} booking{{ cell.count|pluralize }}">{% if cell.count %}{{ cell.count }}{% endif %}</td>{% endfor %}</tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      <p class="bos-heat-legend" aria-hidden="true">Fewer <i class="bos-heat-1"></i><i class="bos-heat-2"></i><i class="bos-heat-3"></i><i class="bos-heat-4"></i> More</p>
+    </section>
+
+    <section class="bos-card">
+      <header class="bos-card-head"><div><h2>Party size</h2><p class="bos-card-sub">Guests per booking</p></div></header>
+      {% include "admin/includes/bos_bars.html" with rows=b.party %}
+    </section>
+
+    <section class="bos-card bos-span-2 bos-card-flush">
+      <header class="bos-card-head"><div><h2>By location</h2><p class="bos-card-sub">Share of bookings in this period</p></div></header>
+      <div class="bos-table-wrap">
+        <table class="bos-table">
+          <thead><tr><th>Location</th><th class="bos-num">Bookings</th><th class="bos-share-col">Share</th><th class="bos-num">Guests</th><th class="bos-num">Avg party</th><th class="bos-num">No-show</th></tr></thead>
+          <tbody>
+            {% for row in b.locations %}
+              <tr>
+                <td><a href="{{ row.url }}"><strong>{{ row.name }}</strong></a></td>
+                <td class="bos-num">{{ row.value }}</td>
+                <td class="bos-share-col"><span class="bos-share"><span style="width: {{ row.pct }}%"></span></span><small>{{ row.share }}%</small></td>
+                <td class="bos-num">{{ row.guests }}</td>
+                <td class="bos-num">{{ row.avg_party|default:"—" }}</td>
+                <td class="bos-num">{% if row.no_show_rate is not None %}{{ row.no_show_rate }}%{% else %}—{% endif %}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="6"><div class="bos-empty bos-empty-sm"><p>No locations yet.</p></div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="bos-card">
+      <header class="bos-card-head"><div><h2>Booked ahead</h2><p class="bos-card-sub">Time from request to reservation</p></div></header>
+      {% include "admin/includes/bos_bars.html" with rows=b.lead %}
+      <h3 class="bos-subhead">Channel</h3>
+      {% include "admin/includes/bos_bars.html" with rows=b.sources %}
+    </section>
+
+    <section class="bos-card">
+      <header class="bos-card-head"><div><h2>Enquiry pipeline</h2><p class="bos-card-sub">Received in this period, by current status</p></div></header>
+      {% include "admin/includes/bos_bars.html" with rows=e.pipeline toned=True %}
+    </section>
+
+    <section class="bos-card">
+      <header class="bos-card-head"><div><h2>Enquiry type</h2><p class="bos-card-sub">What people asked about</p></div></header>
+      {% include "admin/includes/bos_bars.html" with rows=e.kinds %}
+    </section>
+
+    <section class="bos-card bos-card-flush">
+      <header class="bos-card-head"><div><h2>Availability</h2><p class="bos-card-sub">Overrides on published items, today</p></div>
+        <a class="bos-link" href="{% url 'admin:bos_availability' %}">Board {% icon 'arrow-right' %}</a></header>
+      <div class="bos-table-wrap">
+        <table class="bos-table">
+          <thead><tr><th>Location</th><th class="bos-num">Sold out</th><th class="bos-num">Hidden</th><th class="bos-num">Own price</th></tr></thead>
+          <tbody>
+            {% for row in menu.locations %}
+              <tr><td>{{ row.location__name }}</td><td class="bos-num">{{ row.unavailable }}</td><td class="bos-num">{{ row.hidden }}</td><td class="bos-num">{{ row.priced }}</td></tr>
+            {% empty %}
+              <tr><td colspan="4"><div class="bos-empty bos-empty-sm"><p>Every item uses the standard menu.</p></div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="bos-card bos-span-3 bos-card-flush">
+      <header class="bos-card-head"><div><h2>Menu by category</h2><p class="bos-card-sub">Published items and price range (AUD, incl. GST)</p></div></header>
+      <div class="bos-table-wrap">
+        <table class="bos-table">
+          <thead><tr><th>Category</th><th class="bos-num">Published</th><th class="bos-num">Lowest</th><th class="bos-num">Average</th><th class="bos-num">Highest</th><th>Status</th></tr></thead>
+          <tbody>
+            {% for row in menu.categories %}
+              <tr>
+                <td><a href="{{ row.url }}"><strong>{{ row.name }}</strong></a></td>
+                <td class="bos-num">{{ row.published }} <span class="bos-muted">/ {{ row.total }}</span></td>
+                <td class="bos-num">{{ row.low|aud }}</td>
+                <td class="bos-num">{{ row.avg|aud }}</td>
+                <td class="bos-num">{{ row.high|aud }}</td>
+                <td>{% if row.active %}{{ "published"|status_badge }}{% else %}{{ "draft"|status_badge }}{% endif %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </div>
+
+  <p class="bos-footnote">{% icon 'info' %} Sales and revenue reports will appear once ordering / POS data is connected — nothing here is estimated.</p>
+</div>
+{% endwith %}
+{% endblock %}

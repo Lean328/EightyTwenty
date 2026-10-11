@@ -1,0 +1,16 @@
+{% load bos_admin %}{% with w=widget %}
+<div class="bos-picker" data-bos-picker data-source="{{ w.source }}">
+  <input type="hidden" name="{{ w.name }}" value="{{ w.asset.pk|default:'' }}"{% if w.attrs.id %} id="{{ w.attrs.id }}"{% endif %} data-bos-picker-input>
+  <button type="button" class="bos-picker-tile{% if not w.thumb %} is-empty{% endif %}" data-bos-picker-open aria-label="Choose a photo from the Media library">
+    <img src="{{ w.thumb }}" alt="" data-bos-picker-thumb{% if not w.thumb %} hidden{% endif %}>
+    <span class="bos-picker-placeholder"{% if w.thumb %} hidden{% endif %}>{% icon 'image' %}</span>
+  </button>
+  <div class="bos-picker-body">
+    <span class="bos-picker-name" data-bos-picker-name>{% if w.asset %}{{ w.asset }}{% else %}No photo chosen{% endif %}</span>
+    <span class="bos-picker-actions">
+      <button type="button" class="bos-btn bos-btn-sm" data-bos-picker-open>{% icon 'image' %} <span data-bos-picker-label>{% if w.asset %}Change photo{% else %}Choose photo{% endif %}</span></button>
+      <button type="button" class="bos-btn bos-btn-sm bos-btn-ghost" data-bos-picker-clear{% if not w.asset %} hidden{% endif %}>Remove</button>
+    </span>
+  </div>
+</div>
+{% endwith %}

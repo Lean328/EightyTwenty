@@ -1,0 +1,26 @@
+# Workspace wording for the internal admin. Compile after editing:
+#   ..\.venv\Scripts\python ..\scripts\compile_messages.py
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: en\n"
+
+msgid "Home"
+msgstr "Overview"
+
+#, python-format
+msgid "Change %s"
+msgstr "Edit %s"
+
+#, python-format
+msgid "Change history: %s"
+msgstr "History · %s"
+
+msgid "Password change"
+msgstr "Change password"
+
+msgid "Password change successful"
+msgstr "Password changed"
+
+msgid "Your password was changed."
+msgstr "Your password has been changed. Use the new one next time you sign in."

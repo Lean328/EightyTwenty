@@ -1,0 +1,7 @@
+{
+  "cardSurcharge": 0.0295,
+  "deliveryRate": 0.1,
+  "slotMinutes": 5,
+  "notice": "Once submitted, our kitchen gets straight to work, so orders cannot be changed or cancelled.",
+  "pickupInstructions": "Pick up at counter"
+}

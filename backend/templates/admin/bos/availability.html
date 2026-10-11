@@ -1,0 +1,99 @@
+{% extends "admin/base_site.html" %}
+{% load bos_admin %}
+
+{% block bodyclass %}{{ block.super }} bos-availability-page{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumbs"><a href="{% url 'admin:index' %}">Overview</a> &rsaquo; Availability board</div>{% endblock %}
+{% block content_title %}{% endblock %}
+
+{% block content %}
+<div class="bos-page">
+  <header class="bos-page-head">
+    <div>
+      <p class="bos-eyebrow">Menu</p>
+      <h1>Availability board</h1>
+      <p class="bos-lead">Tap a cell to mark an item sold out — or back on — at one café. Every change is saved straight away and recorded in the activity log.</p>
+    </div>
+    <div class="bos-page-tools">
+      <span class="bos-chip {% if total_off %}bos-tone-warn{% else %}bos-tone-good{% endif %}">{{ total_off }} sold out across {% if bos_can.chain %}all{% else %}your{% endif %} cafés</span>
+    </div>
+  </header>
+
+  <div class="bos-toolbar">
+    <form method="get" class="bos-toolbar-form" aria-label="Filter the board">
+      <label class="bos-sr-only" for="av-q">Search items</label>
+      <input type="search" id="av-q" name="q" value="{{ query }}" placeholder="Search items…" class="bos-search">
+      <label class="bos-sr-only" for="av-category">Category</label>
+      <select id="av-category" name="category" data-bos-select-label="Category" onchange="this.form.submit()">
+        <option value="">All categories</option>
+        {% for category in categories %}<option value="{{ category.slug }}"{% if selected_category.pk == category.pk %} selected{% endif %}>{{ category.name }}</option>{% endfor %}
+      </select>
+      <button type="submit" class="bos-btn">Search</button>
+    </form>
+    <p class="bos-legend" aria-hidden="true"><span class="bos-cell-dot is-on"></span> Available <span class="bos-cell-dot is-off"></span> Sold out <span class="bos-cell-dot is-hidden"></span> Hidden at that café</p>
+  </div>
+
+  <p class="bos-alert bos-alert-info">{% icon 'info' %}<span>The website does not show sold-out labels yet (waiting for sign-off). The API already returns availability per café with <code>?location=</code>, so the app and future website can use it.</span></p>
+
+  {% if rows %}
+  <div class="bos-card bos-card-flush">
+    <div class="bos-matrix-wrap">
+      <table class="bos-matrix" data-bos-matrix>
+        <thead>
+          <tr>
+            <th scope="col" class="bos-matrix-item">Item</th>
+            {% for col in locations %}<th scope="col"><span>{{ col.location.name }}</span>{% if col.sold_out %}<small>{{ col.sold_out }} off</small>{% endif %}</th>{% endfor %}
+            <th scope="col" class="bos-matrix-all">All cafés</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% regroup rows by item.category as groups %}
+          {% for group in groups %}
+            <tr class="bos-matrix-group"><th colspan="{{ locations|length|add:2 }}" scope="rowgroup">{{ group.grouper.name }}</th></tr>
+            {% for row in group.list %}
+              <tr id="item-{{ row.item.pk }}">
+                <th scope="row" class="bos-matrix-item">
+                  <a href="{% url 'admin:menu_menuitem_change' row.item.pk %}">{{ row.item.name }}</a>
+                  <small>{{ row.item.base_price_cents|aud }}{% if row.off %} · <span class="bos-text-warn">{{ row.off }} off</span>{% endif %}</small>
+                </th>
+                {% for cell in row.cells %}
+                  <td>
+                    {% if cell.state == "na" %}
+                      <span class="bos-cell is-na" title="Only sold at another café">—</span>
+                    {% elif cell.state == "hidden" %}
+                      <span class="bos-cell is-hidden" title="Hidden at {{ cell.location.name }} — change it in Location overrides">Hidden</span>
+                    {% else %}
+                      <form method="post" data-bos-toggle>
+                        {% csrf_token %}
+                        <input type="hidden" name="item" value="{{ row.item.pk }}">
+                        <input type="hidden" name="location" value="{{ cell.location.pk }}">
+                        <input type="hidden" name="available" value="{% if cell.state == 'on' %}0{% else %}1{% endif %}">
+                        <input type="hidden" name="next" value="{{ request.get_full_path }}#item-{{ row.item.pk }}">
+                        <button type="submit" class="bos-cell is-{{ cell.state }}" data-location="{{ cell.location.pk }}"
+                                aria-label="{{ row.item.name }} at {{ cell.location.name }}: {{ cell.label }}. Toggle"
+                                title="{{ cell.location.name }}: {{ cell.label }} — click to toggle">{{ cell.label }}</button>
+                      </form>
+                    {% endif %}
+                  </td>
+                {% endfor %}
+                <td class="bos-matrix-all">
+                  <form method="post" class="bos-matrix-bulk">
+                    {% csrf_token %}
+                    <input type="hidden" name="item" value="{{ row.item.pk }}">
+                    <input type="hidden" name="location" value="all">
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}#item-{{ row.item.pk }}">
+                    <button type="submit" name="available" value="1" class="bos-btn bos-btn-xs" title="Available everywhere">All on</button>
+                    <button type="submit" name="available" value="0" class="bos-btn bos-btn-xs bos-btn-danger-ghost" title="Sold out everywhere">All off</button>
+                  </form>
+                </td>
+              </tr>
+            {% endfor %}
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  {% else %}
+    <div class="bos-card"><div class="bos-empty">{% icon 'utensils' %}<p>No published items match.</p></div></div>
+  {% endif %}
+</div>
+{% endblock %}

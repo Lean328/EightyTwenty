@@ -1,0 +1,12 @@
+{% comment %}
+  One list filter as a dropdown in the bar above the table, instead of a column
+  of links that took a quarter of the screen from the records. Each option's
+  value is the address of the filtered list; admin.js goes there on change.
+{% endcomment %}
+<div class="bos-filter" data-filter-title="{{ title }}">
+  <select data-bos-filter-select data-bos-select-label="{{ title|capfirst }}" aria-label="Filter by {{ title }}">
+    {% for choice in choices %}
+      <option value="{{ choice.query_string|iriencode }}"{% if choice.selected %} selected{% endif %}>{{ choice.display }}</option>
+    {% endfor %}
+  </select>
+</div>

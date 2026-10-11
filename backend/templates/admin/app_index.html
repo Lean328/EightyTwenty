@@ -1,0 +1,36 @@
+{% extends "admin/base_site.html" %}
+{% load bos_admin %}
+{% comment %}
+  The page behind an app's name in a breadcrumb: just the tables of one app.
+{% endcomment %}
+
+{% block bodyclass %}{{ block.super }} app-{{ app_label }} bos-app-index{% endblock %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+  <a href="{% url 'admin:index' %}">Overview</a>
+  &rsaquo; {% for app in app_list %}{{ app.name }}{% endfor %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="bos-page">
+  {% for app in app_list %}
+    <div class="bos-tiles">
+      {% for model in app.models %}
+        <article class="bos-tile">
+          <h2>{% if model.admin_url %}<a href="{{ model.admin_url }}">{{ model.name }}</a>{% else %}{{ model.name }}{% endif %}</h2>
+          <div class="bos-tile-actions">
+            {% if model.admin_url %}
+              <a class="bos-btn bos-btn-ghost bos-btn-sm" href="{{ model.admin_url }}">{% icon 'list' %} {% if model.view_only %}View{% else %}Open list{% endif %}</a>
+            {% endif %}
+            {% if model.add_url %}
+              <a class="bos-btn bos-btn-ghost bos-btn-sm" href="{{ model.add_url }}">{% icon 'plus' %} Add</a>
+            {% endif %}
+          </div>
+        </article>
+      {% endfor %}
+    </div>
+  {% endfor %}
+</div>
+{% endblock %}

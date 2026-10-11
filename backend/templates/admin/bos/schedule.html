@@ -1,0 +1,102 @@
+{% extends "admin/base_site.html" %}
+{% load bos_admin %}
+
+{% block bodyclass %}{{ block.super }} bos-schedule-page{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumbs"><a href="{% url 'admin:index' %}">Overview</a> &rsaquo; Schedule</div>{% endblock %}
+{% block content_title %}{% endblock %}
+
+{% block content %}
+<div class="bos-page">
+  <header class="bos-page-head">
+    <div>
+      <p class="bos-eyebrow">{% if day == today %}Today{% elif day > today %}Upcoming service{% else %}Past service{% endif %}</p>
+      <h1>{{ day|date:"l j F" }}</h1>
+      <p class="bos-lead">Every reservation for the day, grouped by café and time slot. Slot meters show guests against each location's capacity.</p>
+    </div>
+    <div class="bos-page-tools">
+      <a class="bos-btn bos-btn-ghost bos-btn-icon" href="?date={{ previous_day|date:'Y-m-d' }}{% if selected_location %}&amp;location={{ selected_location.slug }}{% endif %}" aria-label="Previous day">{% icon 'chevron-right' 'bos-flip' %}</a>
+      {% if day != today %}<a class="bos-btn bos-btn-ghost" href="?{% if selected_location %}location={{ selected_location.slug }}{% endif %}">Today</a>{% endif %}
+      <a class="bos-btn bos-btn-ghost bos-btn-icon" href="?date={{ next_day|date:'Y-m-d' }}{% if selected_location %}&amp;location={{ selected_location.slug }}{% endif %}" aria-label="Next day">{% icon 'chevron-right' %}</a>
+    </div>
+  </header>
+
+  <div class="bos-toolbar">
+    <form method="get" class="bos-toolbar-form" data-bos-autosubmit aria-label="Choose day and location">
+      <label class="bos-sr-only" for="sch-date">Day</label>
+      <input type="date" id="sch-date" name="date" value="{{ day|date:'Y-m-d' }}" class="bos-field-sm">
+      <label class="bos-sr-only" for="sch-location">Location</label>
+      <select id="sch-location" name="location" data-bos-select-label="Location">
+        <option value="">{% if bos_can.chain %}All locations{% else %}All my cafés{% endif %}</option>
+        {% for location in locations %}<option value="{{ location.slug }}"{% if selected_location.pk == location.pk %} selected{% endif %}>{{ location.name }}</option>{% endfor %}
+      </select>
+      <noscript><button type="submit" class="bos-btn">Show</button></noscript>
+    </form>
+    <ul class="bos-summary" aria-label="Day summary">
+      <li><strong>{{ summary.bookings }}</strong> booking{{ summary.bookings|pluralize }}</li>
+      <li><strong>{{ summary.guests }}</strong> guest{{ summary.guests|pluralize }}</li>
+      <li class="{% if summary.waiting %}is-warn{% endif %}"><strong>{{ summary.waiting }}</strong> awaiting</li>
+      <li><strong>{{ summary.seated }}</strong> seated</li>
+      <li><strong>{{ summary.no_show }}</strong> no-show</li>
+    </ul>
+  </div>
+
+  <div class="bos-board">
+    {% for card in cards %}
+      <section class="bos-card bos-card-flush bos-service{% if not card.count %} is-quiet{% endif %}">
+        <header class="bos-service-head">
+          <span class="bos-location-pin">{% icon 'map-pin' %}</span>
+          <div>
+            <h2>{{ card.location.name }}</h2>
+            <p class="bos-card-sub">{{ card.count }} booking{{ card.count|pluralize }} · {{ card.guests }} guest{{ card.guests|pluralize }}{% if card.rule %} · {{ card.rule.max_covers_per_slot }} per {{ card.rule.slot_minutes }}-min slot{% endif %}</p>
+          </div>
+          {% if card.waiting %}<span class="bos-chip bos-tone-warn">{{ card.waiting }} awaiting</span>{% endif %}
+          {% if not card.rule or not card.rule.is_enabled %}<span class="bos-chip bos-chip-quiet" title="Online booking is switched off for this location">Online booking off</span>{% endif %}
+        </header>
+        {% if card.slots %}
+          <ol class="bos-slots">
+            {% for slot in card.slots %}
+              <li class="bos-slot{% if slot.full %} is-full{% endif %}">
+                <div class="bos-slot-time">
+                  <strong>{{ slot.label }}</strong>
+                  {% if slot.capacity %}
+                    <span class="bos-meter" title="{{ slot.covers }} of {{ slot.capacity }} guests"><span style="width: {{ slot.fill }}%"></span></span>
+                    <small>{{ slot.covers }}/{{ slot.capacity }}</small>
+                  {% else %}<small>{{ slot.covers }} guests</small>{% endif %}
+                </div>
+                <ul class="bos-slot-list">
+                  {% for booking in slot.bookings %}
+                    <li class="bos-reservation is-{{ booking.status }}">
+                      <a class="bos-reservation-main" href="{% url 'admin:bookings_booking_change' booking.pk %}">
+                        <span class="bos-party" title="Party size">{{ booking.party_size }}</span>
+                        <span class="bos-reservation-body">
+                          <strong>{{ booking.name }}</strong>
+                          <small>{{ booking.time|time:"g:i A" }} · <span class="bos-code">{{ booking.reference }}</span>{% if booking.notes %} · {{ booking.notes|truncatechars:60 }}{% endif %}</small>
+                        </span>
+                        <span class="bos-chip bos-tone-{{ booking.tone }}">{{ booking.get_status_display }}</span>
+                      </a>
+                      {% if booking.actions %}
+                        <form method="post" class="bos-reservation-actions">
+                          {% csrf_token %}
+                          <input type="hidden" name="next" value="{{ here }}">
+                          {% for action in booking.actions %}
+                            <button type="submit" formaction="{{ action.url }}" class="bos-btn bos-btn-xs{% if action.style == 'primary' %} bos-btn-primary{% elif action.style == 'danger' %} bos-btn-danger-ghost{% endif %}">{{ action.label }}</button>
+                          {% endfor %}
+                        </form>
+                      {% endif %}
+                    </li>
+                  {% endfor %}
+                </ul>
+              </li>
+            {% endfor %}
+          </ol>
+        {% else %}
+          <div class="bos-empty bos-empty-sm">{% icon 'calendar' %}<p>No reservations.</p></div>
+        {% endif %}
+      </section>
+    {% empty %}
+      <div class="bos-card"><div class="bos-empty">{% icon 'map-pin' %}<p>No published locations yet.</p></div></div>
+    {% endfor %}
+  </div>
+  <p class="bos-footnote">{% icon 'mail' %} Confirm, decline and cancel email the guest automatically. Seated and no-show only update the record.</p>
+</div>
+{% endblock %}

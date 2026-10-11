@@ -1,0 +1,86 @@
+from django.contrib.auth.base_user import AbstractBaseUser, BaseUserManager
+from django.contrib.auth.models import PermissionsMixin
+from django.db import models
+from django.db.models.functions import Lower
+from django.utils import timezone
+
+from apps.core.models import BaseModel, ManagedModel
+
+
+class UserManager(BaseUserManager):
+    use_in_migrations = True
+
+    def create_user(self, email, password=None, **extra_fields):
+        if not email:
+            raise ValueError("Email is required.")
+        user = self.model(email=self.normalize_email(email).lower(), **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, email, password=None, **extra_fields):
+        extra_fields.update(is_staff=True, is_superuser=True, role="owner")
+        return self.create_user(email, password, **extra_fields)
+
+
+class User(AbstractBaseUser, PermissionsMixin, BaseModel):
+    class Role(models.TextChoices):
+        OWNER = "owner"
+        ADMIN = "admin"
+        MANAGER = "manager"
+        STAFF = "staff"
+        CUSTOMER = "customer"
+
+    email = models.EmailField(unique=True)
+    first_name = models.CharField(max_length=100, blank=True)
+    last_name = models.CharField(max_length=100, blank=True)
+    phone = models.CharField(max_length=32, blank=True)
+    role = models.CharField(max_length=10, choices=Role.choices, default=Role.CUSTOMER)
+    is_active = models.BooleanField(default=True)
+    is_staff = models.BooleanField(default=False)
+    email_verified = models.BooleanField(default=False)
+    marketing_opt_in = models.BooleanField(default=False)
+    date_joined = models.DateTimeField(default=timezone.now)
+    objects = UserManager()
+    USERNAME_FIELD = "email"
+    REQUIRED_FIELDS = []
+
+    class Meta(BaseModel.Meta):
+        constraints = [
+            models.UniqueConstraint(Lower("email"), name="unique_email_case_insensitive")
+        ]
+
+    def save(self, *args, **kwargs):
+        self.email = self.email.strip().lower()
+        return super().save(*args, **kwargs)
+
+    def __str__(self):
+        return self.email
+
+
+class StaffAssignment(ManagedModel):
+    def __str__(self):
+        return f"{self.user} / {self.location}"
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="assignments")
+    location = models.ForeignKey("locations.Location", on_delete=models.PROTECT)
+    is_active = models.BooleanField(default=True)
+
+    class Meta(BaseModel.Meta):
+        verbose_name = "team assignment"
+        verbose_name_plural = "team assignments"
+        constraints = [
+            models.UniqueConstraint(fields=["user", "location"], name="unique_staff_location")
+        ]
+
+
+class CustomerProfile(ManagedModel):
+    def __str__(self):
+        return str(self.user)
+
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name="profile")
+    preferred_location = models.ForeignKey(
+        "locations.Location", null=True, blank=True, on_delete=models.SET_NULL
+    )
+    birthday = models.DateField(null=True, blank=True)
+    notes = models.TextField(blank=True)

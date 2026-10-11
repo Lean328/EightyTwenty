@@ -1,0 +1,1 @@
+{% load bos_admin %}{% if value %} <span class="bos-delta bos-delta-{{ value.direction }}" title="Compared with the previous period">{% if value.direction == "up" %}{% icon 'trend-up' %}{% elif value.direction == "down" %}{% icon 'trend-down' %}{% endif %}{{ value.pct }}%</span>{% endif %}

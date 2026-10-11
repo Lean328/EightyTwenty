@@ -1,0 +1,73 @@
+{% extends "admin/base_site.html" %}
+{% load bos_admin %}
+
+{% block bodyclass %}{{ block.super }} bos-system-page{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumbs"><a href="{% url 'admin:index' %}">Overview</a> &rsaquo; System status</div>{% endblock %}
+{% block content_title %}{% endblock %}
+
+{% block content %}
+<div class="bos-page">
+  <header class="bos-page-head">
+    <div>
+      <p class="bos-eyebrow">System</p>
+      <h1>System status</h1>
+      <p class="bos-lead">Whether the services behind the website are connected, and data that needs a tidy-up before guests notice.</p>
+    </div>
+    <div class="bos-page-tools">
+      <span class="bos-chip {% if issues %}bos-tone-warn{% else %}bos-tone-good{% endif %}">{% if issues %}{{ issues }} thing{{ issues|pluralize }} to check{% else %}All clear{% endif %}</span>
+    </div>
+  </header>
+
+  <div class="bos-report-grid">
+    <section class="bos-card bos-span-2">
+      <header class="bos-card-head"><div><h2>Data health</h2><p class="bos-card-sub">Each line links to the records involved</p></div></header>
+      <ul class="bos-checks">
+        {% for item in data_checks %}
+          <li class="is-{{ item.state }}">
+            <span class="bos-check-mark">{% if item.state == "ok" %}{% icon 'check' %}{% else %}{% icon 'alert' %}{% endif %}</span>
+            <span class="bos-check-body"><strong>{{ item.label }}</strong><small>{{ item.detail }}</small></span>
+            <span class="bos-check-value">{{ item.value }}</span>
+            {% if item.url and item.state != "ok" %}<a class="bos-btn bos-btn-sm" href="{{ item.url }}">Review</a>{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <section class="bos-card">
+      <header class="bos-card-head"><div><h2>Email outbox</h2><p class="bos-card-sub">Booking and enquiry emails to guests</p></div>
+        <a class="bos-link" href="{% url 'admin:notifications_emailmessage_changelist' %}">Open {% icon 'arrow-right' %}</a></header>
+      <dl class="bos-mini-stats">
+        <div><dt>Waiting</dt><dd>{{ emails.pending }}</dd></div>
+        <div><dt>Sent</dt><dd>{{ emails.sent }}</dd></div>
+        <div><dt>Failed</dt><dd{% if emails.failed %} class="bos-text-bad"{% endif %}>{{ emails.failed }}</dd></div>
+      </dl>
+      <p class="bos-card-foot">
+        {% if emails.oldest %}Oldest waiting: {{ emails.oldest.created_at|timesince }} ago. {% endif %}
+        {% if emails.last_sent %}Last sent {{ emails.last_sent.sent_at|timesince }} ago.{% else %}Nothing sent yet.{% endif %}
+      </p>
+    </section>
+
+    <section class="bos-card bos-span-2">
+      <header class="bos-card-head"><div><h2>Services</h2><p class="bos-card-sub">Read from the server's configuration — secrets are never shown</p></div></header>
+      <ul class="bos-checks">
+        {% for item in platform_checks %}
+          <li class="is-{{ item.state }}">
+            <span class="bos-check-mark">{% if item.state == "ok" %}{% icon 'check' %}{% elif item.state == "info" %}{% icon 'info' %}{% else %}{% icon 'alert' %}{% endif %}</span>
+            <span class="bos-check-body"><strong>{{ item.label }}</strong><small>{{ item.detail }}</small></span>
+            <span class="bos-check-value is-text">{{ item.value }}</span>
+            {% if item.url %}<a class="bos-btn bos-btn-sm bos-btn-ghost" href="{{ item.url }}">Open</a>{% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <section class="bos-card">
+      <header class="bos-card-head"><div><h2>Workspace</h2><p class="bos-card-sub">{{ activity.day }} change{{ activity.day|pluralize }} today · {{ activity.week }} this week</p></div>
+        <a class="bos-link" href="{% url 'admin:core_auditlog_changelist' %}">Activity {% icon 'arrow-right' %}</a></header>
+      <dl class="bos-facts">
+        {% for label, value in facts %}<div><dt>{{ label }}</dt><dd>{{ value }}</dd></div>{% endfor %}
+      </dl>
+    </section>
+  </div>
+</div>
+{% endblock %}

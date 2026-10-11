@@ -1,0 +1,15 @@
+-c constraints.txt
+Django>=5.2.8,<5.3
+djangorestframework>=3.16,<3.17
+djangorestframework-simplejwt>=5.5.1,<5.6
+drf-spectacular>=0.28,<0.30
+django-cors-headers>=4.7,<5
+django-environ>=0.12,<0.14
+dj-database-url>=2.3,<4
+psycopg[binary]>=3.2,<4
+gunicorn>=23,<24
+whitenoise>=6.9,<7
+argon2-cffi>=23.1,<26
+django-filter>=25.1,<26
+httpx>=0.28,<0.29
+Pillow>=12.3,<13

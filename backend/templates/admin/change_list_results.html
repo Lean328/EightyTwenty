@@ -1,0 +1,53 @@
+{% comment %}
+  Django's results table, plus an empty state: a bare "0 bookings" under a
+  blank card reads like a fault. With a search or filter on, the way back out
+  is offered; otherwise the page says what will appear here.
+{% endcomment %}
+{% load i18n bos_admin %}
+{% if result_hidden_fields %}
+<div class="hiddenfields">{# DIV for HTML validation #}
+{% for item in result_hidden_fields %}{{ item }}{% endfor %}
+</div>
+{% endif %}
+{% if results %}
+<div class="results">
+<table id="result_list">
+<thead>
+<tr>
+{% for header in result_headers %}
+<th scope="col"{{ header.class_attrib }}>
+   {% if header.sortable and header.sort_priority > 0 %}
+       <div class="sortoptions">
+         <a class="sortremove" href="{{ header.url_remove }}" title="{% translate "Remove from sorting" %}"></a>
+         {% if num_sorted_fields > 1 %}<span class="sortpriority" title="{% blocktranslate with priority_number=header.sort_priority %}Sorting priority: {{ priority_number }}{% endblocktranslate %}">{{ header.sort_priority }}</span>{% endif %}
+         <a href="{{ header.url_toggle }}" class="toggle {{ header.ascending|yesno:'ascending,descending' }}" title="{% translate "Toggle sorting" %}"></a>
+       </div>
+   {% endif %}
+   <div class="text">{% if header.sortable %}<a href="{{ header.url_primary }}">{{ header.text|capfirst }}</a>{% else %}<span>{{ header.text|capfirst }}</span>{% endif %}</div>
+   <div class="clear"></div>
+</th>{% endfor %}
+</tr>
+</thead>
+<tbody>
+{% for result in results %}
+{% if result.form and result.form.non_field_errors %}
+    <tr><td colspan="{{ result|length }}">{{ result.form.non_field_errors }}</td></tr>
+{% endif %}
+<tr>{% for item in result %}{{ item }}{% endfor %}</tr>
+{% endfor %}
+</tbody>
+</table>
+</div>
+{% else %}
+<div class="bos-empty bos-empty-list">
+  <span class="bos-empty-mark">{% if cl.query or cl.has_active_filters %}{% icon 'search' %}{% else %}{% icon 'inbox' %}{% endif %}</span>
+  {% if cl.query or cl.has_active_filters %}
+    <p><strong>No {{ cl.opts.verbose_name_plural }} match{% if cl.query %} “{{ cl.query }}”{% endif %}{% if cl.has_active_filters %} with the current filters{% endif %}.</strong></p>
+    <p>Try another search or clear the filters.</p>
+    <a class="bos-btn bos-btn-sm" href="?">Show all {{ cl.opts.verbose_name_plural }}</a>
+  {% else %}
+    <p><strong>No {{ cl.opts.verbose_name_plural }} yet.</strong></p>
+    <p>New records appear here as soon as they are created.</p>
+  {% endif %}
+</div>
+{% endif %}

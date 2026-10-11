@@ -1,0 +1,13 @@
+{% load static %}{% comment %}
+  Shared <head> pieces for every workspace page. admin-theme.js loads blocking
+  and first on purpose: deferred, a dark-mode reader would see a white flash.
+{% endcomment %}
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="color-scheme" content="light dark">
+<script src="{% static 'bos/js/admin-theme.js' %}"></script>
+<link rel="icon" type="image/png" href="{% static 'bos/img/favicon.png' %}">
+<link rel="apple-touch-icon" href="{% static 'bos/img/apple-touch-icon.png' %}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400..800&display=swap">

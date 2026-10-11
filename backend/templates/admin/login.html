@@ -1,0 +1,100 @@
+{% load static bos_admin %}<!DOCTYPE html>
+{% comment %}
+  Standalone rather than an extension of base.html: there is no menu, top bar
+  or breadcrumb to show someone who is not signed in yet.
+{% endcomment %}
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>{% if form.errors %}Error: {% endif %}Sign in · EightyTwenty BOS</title>
+{% include "admin/includes/bos_head.html" %}
+<link rel="stylesheet" href="{% static 'bos/css/admin.css' %}">
+<script src="{% static 'bos/js/admin.js' %}" defer></script>
+</head>
+<body class="bos-admin bos-login">
+
+<div class="bos-login-shell">
+  <section class="bos-login-art" aria-hidden="true">
+    <div class="bos-login-brand">
+      <img src="{% static 'bos/img/logo-wordmark.webp' %}" alt="">
+      <span>BOS</span>
+    </div>
+    <div class="bos-login-copy">
+      <p class="bos-login-eyebrow">Wholesome food · great coffee</p>
+      <h2>Run every café from one bright, simple workspace.</h2>
+      <p class="bos-login-tagline">Bookings, menus, availability and the website — Braddon to Gungahlin.</p>
+    </div>
+  </section>
+
+  <main class="bos-login-panel" id="content-start">
+    <div class="bos-login-top">
+      <img class="bos-login-mobile-logo" src="{% static 'bos/img/logo-wordmark.webp' %}" alt="EightyTwenty">
+      <button type="button" class="bos-icon-btn bos-theme-toggle" data-bos-theme-toggle
+              aria-label="Switch between light and dark theme" title="Light / dark theme">
+        {% icon 'moon' 'bos-show-light' %}{% icon 'sun' 'bos-show-dark' %}
+      </button>
+    </div>
+
+    <div class="bos-login-card">
+      <p class="bos-eyebrow">Team sign-in</p>
+      <h1>Welcome back</h1>
+      <p class="bos-login-lead">Sign in to look after today's bookings, menu and locations.</p>
+
+      {% if user.is_authenticated %}
+        <div class="bos-alert bos-alert-warn" role="alert">
+          {% icon 'alert' %}
+          <span>You are signed in as <strong>{{ user.email }}</strong>, but this account cannot open the workspace. Sign in with an administrator account.</span>
+        </div>
+      {% endif %}
+
+      {% if form.non_field_errors %}
+        {% for error in form.non_field_errors %}
+          <div class="bos-alert" role="alert">{% icon 'alert' %}<span>{{ error }}</span></div>
+        {% endfor %}
+      {% elif form.errors %}
+        <div class="bos-alert" role="alert">{% icon 'alert' %}<span>Please check the fields below.</span></div>
+      {% endif %}
+
+      <form action="{{ app_path }}" method="post" id="login-form" class="bos-login-form" novalidate>
+        {% csrf_token %}
+        <div class="bos-login-field">
+          <label for="{{ form.username.id_for_label }}">Email address</label>
+          <span class="bos-input-icon">
+            {% icon 'mail' %}
+            <input type="email" name="{{ form.username.html_name }}" id="{{ form.username.id_for_label }}"
+                   value="{{ form.username.value|default_if_none:'' }}" autocomplete="username"
+                   autocapitalize="none" placeholder="you@eightytwentyfood.com.au" autofocus required>
+          </span>
+          {% for error in form.username.errors %}<p class="bos-field-error">{{ error }}</p>{% endfor %}
+        </div>
+
+        <div class="bos-login-field">
+          <label for="{{ form.password.id_for_label }}">Password</label>
+          <span class="bos-input-icon">
+            {% icon 'key' %}
+            <input type="password" name="{{ form.password.html_name }}" id="{{ form.password.id_for_label }}"
+                   autocomplete="current-password" required data-bos-password>
+            <button type="button" class="bos-reveal" data-bos-reveal aria-label="Show password" aria-pressed="false">
+              {% icon 'eye' %}
+            </button>
+          </span>
+          {% for error in form.password.errors %}<p class="bos-field-error">{{ error }}</p>{% endfor %}
+          <p class="bos-caps" data-bos-caps hidden>{% icon 'alert' %} Caps Lock is on.</p>
+        </div>
+
+        <input type="hidden" name="next" value="{{ next }}">
+
+        <button type="submit" class="bos-btn bos-btn-primary bos-btn-block">
+          Sign in {% icon 'arrow-right' %}
+        </button>
+      </form>
+
+      <p class="bos-login-help">For authorised team members. Forgotten your password? Ask your workspace administrator to reset it.</p>
+    </div>
+
+    <p class="bos-login-foot">© {% now "Y" %} EightyTwenty · Canberra, Australia</p>
+  </main>
+</div>
+
+</body>
+</html>

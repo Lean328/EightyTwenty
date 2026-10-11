@@ -1,0 +1,10 @@
+{% comment %}Ranked bars from charts.share_rows(): label, track, value and share.{% endcomment %}
+<ul class="bos-bars">
+  {% for row in rows %}
+    <li>
+      <span class="bos-bars-name">{{ row.label }}</span>
+      <span class="bos-bars-track"><span class="{% if toned %}bos-fill-{{ row.tone }}{% elif row.kind %}bos-bars-{{ row.kind }}{% endif %}" style="width: {{ row.pct }}%"></span></span>
+      <strong>{{ row.value }}<small>{{ row.share }}%</small></strong>
+    </li>
+  {% endfor %}
+</ul>

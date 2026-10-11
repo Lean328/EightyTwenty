@@ -1,0 +1,41 @@
+services:
+  - type: web
+    name: eightytwenty-api
+    runtime: python
+    region: singapore
+    plan: free
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt && python manage.py collectstatic --noinput && python manage.py migrate --noinput
+    startCommand: gunicorn config.wsgi:application --workers 2 --threads 2 --timeout 60 --max-requests 500 --max-requests-jitter 50
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.9
+      - key: DJANGO_SETTINGS_MODULE
+        value: config.settings.prod
+      - key: SECRET_KEY
+        generateValue: true
+      - key: JOB_TOKEN
+        generateValue: true
+      - key: TURNSTILE_ENABLED
+        value: "False"
+      - key: TRUSTED_PROXY_COUNT
+        value: "1"
+      - key: CORS_ALLOWED_ORIGINS
+        value: https://eightytwenty3.vercel.app,https://www.eightytwentyfood.com.au
+      - key: DATABASE_URL
+        sync: false
+      - key: DATABASE_URL_MIGRATIONS
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      - key: SUPABASE_PUBLIC_MEDIA_BASE
+        sync: false
+      - key: EMAIL_PROVIDER_API_KEY
+        sync: false
+      - key: EMAIL_FROM
+        sync: false
+      - key: CLIENT_BASE_URL
+        value: https://eightytwenty3.vercel.app

@@ -1,0 +1,11 @@
+{% load bos_admin %}{% if messages %}
+  <ul class="messagelist" role="status">
+    {% for message in messages %}
+      <li class="bos-message{% if message.tags %} {{ message.tags }}{% endif %}">
+        {% if message.level_tag == "error" or message.level_tag == "warning" %}{% icon 'alert' %}{% elif message.level_tag == "success" %}{% icon 'check-circle' %}{% else %}{% icon 'info' %}{% endif %}
+        <span>{{ message|capfirst }}</span>
+        <button type="button" class="bos-message-close" data-bos-dismiss aria-label="Dismiss">{% icon 'x' %}</button>
+      </li>
+    {% endfor %}
+  </ul>
+{% endif %}

@@ -1,0 +1,167 @@
+{% load i18n static bos_admin %}<!DOCTYPE html>
+{% get_current_language as LANGUAGE_CODE %}
+<html lang="{{ LANGUAGE_CODE|default:'en' }}" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>{% block title %}{% endblock %}</title>
+{% include "admin/includes/bos_head.html" %}
+<link rel="stylesheet" href="{% block stylesheet %}{% static 'admin/css/base.css' %}{% endblock %}">
+{% block dark-mode-vars %}{% endblock %}
+{% block responsive %}<link rel="stylesheet" href="{% static 'admin/css/responsive.css' %}">{% endblock %}
+{% block extrastyle %}{% endblock %}
+<link rel="stylesheet" href="{% static 'bos/css/admin.css' %}">
+{% block extrahead %}{% endblock %}
+<script src="{% static 'bos/js/admin.js' %}" defer></script>
+</head>
+
+<body class="bos-admin {% if is_popup %}popup {% endif %}{% block bodyclass %}{% endblock %}"
+      data-admin-utc-offset="{% now 'Z' %}">
+<a href="#content-start" class="skip-to-content-link">Skip to main content</a>
+
+<div class="bos-shell{% if is_popup %} bos-shell-popup{% endif %}" id="container">
+  {% if not is_popup %}
+    {% block nav-sidebar %}
+    <aside class="bos-sidebar" id="bos-sidebar" aria-label="Main navigation">
+      <a class="bos-brand" href="{% url 'admin:index' %}" aria-label="EightyTwenty workspace overview">
+        <img class="bos-brand-word" src="{% static 'bos/img/logo-wordmark.webp' %}" alt="EightyTwenty" width="49" height="34">
+        <img class="bos-brand-tile" src="{% static 'bos/img/logo-tile.png' %}" alt="" width="37" height="37">
+        <span class="bos-brand-tag">BOS</span>
+      </a>
+
+      <nav class="bos-nav" data-bos-nav>
+        {% for section in bos_navigation %}
+          <div class="bos-nav-section">
+            {% if section.title %}<p class="bos-nav-title">{{ section.title }}</p>{% endif %}
+            <ul>
+              {% for item in section.items %}
+                <li>
+                  <a class="bos-nav-link{% if item.active %} is-active{% endif %}" href="{{ item.url }}"
+                     {% if item.active %}aria-current="page"{% endif %} aria-label="{{ item.name }}{% if item.badge %}, {{ item.badge }} waiting{% endif %}" data-bos-tip="{{ item.name }}" data-bos-nav-link
+                     data-bos-section="{{ section.title|default:'' }}">
+                    {% icon item.icon %}
+                    <span class="bos-nav-text">{{ item.name }}</span>
+                    {% if item.badge %}<span class="bos-nav-badge" aria-label="{{ item.badge }} waiting">{{ item.badge }}</span>{% endif %}
+                  </a>
+                </li>
+              {% endfor %}
+            </ul>
+          </div>
+        {% endfor %}
+      </nav>
+
+      <div class="bos-sidebar-foot">
+        <button type="button" class="bos-collapse" data-bos-collapse aria-label="Collapse menu" data-bos-tip="Collapse menu">
+          {% icon 'panel' %}<span class="bos-nav-text">Collapse</span>
+        </button>
+      </div>
+    </aside>
+    <div class="bos-scrim" data-bos-close-nav hidden></div>
+    {% endblock %}
+  {% endif %}
+
+  <div class="bos-main">
+    {% if not is_popup %}
+    {% block header %}
+    <header class="bos-topbar">
+      <button type="button" class="bos-icon-btn bos-nav-toggle" data-bos-nav-toggle aria-controls="bos-sidebar"
+              aria-expanded="false" aria-label="Open menu">{% icon 'menu' %}</button>
+
+      {% block nav-breadcrumbs %}
+        <nav class="bos-crumbs" aria-label="Breadcrumbs">
+          {% block breadcrumbs %}
+            <div class="breadcrumbs">
+              <a href="{% url 'admin:index' %}">Overview</a>
+              {% if title %} &rsaquo; {{ title }}{% endif %}
+            </div>
+          {% endblock %}
+        </nav>
+      {% endblock %}
+
+      <div class="bos-topbar-tools">
+        {% block nav-global %}{% endblock %}
+
+        {% if has_permission %}
+          <button type="button" class="bos-search-trigger" data-bos-palette-open aria-haspopup="dialog">
+            {% icon 'search' %}<span>Go to page…</span><kbd>Ctrl K</kbd>
+          </button>
+        {% endif %}
+
+        <button type="button" class="bos-icon-btn bos-theme-toggle" data-bos-theme-toggle
+                aria-label="Switch between light and dark theme" title="Light / dark theme">
+          {% icon 'moon' 'bos-show-light' %}{% icon 'sun' 'bos-show-dark' %}
+        </button>
+
+        {% block usertools %}
+        {% if has_permission %}
+          <details class="bos-user" data-bos-menu>
+            <summary aria-label="Your account">
+              <span class="bos-avatar" aria-hidden="true">{{ user|initials }}</span>
+              <span class="bos-user-name">{% firstof user.get_full_name user.email %}</span>
+              {% icon 'chevron-down' 'bos-user-caret' %}
+            </summary>
+            <div class="bos-menu" role="menu">
+              <div class="bos-menu-head">
+                <strong>{% firstof user.get_full_name user.email %}</strong>
+                <span>{{ user.get_role_display }}{% if user.email %} · {{ user.email }}{% endif %}</span>
+              </div>
+              {% comment %}
+                Not named "userlinks": Django's password pages override that
+                block with their own links and theme switcher.
+              {% endcomment %}
+              {% block bos-userlinks %}
+                {% if user.has_usable_password %}
+                  <a class="bos-menu-item" role="menuitem" href="{% url 'admin:password_change' %}">{% icon 'key' %} Change password</a>
+                {% endif %}
+                {% if bos_docs_url %}
+                  <a class="bos-menu-item" role="menuitem" href="{{ bos_docs_url }}" target="_blank" rel="noopener">{% icon 'code' %} API documentation</a>
+                {% endif %}
+                <form id="logout-form" method="post" action="{% url 'admin:logout' %}">
+                  {% csrf_token %}
+                  <button type="submit" class="bos-menu-item bos-menu-danger" role="menuitem">{% icon 'logout' %} Sign out</button>
+                </form>
+              {% endblock %}
+            </div>
+          </details>
+        {% endif %}
+        {% endblock %}
+      </div>
+    </header>
+    {% endblock %}
+    {% endif %}
+
+    <main id="content-start" class="bos-content" tabindex="-1">
+      {% block messages %}{% include "admin/includes/bos_messages.html" %}{% endblock messages %}
+      <div id="content" class="{% block coltype %}colM{% endblock %}">
+        {% block pretitle %}{% endblock %}
+        {% block content_title %}{% if cl %}<h1>{{ cl.opts.verbose_name_plural|capfirst }}</h1>{% elif title %}<h1>{{ title }}</h1>{% endif %}{% endblock %}
+        {% block content_subtitle %}{% if subtitle %}<h2>{{ subtitle }}</h2>{% endif %}{% endblock %}
+        {% block content %}
+          {% block object-tools %}{% endblock %}
+          {{ content }}
+        {% endblock %}
+        {% block sidebar %}{% endblock %}
+        <br class="clear">
+      </div>
+    </main>
+    {% if not is_popup %}<footer id="footer" class="bos-footer">{% block footer %}{% endblock %}</footer>{% endif %}
+  </div>
+</div>
+
+{% if has_permission and not is_popup %}
+  <div class="bos-palette" data-bos-palette hidden>
+    <div class="bos-palette-box" role="dialog" aria-modal="true" aria-label="Go to page">
+      <label class="bos-palette-field">
+        {% icon 'search' %}
+        <input type="search" placeholder="Type a page name, e.g. bookings, menu, hours…" autocomplete="off"
+               aria-label="Page name" data-bos-palette-input>
+        <kbd>Esc</kbd>
+      </label>
+      <ul class="bos-palette-list" data-bos-palette-list role="listbox"></ul>
+      <p class="bos-palette-empty" data-bos-palette-empty hidden>No page matches.</p>
+    </div>
+  </div>
+{% endif %}
+
+{% block extrabody %}{% endblock extrabody %}
+</body>
+</html>

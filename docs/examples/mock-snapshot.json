@@ -1,0 +1,12 @@
+{
+  "LOCATIONS": [
+    {"id":"demo-branch","name":"Demo Branch (sample only)","sub":"Sample data","address":"Example address","phone":"","hours":"Configure real opening hours before accepting bookings","hoursShort":"Demo","open":true,"methods":["Pickup","Dine In"],"note":"Not production business data","wait":"","img":"img/demo.jpg","img2":"","img3":"","order":"","email":"","booking":"Demo Branch","flagship":true}
+  ],
+  "CATEGORIES": [{"id":"demo-meals","name":"Sample Meals","note":"Sample prices only"}],
+  "MENU": [
+    {"id":"demo-breakfast","cat":"demo-meals","name":"Sample Breakfast","price":10.9,"diet":["GF*","DF*"],"img":"img/demo.jpg","desc":"Demo item","featured":true,"mods":[{"id":"add","name":"Add ons","required":false,"max":0,"options":[["Egg",3],["Avocado",4.5]]}]},
+    {"id":"demo-lunch","cat":"demo-meals","name":"Sample Lunch","price":22,"diet":["DF*","GF*"],"img":"","desc":"Demo item","mods":[{"id":"add","name":"Add ons","required":false,"max":0,"options":[["Egg",3],["Avocado",4.5]]}]}
+  ],
+  "CATERING": [{"id":"Sample Breakfast","price":"$22","unit":"per person","img":"","imagePosition":"50% 50%","blurb":"Sample package","items":["Example item"]}],
+  "ORDER_RULES": {"orderingEnabled": false}
+}

@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Lumi Lane hero — LOCKED rotating dish/text effect (verbatim)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,300..500;1,6..72,300..500&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+<style>
+  @keyframes pageFade { from { opacity: 0; } }
+  [hidden] { display: none !important; }
+  body { animation: pageFade 520ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+  @media (prefers-reduced-motion: reduce) { body { animation: none; } }
+
+  /* ---- hero dish animation ---------------------------------------------
+     Both headline lines share one grid cell so the outgoing and incoming
+     copy can cross without the block resizing or the page reflowing. */
+  .hero-line { grid-area: 1 / 1; }
+
+  /* ---- menu item thumbnails -------------------------------------------
+     Square photo slot on the left of every menu item. Empty by default: the
+     ::after label is the placeholder, and a real <img> (injected from the
+     item's data-image field, or dropped in by a CMS template) simply covers
+     it. Deliberately small and quiet so the menu stays an editorial list
+     rather than a grid of product cards. */
+  .menu-thumb {
+    position: relative;
+    flex: none;
+    width: 72px;
+    height: 72px;
+    border-radius: 10px;
+    overflow: hidden;
+    background: rgba(28, 24, 20, 0.05);
+    box-shadow: inset 0 0 0 1px rgba(28, 24, 20, 0.045);
+  }
+  @media (min-width: 640px)  { .menu-thumb { width: 80px; height: 80px; } }
+  @media (min-width: 1024px) { .menu-thumb { width: 96px; height: 96px; border-radius: 12px; } }
+
+  .menu-thumb::after {
+    content: "IMAGE";
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 8px;
+    font-weight: 600;
+    letter-spacing: 0.2em;
+    color: rgba(28, 24, 20, 0.26);
+  }
+
+  /* Short entries (most drinks) carry no description, so centre the name
+     against the thumbnail rather than stranding it at the top of a tall row. */
+  li[data-image]:not(:has(p)) { align-items: center; }
+
+  .menu-thumb img {
+    position: relative;   /* sits above the placeholder label */
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    object-position: center;
+  }
+
+  /* The stage hangs off the bottom of the hero so the focus dish bleeds past
+     the edge the way it does in the reference, instead of floating in a band. */
+  #hero-stage {
+    --dish: clamp(300px, min(58svh, 122vw), 520px);
+    --bleed: 0.11;
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: calc(var(--dish) * var(--bleed) * -1);
+    height: var(--dish);
+  }
+  @media (min-width: 640px) { #hero-stage { --dish: clamp(380px, min(82svh, 92vw), 760px); } }
+  /* Desktop: the headline sits on fixed top padding while the stage is anchored
+     to the bottom, so a plain svh size makes the gap between them swing wildly
+     with window height. Sizing the dish linearly against the height instead
+     holds the headline overlap steady from a short laptop to a 1080 display.
+     The vw term stops very tall/narrow windows cropping the plate sideways. */
+  @media (min-width: 1024px) { #hero-stage { --dish: clamp(430px, min(112.4svh - 326px, 78vw), 1100px); } }
+
+  /* One square box per dish (all five sources are ~1254x1254), centred on the
+     stage and bottom-anchored. Slot positions are transforms only, so the
+     cycle stays on the compositor. */
+  .hero-dish {
+    position: absolute;
+    left: 50%;
+    bottom: 0;
+    width: var(--dish);
+    height: var(--dish);
+    max-width: none;          /* preflight's img{max-width:100%} squashes the
+                                 box once --dish exceeds the stage width */
+    margin-left: calc(var(--dish) / -2);
+    object-fit: contain;
+    object-position: 50% 100%;
+    transform-origin: 50% 70%;
+    filter: drop-shadow(0 22px 30px rgba(28, 24, 20, 0.26));
+    will-change: transform, opacity;
+    backface-visibility: hidden;
+  }
+</style>
+<link rel="stylesheet" href="./hero-tailwind.css">
+</head>
+<body class="bg-shell font-sans text-cocoa antialiased">
+<!-- LOCKED: Lumi Lane rotating image/text effect. Markup, CSS and script below are copied verbatim from the original Lumi Lane source. Do not edit in Phase 2. -->
+<main data-view="landing" class="relative flex min-h-[100svh] flex-col overflow-hidden px-4 pb-32 pt-20 text-center sm:px-6 sm:pt-24">
+
+  <p class="font-script text-3xl text-[#C45441] sm:text-4xl">Wholesome food, great coffee.</p>
+
+  <h1 id="hero-headline" class="mx-auto mt-4 grid max-w-[26ch] font-serif text-[clamp(1.5rem,7.6vw,6.4rem)] leading-[0.93] tracking-tight text-cocoa" style="font-weight:500">
+    <span class="hero-line">Fuel your<br>morning.</span>
+    <span class="hero-line" aria-hidden="true"></span>
+  </h1>
+
+  <!-- Dish order here IS the cycle order: mighty breakfast, açai bowl, breakfast burger, french toast, green nourish bowl. -->
+  <div id="hero-stage" class="pointer-events-none">
+    <img class="hero-dish" src="assets/e82-mighty-breakfast.webp"    alt="Mighty Breakfast plate with bacon, poached eggs, avocado, halloumi and mushrooms, seen from above">
+    <img class="hero-dish" src="assets/e82-acai-bowl.webp"          alt="The Original O açai bowl with banana, strawberries, granola and coconut, seen from above">
+    <img class="hero-dish" src="assets/e82-breakfast-burger.webp"   alt="Breakfast burger with bacon, egg, halloumi and cheese, seen from above">
+    <img class="hero-dish" src="assets/e82-french-toast.webp"       alt="French toast with ice cream, strawberries and caramel sauce, seen from above">
+    <img class="hero-dish" src="assets/e82-green-nourish-bowl.webp" alt="Green nourish bowl with kale, cauliflower, asparagus, pepitas and a poached egg, seen from above">
+  </div>
+
+</main>
+
+<script>
+  /* Hero dish cycle.
+
+     The dishes ride an invisible ellipse whose centre sits well below the hero,
+     so a swap is one step of an orbit rather than a slide: each dish arcs up and
+     across instead of tracking a straight line. A single float (`ring.pos`, the
+     fractional active index) drives every dish's angle, scale, tilt, fade and
+     stacking, so there is one tween and one timer for the whole composition.
+
+     Rest positions are design-locked to the approved hero screenshot: the
+     ellipse supplies the curve, and a small per-anchor correction pins p = -1,
+     0 and +1 to the exact approved coordinates. The correction is piecewise
+     linear, so it shifts the path without flattening its bow. */
+  (function () {
+    var GS = window.gsap;
+    var stage = document.getElementById('hero-stage');
+    var headline = document.getElementById('hero-headline');
+    if (!GS || !stage || !headline) return;
+
+    var dishes = Array.prototype.slice.call(stage.querySelectorAll('.hero-dish'));
+    var layers = Array.prototype.slice.call(headline.querySelectorAll('.hero-line'));
+    var N = dishes.length;
+    if (N < 2 || layers.length < 2) return;
+
+    // Same order as the markup: coffee, chocolate, eggs, pita, burger.
+    var COPY = [
+      ['Fuel your', 'morning.'],
+      ['Brunch without', 'the fuss.'],
+      ['Clean food.', 'Big flavour.'],
+      ['Coffee worth', 'getting up for.'],
+      ['Mindful by nature,', 'indulgent by choice.']
+    ];
+
+    var REST = 1.6;   // seconds the hero dish holds the centre
+    var MOVE = 0.7;   // seconds of dish travel per swap
+    var TEXT = 0.42;  // headline cross duration
+    var LEAD = 0.11;  // headline starts this far ahead of the dishes
+
+    // The hero cycle runs unconditionally. It used to fall back to a static
+    // dissolve under prefers-reduced-motion, but several viewers (in-app
+    // preview panes, embedded webviews) report "reduce" regardless of the OS
+    // setting, which made the hero look broken. Motion here is a slow, smooth,
+    // non-parallax orbit rather than the flashing/zooming kind the media query
+    // is meant to suppress.
+
+    // --- the invisible ring -------------------------------------------------
+    // STEP is the angle between neighbouring dishes; RX/RY are the ellipse
+    // radii as fractions of the stage box. Only ~120 deg of the ring is ever on
+    // screen and the dishes sit at very different scales, so it never reads as
+    // a wheel — but the travel between slots is a genuine arc.
+    var STEP = 58;
+    var RX = 0.389, RY = 0.82;
+    var HALF = N / 2;
+    var RAD = Math.PI / 180;
+
+    function baseX(p) { return RX * Math.sin(p * STEP * RAD); }
+    function baseY(p) { return RY * (1 - Math.cos(p * STEP * RAD)); }
+
+    // --- design lock --------------------------------------------------------
+    // Approved resting coordinates from the signed-off hero screenshot. Only
+    // p = -1, 0, +1 are ever visible, so those are the anchors that must land
+    // exactly; everything past |p| = 2 is off-stage and fully transparent.
+    var WIDE = {
+      anchor: { '-1': [-0.355, 0.36], '0': [0, 0], '1': [0.345, 0.39] },
+      scale:  [[-2.5, 0.56], [-2, 0.62], [-1, 0.73], [0, 1.00], [1, 0.71], [2, 0.58], [2.5, 0.54]]
+    };
+    // Narrow screens: the focus dish spans the full width, so the wings sit
+    // wider and higher, cropped by the side and bottom edges.
+    var NARROW = {
+      anchor: { '-1': [-0.48, 0.02], '0': [0, 0], '1': [0.47, 0.04] },
+      scale:  [[-2.5, 0.42], [-2, 0.48], [-1, 0.54], [0, 1.00], [1, 0.52], [2, 0.44], [2.5, 0.46]]
+    };
+    var TILT  = [[-2.5, 32], [-2, 26], [-1, 11], [0, 0], [1, -16], [2, -34], [2.5, -40]];
+    var ALPHA = [[-2, 0], [-1, 1], [0, 1], [1, 1], [2, 0]];
+
+    var LOOK = WIDE;
+    var W = 0, H = 0;
+    var corr = {};     // per-anchor offset that pins the ellipse to the design lock
+
+    function track(knots, p) {                 // linear interpolation over knots
+      if (p <= knots[0][0]) return knots[0][1];
+      var last = knots.length - 1;
+      if (p >= knots[last][0]) return knots[last][1];
+      for (var i = 1; i <= last; i++) {
+        if (p <= knots[i][0]) {
+          var a = knots[i - 1], b = knots[i];
+          return a[1] + (b[1] - a[1]) * (p - a[0]) / (b[0] - a[0]);
+        }
+      }
+      return knots[last][1];
+    }
+
+    function measure() {
+      W = stage.clientWidth;
+      H = stage.clientHeight;
+      LOOK = window.innerWidth < 640 ? NARROW : WIDE;
+      corr = {};
+      for (var key in LOOK.anchor) {
+        var p = parseFloat(key), a = LOOK.anchor[key];
+        corr[key] = [a[0] - baseX(p), a[1] - baseY(p)];
+      }
+    }
+
+    // Correction is only defined at the three visible anchors and fades to zero
+    // by |p| = 2. Being piecewise linear, it shifts the arc without flattening it.
+    function corrAt(p) {
+      var lo, hi, t;
+      if (p >= 1) { lo = corr['1']; hi = [0, 0]; t = Math.min(1, p - 1); }
+      else if (p >= 0) { lo = corr['0']; hi = corr['1']; t = p; }
+      else if (p >= -1) { lo = corr['0']; hi = corr['-1']; t = -p; }
+      else { lo = corr['-1']; hi = [0, 0]; t = Math.min(1, -p - 1); }
+      return [lo[0] + (hi[0] - lo[0]) * t, lo[1] + (hi[1] - lo[1]) * t];
+    }
+
+    // Signed ring position of dish k, in slot units, wrapped to [-HALF, HALF).
+    // A dish crossing the seam is at the far side of the ring and invisible.
+    function ringP(k, pos) {
+      var d = (k - pos + HALF) % N;
+      if (d < 0) d += N;
+      return d - HALF;
+    }
+
+    var ring = { pos: 0 };
+    var live = 0;      // which headline layer is showing
+    var tl = null;
+    var timer = null;
+
+    function render() {
+      for (var k = 0; k < N; k++) {
+        var p = ringP(k, ring.pos);
+        var c = corrAt(p);
+        var x = (baseX(p) + c[0]) * W;
+        var y = (baseY(p) + c[1]) * H;
+        var el = dishes[k];
+        el.style.transform = 'translate3d(' + x.toFixed(2) + 'px,' + y.toFixed(2) + 'px,0) ' +
+                             'rotate(' + track(TILT, p).toFixed(2) + 'deg) ' +
+                             'scale(' + track(LOOK.scale, p).toFixed(4) + ')';
+        el.style.opacity = track(ALPHA, p).toFixed(3);
+        // Hero on top, the approaching dish above the departing one, so the
+        // newcomer sweeps over the dish it is replacing. Kept well under the
+        // nav's z-50 so the gradient pill still sits over the food.
+        el.style.zIndex = Math.round(34 - Math.abs(p) * 5 + p * 3);
+      }
+    }
+
+    function paint() { measure(); render(); }
+
+    function activeIndex() { return ((Math.round(ring.pos) % N) + N) % N; }
+
+    function goToFood(target) {
+      if (target === activeIndex()) return;
+
+      clearTimeout(timer);
+      if (tl) tl.kill();
+      GS.killTweensOf(ring);
+      GS.killTweensOf(layers);
+      GS.killTweensOf(stage);
+      measure();
+
+      // Always rotate the ring forward to the nearest matching position, so the
+      // orbit never reverses or takes the long way round.
+      var from = ring.pos;
+      var steps = (((target - Math.round(from)) % N) + N) % N;
+      var to = Math.round(from) + (steps || N);
+
+      tl = GS.timeline({ onComplete: schedule });
+
+      // ---- headline: old lifts and fades, new rises into its place
+      var out = layers[live];
+      var into = layers[1 - live];
+      into.innerHTML = COPY[target][0] + '<br>' + COPY[target][1];
+      into.removeAttribute('aria-hidden');
+      out.setAttribute('aria-hidden', 'true');
+      live = 1 - live;
+
+      GS.set(into, { yPercent: 30, opacity: 0 });
+      tl.to(out,  { yPercent: -28, opacity: 0, duration: TEXT * 0.8, ease: 'power2.in' }, 0)
+        .to(into, { yPercent: 0, opacity: 1, duration: TEXT, ease: 'power3.out' }, TEXT * 0.34);
+
+      // ---- dishes: one tween of the ring carries the whole composition
+      tl.to(ring, {
+        pos: to,
+        duration: MOVE,
+        ease: 'power2.inOut',
+        onUpdate: render
+      }, LEAD);
+    }
+
+    function schedule() {
+      clearTimeout(timer);
+      timer = setTimeout(function () { goToFood((activeIndex() + 1) % N); }, REST * 1000);
+    }
+
+    // Keep the composition proportional without interrupting a running swap.
+    var rt = null;
+    window.addEventListener('resize', function () {
+      clearTimeout(rt);
+      rt = setTimeout(function () {
+        if (tl && tl.isActive()) return;
+        paint();
+      }, 150);
+    });
+
+    layers[0].innerHTML = COPY[0][0] + '<br>' + COPY[0][1];
+    GS.set(layers[1], { opacity: 0 });
+    paint();
+    schedule();          // autoplay: no click, hover, scroll or keypress needed
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,39 @@
+name: Database backup
+on:
+  workflow_dispatch:
+  schedule:
+    # 02:00 Australia/Sydney is 15:00/16:00 UTC depending on DST.
+    - cron: "0 15 * * *"
+    - cron: "0 16 * * *"
+permissions:
+  contents: read
+concurrency:
+  group: bos-database-backup
+  cancel-in-progress: false
+jobs:
+  backup:
+    if: vars.ENABLE_BOS_BACKUPS == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - id: window
+        run: python scripts/backup_window.py
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          SCHEDULE: ${{ github.event.schedule }}
+      - if: steps.window.outputs.run == 'true'
+        run: |
+          docker run --rm -e DATABASE_URL_MIGRATIONS postgres:17-alpine sh -c 'pg_dump "$DATABASE_URL_MIGRATIONS" --schema=public --format=custom --no-owner --no-acl' > backup.dump
+          test -s backup.dump
+        env:
+          DATABASE_URL_MIGRATIONS: ${{ secrets.DATABASE_URL_MIGRATIONS }}
+      - if: steps.window.outputs.run == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: postgres-backup-${{ github.run_id }}
+          path: backup.dump
+          retention-days: 14
+          if-no-files-found: error
