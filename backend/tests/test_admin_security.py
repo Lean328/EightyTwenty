@@ -8,12 +8,12 @@ pytestmark = pytest.mark.django_db
 @pytest.mark.parametrize(
     "path",
     [
-        "/admin/",
-        "/admin/accounts/user/",
-        "/admin/menu/menuitem/",
-        "/admin/bookings/booking/",
-        "/admin/core/auditlog/",
-        "/admin/cms/contentblock/add/",
+        "/",
+        "/accounts/user/",
+        "/menu/menuitem/",
+        "/bookings/booking/",
+        "/core/auditlog/",
+        "/cms/contentblock/add/",
     ],
 )
 def test_superuser_admin_pages_render(client, path):
@@ -25,7 +25,7 @@ def test_superuser_admin_pages_render(client, path):
 def test_api_staff_cannot_log_into_internal_admin(client):
     user = UserFactory(role="staff", is_staff=False)
     client.force_login(user)
-    assert client.get("/admin/menu/menuitem/").status_code == 302
+    assert client.get("/menu/menuitem/").status_code == 302
 
 
 def test_unknown_endpoint_has_error_envelope(client, settings):

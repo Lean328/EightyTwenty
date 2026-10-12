@@ -35,7 +35,7 @@
                 │  BOS Backend — Django 5 + DRF (Render, Singapore)│
                 │  /api/v1/public/*  /api/v1/auth/*               │
                 │  /api/v1/me/*      /api/v1/bos/*                │
-                │  /api/v1/webhooks/* /health  /admin (Django)    │
+                │  /api/v1/webhooks/* /health  / (BOS, Django)    │
                 └──────┬───────────────────────────┬──────────────┘
                        │ SQL (Supavisor pooler)     │ Storage API (service key)
                        ▼                            ▼
@@ -275,7 +275,7 @@ Ma trận quyền (tóm tắt):
 | `/api/v1/bos/*` | BOS Admin | JWT staff+ | CRUD toàn bộ dữ liệu, lọc theo chi nhánh được giao. |
 | `/api/v1/webhooks/*` | Stripe/TapTouch… | chữ ký webhook | Phase 2. |
 | `/api/v1/jobs/*` | GitHub Actions cron | header `X-Job-Token` | Chạy job định kỳ (vì free tier không có worker/cron riêng). |
-| `/admin/` | Super-admin nội bộ | Django session | Django Admin — công cụ dự phòng, không phải BOS chính. |
+| `/` | BOS workspace (Django Admin ở gốc từ 12/10/2026; `/admin/...` chuyển hướng 301) | Django session | Chủ chuỗi, chủ quán, nhân viên — xem mục 17. |
 | `/api/schema/`, `/api/docs/` | Dev | – | OpenAPI (tắt `docs` ở prod nếu muốn). |
 
 ### 7.2 Endpoint public quan trọng nhất: `GET /api/v1/public/bootstrap`

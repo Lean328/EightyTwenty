@@ -166,7 +166,7 @@ def test_enquiry_list_shows_type_and_waiting_time(admin_client):
 
 
 def test_admin_404_is_a_page_and_api_404_stays_json(admin_client):
-    response = admin_client.get("/admin/not-a-real-page/")
+    response = admin_client.get("/not-a-real-page/")
     assert response.status_code == 404
     assert "find that page" in response.content.decode()
     assert admin_client.get("/api/v1/nope").json()["error"]["code"] == "not_found"
@@ -175,5 +175,59 @@ def test_admin_404_is_a_page_and_api_404_stays_json(admin_client):
 def test_admin_500_page_needs_no_static_files_or_database():
     from django.template.loader import render_to_string
 
-    page = render_to_string("admin/500.html")
+    page = render_to_string("admin/error_standalone.html")
     assert "Something went wrong" in page and "/static/" not in page
+
+
+def test_workspace_lives_at_the_site_root(client):
+    response = client.get("/")
+    assert response.status_code == 302 and response["Location"].startswith("/login/")
+    assert "Team sign-in" in client.get("/login/").content.decode()
+    assert reverse("admin:index") == "/"
+
+
+def test_old_admin_links_redirect_to_the_root(client):
+    response = client.get("/admin/menu/menuitem/?q=toast")
+    assert response.status_code == 301 and response["Location"] == "/menu/menuitem/?q=toast"
+    assert client.get("/admin")["Location"] == "/"
+    assert client.get("/administrator").status_code == 302  # not a legacy link: sign-in
+
+
+def test_unknown_api_paths_stay_json_for_everyone(client):
+    response = client.get("/api/v2/whatever")
+    assert response.status_code == 404 and response.json()["error"]["code"] == "not_found"
+
+
+def test_robots_and_favicon(client):
+    assert "Disallow: /" in client.get("/robots.txt").content.decode()
+    assert client.get("/favicon.ico")["Location"].endswith("bos/img/favicon.png")
+
+
+def test_forbidden_page_is_inside_the_workspace():
+    from apps.accounts.models import StaffAssignment
+
+    staff = UserFactory(role="staff", is_staff=True)
+    StaffAssignment.objects.create(user=staff, location=LocationFactory())
+    client = Client()
+    client.force_login(staff)
+    response = client.get(reverse("admin:bos_reports"))
+    page = response.content.decode()
+    assert response.status_code == 403
+    assert "have access to this page" in page and 'class="bos-sidebar"' in page
+
+
+def test_expired_form_explains_what_to_do():
+    client = Client(enforce_csrf_checks=True)
+    response = client.post("/login/", {"username": "a@example.test", "password": "x"})
+    assert response.status_code == 403 and "form expired" in response.content.decode()
+
+
+def test_error_page_for_signed_out_visitors_is_standalone(rf):
+    from django.contrib.auth.models import AnonymousUser
+
+    from apps.core.views import not_found
+
+    request = rf.get("/nowhere/")
+    request.user = AnonymousUser()
+    page = not_found(request, None).content.decode()
+    assert "find that page" in page and 'href="/"' in page and "bos-sidebar" not in page

@@ -4,7 +4,7 @@ Nguồn chính xác về từng field và response: [openapi.yaml](openapi.yaml)
 
 ## Quy ước
 
-- Base local: `http://127.0.0.1:8000/api/v1`. Endpoint API **không có dấu `/` cuối**. Riêng `/api/docs/`, `/api/schema/`, `/admin/` có dấu `/`.
+- Base local: `http://127.0.0.1:8000/api/v1`. Endpoint API **không có dấu `/` cuối**. Riêng `/api/docs/`, `/api/schema/` và các trang BOS workspace (Django Admin ở gốc `/`) có dấu `/`.
 - Gửi JSON với `Content-Type: application/json`. API có auth dùng `Authorization: Bearer <access>`.
 - BOS dùng UUID cho quan hệ và ID. Public dùng slug ổn định; endpoint BOS chi nhánh dùng slug trong URL.
 - Tiền chuẩn là integer cent AUD: `1295` nghĩa là A$12.95. Public compatibility chuyển riêng thành số AUD, ví dụ `12.95`. Giá client không được dùng để tạo order; Phase 1 chưa có order.

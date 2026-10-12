@@ -1,6 +1,6 @@
 from django.conf import settings
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import include, path, re_path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework.routers import SimpleRouter
 
@@ -9,13 +9,15 @@ from apps.bookings import views as bookings
 from apps.cms import views as cms
 from apps.core import operations
 from apps.core import public_views as public
-from apps.core.views import health
+from apps.core import views as core
 from apps.enquiries import views as enquiries
 from apps.locations import views as locations
 from apps.media import views as media
 from apps.menu import views as menu
 
 router = SimpleRouter(trailing_slash=False)
+handler400 = "apps.core.views.bad_request"
+handler403 = "apps.core.views.permission_denied"
 handler404 = "apps.core.views.not_found"
 handler500 = "apps.core.views.server_error"
 for prefix, view in [
@@ -46,8 +48,10 @@ for prefix, view in [
     router.register(prefix, view, basename=f"bos-{prefix}")
 
 urlpatterns = [
-    path("health", health, name="health"),
-    path("admin/", admin.site.urls),
+    path("health", core.health, name="health"),
+    path("robots.txt", core.robots),
+    path("favicon.ico", core.favicon),
+    re_path(r"^admin(?:/(?P<rest>.*))?$", core.legacy_admin),
     path("api/v1/public/bootstrap", public.BootstrapView.as_view()),
     path("api/v1/public/locations", public.PublicLocationsView.as_view()),
     path("api/v1/public/locations/<slug:slug>", public.PublicLocationView.as_view()),
@@ -90,3 +94,8 @@ if settings.DOCS_ENABLED:
     urlpatterns.append(
         path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui")
     )
+urlpatterns += [
+    # Unknown API paths answer in JSON; everything else is the BOS workspace at the root.
+    re_path(r"^api/(?P<path>.*)$", core.api_not_found),
+    path("", admin.site.urls),
+]

@@ -74,7 +74,7 @@ def test_dashboard_scope_counts_and_hidden_overrides(admin_client):
     Enquiry.objects.create(
         kind="contact", name="Guest", email="guest@example.test", message="Hello", location=a
     )
-    response = admin_client.get("/admin/", {"location": a.slug, "period": "7"})
+    response = admin_client.get("/", {"location": a.slug, "period": "7"})
     ctx = response.context
     assert ctx["totals"]["today_bookings"] == 1
     assert ctx["totals"]["today_covers"] == 4
@@ -92,21 +92,21 @@ def test_dashboard_scope_counts_and_hidden_overrides(admin_client):
         "unavailable_url",
     ]:
         assert admin_client.get(ctx[key]).status_code == 200
-    assert admin_client.get("/admin/", {"location": "unknown"}).status_code == 404
-    assert admin_client.get("/admin/", {"period": "invalid"}).context["period"] == 7
+    assert admin_client.get("/", {"location": "unknown"}).status_code == 404
+    assert admin_client.get("/", {"period": "invalid"}).context["period"] == 7
 
 
 def test_dashboard_uses_sydney_day_boundary(admin_client, monkeypatch):
     monkeypatch.setattr(timezone, "now", lambda: datetime(2026, 10, 5, 14, 30, tzinfo=UTC))
     booking(LocationFactory(), date=datetime(2026, 10, 6).date())
-    response = admin_client.get("/admin/")
+    response = admin_client.get("/")
     assert response.context["today"].isoformat() == "2026-10-06"
     assert response.context["totals"]["today_bookings"] == 1
 
 
 def test_non_superuser_staff_cannot_view_reports_or_mutate(admin_client):
     admin_client.force_login(UserFactory(is_staff=True, role="manager"))
-    assert admin_client.get("/admin/").status_code == 302
+    assert admin_client.get("/").status_code == 302
     item = booking(LocationFactory())
     assert (
         admin_client.post(

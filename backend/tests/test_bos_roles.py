@@ -61,20 +61,20 @@ def world():
 
 
 def test_who_can_open_the_workspace(world):
-    assert signed_in(world["manager"]).get("/admin/").status_code == 200
-    assert signed_in(world["staff"]).get("/admin/").status_code == 200
+    assert signed_in(world["manager"]).get("/").status_code == 200
+    assert signed_in(world["staff"]).get("/").status_code == 200
     unassigned = UserFactory(role="manager", is_staff=True)
-    assert signed_in(unassigned).get("/admin/").status_code == 302
+    assert signed_in(unassigned).get("/").status_code == 302
     customer = UserFactory(role="customer", is_staff=True)
-    assert signed_in(customer).get("/admin/").status_code == 302
+    assert signed_in(customer).get("/").status_code == 302
 
 
 def test_menu_shows_each_role_only_its_pages(world):
-    staff_page = signed_in(world["staff"]).get("/admin/").content.decode()
+    staff_page = signed_in(world["staff"]).get("/").content.decode()
     assert "Schedule" in staff_page and "Availability board" in staff_page
     for hidden in ["Users", "Reports", "System status", "Pages", "Email delivery"]:
         assert f">{hidden}<" not in staff_page, hidden
-    manager_page = signed_in(world["manager"]).get("/admin/").content.decode()
+    manager_page = signed_in(world["manager"]).get("/").content.decode()
     assert ">Users<" in manager_page and ">Reports<" in manager_page
     assert ">System status<" not in manager_page and ">Pages<" not in manager_page
 
@@ -231,7 +231,7 @@ def test_chain_owner_creates_cafe_owners(world):
     assert chain.post(reverse("admin:accounts_user_add"), data).status_code == 302
     owner = User.objects.get(email="owner.kingston@example.test")
     assert owner.role == "manager" and owner.is_staff
-    assert signed_in(owner).get("/admin/").status_code == 200
+    assert signed_in(owner).get("/").status_code == 200
 
 
 def test_reports_and_system_by_role(world):

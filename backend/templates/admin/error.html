@@ -1,12 +1,12 @@
 {% extends "admin/base_site.html" %}
 {% load bos_admin %}
-{% block breadcrumbs %}<div class="breadcrumbs"><a href="{% url 'admin:index' %}">Overview</a> &rsaquo; Not found</div>{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumbs"><a href="{% url 'admin:index' %}">Overview</a> &rsaquo; {{ heading }}</div>{% endblock %}
 {% block content_title %}{% endblock %}
 {% block content %}
 <div class="bos-card bos-error-page">
-  <span class="bos-error-code">404</span>
-  <h1>We couldn't find that page</h1>
-  <p class="bos-lead">The address may be mistyped, or the record was moved. Nothing has been changed.</p>
+  <span class="bos-error-code">{{ code }}</span>
+  <h1>{{ heading }}</h1>
+  <p class="bos-lead">{{ message }}</p>
   <div class="bos-page-tools">
     <a class="bos-btn bos-btn-primary" href="{% url 'admin:index' %}">{% icon 'home' %} Back to overview</a>
     <button type="button" class="bos-btn" data-bos-palette-open>{% icon 'search' %} Find a page</button>

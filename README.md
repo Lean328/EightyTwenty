@@ -20,7 +20,7 @@ Các địa chỉ sau dùng được khi server đang chạy:
 
 - Swagger: http://127.0.0.1:8000/api/docs/
 - OpenAPI: http://127.0.0.1:8000/api/schema/
-- Django Admin nội bộ: http://127.0.0.1:8000/admin/
+- BOS workspace (Django Admin): http://127.0.0.1:8000/ (link cũ `/admin/...` tự chuyển về đây)
 - Dữ liệu website: http://127.0.0.1:8000/api/v1/public/bootstrap
 - Health: http://127.0.0.1:8000/health
 
@@ -71,7 +71,7 @@ Chưa có giao diện React BOS, website/mobile, order/thanh toán, loyalty, gif
 
 ## BOS workspace / Django Admin
 
-Mở `http://127.0.0.1:8000/admin/` bằng tài khoản tạo từ `createsuperuser` (chủ chuỗi). Chủ chuỗi vào **Users → Add** chọn role *Café owner* + quán để tạo tài khoản chủ quán; chủ quán tự thêm nhân viên cho quán mình.
+Mở `http://127.0.0.1:8000/` (production: https://eightytwenty-api.onrender.com/) bằng tài khoản tạo từ `createsuperuser` (chủ chuỗi). Chủ chuỗi vào **Users → Add** chọn role *Café owner* + quán để tạo tài khoản chủ quán; chủ quán tự thêm nhân viên cho quán mình.
 
 | Việc | Chủ chuỗi (superuser) | Chủ quán (`manager`) | Nhân viên (`staff`) |
 |---|---|---|---|
@@ -94,7 +94,7 @@ Mở `http://127.0.0.1:8000/admin/` bằng tài khoản tạo từ `createsuperu
 - Chi nhánh quản lý opening hours, special hours, booking rule và ảnh ngay trong một màn hình. Nội dung CMS dùng cùng validation với API.
 - Không xóa business data từ Admin; dùng publish/active/availability để ngừng hiển thị an toàn.
 - Ảnh: bấm **Upload a new photo** trên form món ăn, gói catering hoặc Media library (JPG/PNG/WebP/AVIF ≤15 MB), hoặc bấm **Choose photo** để chọn ảnh có sẵn từ lưới ảnh thu nhỏ của Media library (có ô tìm kiếm). Hệ thống tự xoay, nén thành WebP 400/800/1600 px và lưu lên Supabase Storage — không cần dán link.
-- Trang làm việc: **Reports** (`/admin/reports/` — booking theo thời gian, kết quả, giờ cao điểm, chi nhánh, cỡ bàn, đặt trước bao lâu, enquiry, menu; lọc kỳ/chi nhánh; xuất CSV; không có doanh thu giả), **Schedule** (`/admin/schedule/` — lịch theo ngày, nhóm theo quán và khung giờ, thanh sức chứa, nút Confirm/Decline/Seated/No-show ngay tại chỗ), **Availability board** (`/admin/availability/` — bảng món × chi nhánh, bấm để báo hết/còn, có ghi audit), **System status** (`/admin/system/` — dịch vụ đã cấu hình và dữ liệu cần dọn).
+- Trang làm việc: **Reports** (`/reports/` — booking theo thời gian, kết quả, giờ cao điểm, chi nhánh, cỡ bàn, đặt trước bao lâu, enquiry, menu; lọc kỳ/chi nhánh; xuất CSV; không có doanh thu giả), **Schedule** (`/schedule/` — lịch theo ngày, nhóm theo quán và khung giờ, thanh sức chứa, nút Confirm/Decline/Seated/No-show ngay tại chỗ), **Availability board** (`/availability/` — bảng món × chi nhánh, bấm để báo hết/còn, có ghi audit), **System status** (`/system/` — dịch vụ đã cấu hình và dữ liệu cần dọn).
 - Giao diện tự viết, không dùng theme/package ngoài (đã gỡ Jazzmin): sidebar nhóm theo công việc có badge việc chờ, Ctrl+K tìm trang, sáng/tối (nhớ theo trình duyệt), menu thu gọn, form chia tab, dropdown tự vẽ, date/time picker gốc của trình duyệt, chạy tốt trên điện thoại. Code nằm ở `backend/templates/admin/`, `backend/static/bos/` và `apps/core/admin_site.py`.
 
 Sau khi cập nhật code, dừng và chạy lại server để Django nạp template và stylesheet mới:
@@ -104,7 +104,9 @@ Set-Location backend
 ..\.venv\Scripts\python manage.py runserver
 ```
 
-Nếu trình duyệt đang giữ stylesheet cũ, nhấn `Ctrl + F5` tại `/admin/`.
+Nếu trình duyệt đang giữ stylesheet cũ, nhấn `Ctrl + F5` tại `/`.
+
+Trang lỗi: người đã đăng nhập thấy 403/404 ngay trong workspace (có sidebar, Ctrl+K); khách chưa đăng nhập và lỗi 500 thấy trang độc lập có nút về workspace; form hết hạn (CSRF) có hướng dẫn tải lại. Đường dẫn `/api/...` luôn trả lỗi JSON. `/robots.txt` chặn công cụ tìm kiếm. Ở máy (`DEBUG=True`) Django hiện trang debug thay cho 404/500.
 
 ## Tài liệu bàn giao
 

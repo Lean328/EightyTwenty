@@ -189,7 +189,7 @@ class BOSAdminSite(AdminSite):
                 sections.append({"title": title, "items": items})
 
         # Longest matching prefix wins, so a record's page lights its own table
-        # rather than the overview at /admin/, which prefixes everything.
+        # rather than the overview at /, which prefixes everything.
         flat = [item for section in sections for item in section["items"]]
         matches = [
             item
