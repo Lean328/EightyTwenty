@@ -84,3 +84,24 @@ class CustomerProfile(ManagedModel):
     )
     birthday = models.DateField(null=True, blank=True)
     notes = models.TextField(blank=True)
+    # Mobile app settings (dietary, notification and security toggles, avatar), merged
+    # over APP_PREFERENCE_DEFAULTS. Nullable so code still running during a deploy can insert.
+    app_preferences = models.JSONField(null=True, blank=True)
+    favourite_items = models.JSONField(null=True, blank=True, help_text="Menu item slugs.")
+    notifications_seen_at = models.DateTimeField(null=True, blank=True)
+    closure_requested_at = models.DateTimeField(null=True, blank=True)
+
+
+class SavedAddress(BaseModel):
+    def __str__(self):
+        return self.line
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name="addresses")
+    label = models.CharField(
+        max_length=5, choices=[("home", "Home"), ("work", "Work"), ("other", "Other")]
+    )
+    line = models.CharField(max_length=300)
+
+    class Meta(BaseModel.Meta):
+        verbose_name = "saved address"
+        verbose_name_plural = "saved addresses"

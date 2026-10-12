@@ -8,7 +8,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from .models import EmailMessage
+from .models import AppNotification, EmailMessage
 
 logger = logging.getLogger(__name__)
 
@@ -80,3 +80,10 @@ def retry_emails(limit=10):
         .values_list("pk", flat=True)[:limit]
     )
     return sum(deliver_email(pk) for pk in ids)
+
+
+def notify(user, kind, text):
+    """Add a line to a customer's in-app feed (mobile app bell). Push is not built yet."""
+    if user is None or not user.is_active:
+        return None
+    return AppNotification.objects.create(user=user, kind=kind, text=text[:300])

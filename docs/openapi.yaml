@@ -5,6 +5,2928 @@ info:
   description: Shared REST API for the website, mobile app and BOS. Money uses integer
     AUD cents except public compatibility endpoints. No trailing slash.
 paths:
+  /api/v1/app/auth/password-reset:
+    post:
+      operationId: v1_app_auth_password_reset_create
+      summary: Email a password reset link
+      tags:
+      - App · Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EmailInRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '204':
+          description: No response body
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/auth/refresh:
+    post:
+      operationId: v1_app_auth_refresh_create
+      summary: Swap a refresh token for a new session
+      tags:
+      - App · Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RefreshInRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionOut'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/auth/sign-in:
+    post:
+      operationId: v1_app_auth_sign_in_create
+      summary: Sign in with email and password
+      tags:
+      - App · Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignInInRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionOut'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/auth/sign-out:
+    post:
+      operationId: v1_app_auth_sign_out_create
+      summary: Sign out (revoke the refresh token)
+      tags:
+      - App · Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignOutInRequest'
+      security:
+      - {}
+      responses:
+        '204':
+          description: No response body
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/auth/sign-up:
+    post:
+      operationId: v1_app_auth_sign_up_create
+      summary: Create a customer account
+      tags:
+      - App · Auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignUpInRequest'
+        required: true
+      security:
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionOut'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/catering-enquiries:
+    post:
+      operationId: v1_app_catering_enquiries_create
+      summary: Send a catering enquiry
+      tags:
+      - App · Bookings & catering
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CateringEnquiryInRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CateringEnquiryOut'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/catering/packages:
+    get:
+      operationId: v1_app_catering_packages_list
+      summary: Catering packages
+      tags:
+      - App · Bookings & catering
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CateringPackageOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/content/faqs:
+    get:
+      operationId: v1_app_content_faqs_list
+      summary: Help questions (display order)
+      tags:
+      - App · Notifications & content
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FaqOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/content/offers:
+    get:
+      operationId: v1_app_content_offers_list
+      summary: In-store offers
+      tags:
+      - App · Notifications & content
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/OfferOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/gift-cards/send:
+    post:
+      operationId: v1_app_gift_cards_send_create
+      summary: Buy an eGift card for someone (send an Idempotency-Key header)
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+      tags:
+      - App · Loyalty & gift cards
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GiftSendInRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GiftActivityOut'
+          description: ''
+        '402':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '501':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/locations:
+    get:
+      operationId: v1_app_locations_list
+      summary: Cafés (display order, coming-soon ones included)
+      tags:
+      - App · Cafés & menu
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/LocationOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/locations/{slug}:
+    get:
+      operationId: v1_app_locations_retrieve
+      summary: One café
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - App · Cafés & menu
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationOut'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/locations/{slug}/menu:
+    get:
+      operationId: v1_app_locations_menu_list
+      summary: A café's menu (sold-out and hidden items left out)
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - App · Cafés & menu
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/MenuItemOut'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/me:
+    get:
+      operationId: v1_app_me_retrieve
+      summary: Profile
+      tags:
+      - App · Account
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerOut'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+    patch:
+      operationId: v1_app_me_partial_update
+      summary: Update name, email or phone
+      tags:
+      - App · Account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedProfileInRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CustomerOut'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/me/addresses:
+    get:
+      operationId: v1_app_me_addresses_list
+      summary: Saved delivery addresses
+      tags:
+      - App · Account
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AddressOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+    post:
+      operationId: v1_app_me_addresses_create
+      summary: Save an address
+      tags:
+      - App · Account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddressInRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AddressOut'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/me/addresses/{address_id}:
+    delete:
+      operationId: v1_app_me_addresses_destroy
+      summary: Remove a saved address (idempotent)
+      parameters:
+      - in: path
+        name: address_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - App · Account
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/me/catering-enquiries:
+    get:
+      operationId: v1_app_me_catering_enquiries_list
+      summary: My catering enquiries, newest first
+      tags:
+      - App · Bookings & catering
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CateringEnquiryOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/me/closure-request:
+    post:
+      operationId: v1_app_me_closure_request_create
+      summary: Ask the team to close this account
+      tags:
+      - App · Account
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/me/favourites:
+    get:
+      operationId: v1_app_me_favourites_retrieve
+      summary: Favourite menu items
+      tags:
+      - App · Account
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FavouritesOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/me/favourites/{item_id}:
+    put:
+      operationId: v1_app_me_favourites_update
+      summary: Add a favourite (idempotent)
+      parameters:
+      - in: path
+        name: item_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - App · Account
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FavouritesOut'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+    delete:
+      operationId: v1_app_me_favourites_destroy
+      summary: Remove a favourite (idempotent)
+      parameters:
+      - in: path
+        name: item_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - App · Account
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FavouritesOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/me/gift-card:
+    get:
+      operationId: v1_app_me_gift_card_retrieve
+      summary: Gift card balance
+      tags:
+      - App · Loyalty & gift cards
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GiftCardOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/me/gift-card/activity:
+    get:
+      operationId: v1_app_me_gift_card_activity_list
+      summary: Gift card activity, newest first
+      tags:
+      - App · Loyalty & gift cards
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/GiftActivityOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/me/loyalty:
+    get:
+      operationId: v1_app_me_loyalty_retrieve
+      summary: Coffee card
+      tags:
+      - App · Loyalty & gift cards
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoyaltyCardOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/me/loyalty/activity:
+    get:
+      operationId: v1_app_me_loyalty_activity_retrieve
+      summary: Coffee card history, newest first
+      parameters:
+      - in: query
+        name: cursor
+        schema:
+          type: string
+        description: nextCursor from the previous page
+      - in: query
+        name: limit
+        schema:
+          type: integer
+        description: 1–50, default 20
+      tags:
+      - App · Loyalty & gift cards
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoyaltyPageOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/me/loyalty/wallet-pass:
+    get:
+      operationId: v1_app_me_loyalty_wallet_pass_retrieve
+      summary: Apple Wallet pass URL (404 until passes are issued)
+      tags:
+      - App · Loyalty & gift cards
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WalletPassOut'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/me/loyalty/wallet-pass/added:
+    post:
+      operationId: v1_app_me_loyalty_wallet_pass_added_create
+      summary: Record that the pass was added to Wallet
+      tags:
+      - App · Loyalty & gift cards
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoyaltyCardOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/me/notifications:
+    get:
+      operationId: v1_app_me_notifications_retrieve
+      summary: In-app notification feed
+      tags:
+      - App · Notifications & content
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationFeedOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+    delete:
+      operationId: v1_app_me_notifications_destroy
+      summary: Clear the feed
+      tags:
+      - App · Notifications & content
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/me/notifications/read-all:
+    post:
+      operationId: v1_app_me_notifications_read_all_create
+      summary: Mark every notification read
+      tags:
+      - App · Notifications & content
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/me/notifications/seen:
+    post:
+      operationId: v1_app_me_notifications_seen_create
+      summary: 'Feed opened: clear the bell badge (unread dots stay)'
+      tags:
+      - App · Notifications & content
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/me/orders:
+    get:
+      operationId: v1_app_me_orders_retrieve
+      summary: Order history, newest first
+      parameters:
+      - in: query
+        name: cursor
+        schema:
+          type: string
+        description: nextCursor from the previous page
+      - in: query
+        name: limit
+        schema:
+          type: integer
+        description: 1–50, default 20
+      tags:
+      - App · Orders & payments
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderPageOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/me/payment-methods:
+    get:
+      operationId: v1_app_me_payment_methods_list
+      summary: Saved cards (empty until a payment provider is connected)
+      tags:
+      - App · Orders & payments
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SavedCardOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+    post:
+      operationId: v1_app_me_payment_methods_create
+      summary: 'Save a card (not available yet: 501)'
+      tags:
+      - App · Orders & payments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddCardInRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SavedCardOut'
+          description: ''
+        '501':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/me/payment-methods/{method_id}:
+    delete:
+      operationId: v1_app_me_payment_methods_destroy
+      summary: Remove a saved card (idempotent)
+      parameters:
+      - in: path
+        name: method_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - App · Orders & payments
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/me/preferences:
+    get:
+      operationId: v1_app_me_preferences_retrieve
+      summary: Preferences
+      tags:
+      - App · Account
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PreferencesOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+    patch:
+      operationId: v1_app_me_preferences_partial_update
+      summary: Update preferences (top-level merge)
+      tags:
+      - App · Account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPreferencesInRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PreferencesOut'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/me/reservations:
+    get:
+      operationId: v1_app_me_reservations_list
+      summary: My booking requests
+      tags:
+      - App · Bookings & catering
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReservationOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/menu/categories:
+    get:
+      operationId: v1_app_menu_categories_list
+      summary: Menu categories (rail order)
+      tags:
+      - App · Cafés & menu
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CategoryOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/menu/items/{slug}:
+    get:
+      operationId: v1_app_menu_items_retrieve
+      summary: One menu item, whatever the café
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - App · Cafés & menu
+      security:
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/MenuItemOut'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/orders:
+    post:
+      operationId: v1_app_orders_create
+      summary: Place an order (server re-prices it; send an Idempotency-Key header)
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+      tags:
+      - App · Orders & payments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OrderInRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderOut'
+          description: ''
+        '402':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '501':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/orders/{order_id}:
+    get:
+      operationId: v1_app_orders_retrieve
+      summary: One order (poll every few seconds while live)
+      parameters:
+      - in: path
+        name: order_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - App · Orders & payments
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderOut'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/orders/quote:
+    post:
+      operationId: v1_app_orders_quote_create
+      summary: Price a cart without ordering (optional)
+      tags:
+      - App · Orders & payments
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuoteInRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuoteOut'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/reservations:
+    post:
+      operationId: v1_app_reservations_create
+      summary: Request a table (the café confirms it)
+      tags:
+      - App · Bookings & catering
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ReservationInRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ReservationOut'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/reservations/{booking_id}:
+    delete:
+      operationId: v1_app_reservations_destroy
+      summary: Cancel a booking request
+      parameters:
+      - in: path
+        name: booking_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - App · Bookings & catering
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
   /api/v1/auth/login:
     post:
       operationId: v1_auth_login_create
@@ -8247,6 +11169,88 @@ paths:
                     type: boolean
 components:
   schemas:
+    AddCardInRequest:
+      type: object
+      properties:
+        sourceToken:
+          type: string
+          minLength: 1
+          maxLength: 4096
+      required:
+      - sourceToken
+    AddressInRequest:
+      type: object
+      properties:
+        label:
+          $ref: '#/components/schemas/LabelEnum'
+        line:
+          type: string
+          minLength: 1
+          maxLength: 300
+      required:
+      - label
+      - line
+    AddressOut:
+      type: object
+      properties:
+        id:
+          type: string
+        label:
+          $ref: '#/components/schemas/LabelEnum'
+        line:
+          type: string
+      required:
+      - id
+      - label
+      - line
+    AppDietaryLabelEnum:
+      enum:
+      - Gluten free
+      - Dairy free
+      - Vegan
+      - Vegetarian
+      type: string
+      description: |-
+        * `Gluten free` - Gluten free
+        * `Dairy free` - Dairy free
+        * `Vegan` - Vegan
+        * `Vegetarian` - Vegetarian
+    AppDietaryPreferenceEnum:
+      enum:
+      - gluten_free
+      - dairy_free
+      - vegan
+      - vegetarian
+      type: string
+      description: |-
+        * `gluten_free` - gluten_free
+        * `dairy_free` - dairy_free
+        * `vegan` - vegan
+        * `vegetarian` - vegetarian
+    AppLoyaltyActivityTypeEnum:
+      enum:
+      - earn
+      - redeem
+      type: string
+      description: |-
+        * `earn` - earn
+        * `redeem` - redeem
+    AppSeatingEnum:
+      enum:
+      - indoor
+      - outdoor
+      type: string
+      description: |-
+        * `indoor` - indoor
+        * `outdoor` - outdoor
+    AppTimingTypeEnum:
+      enum:
+      - asap
+      - scheduled
+      type: string
+      description: |-
+        * `asap` - asap
+        * `scheduled` - scheduled
     AuditLog:
       type: object
       properties:
@@ -8330,6 +11334,15 @@ components:
           readOnly: true
         notes:
           type: string
+        seating:
+          allOf:
+          - $ref: '#/components/schemas/BookingSeatingEnum'
+          readOnly: true
+          description: |-
+            Table preference from the mobile app.
+
+            * `indoor` - Indoor
+            * `outdoor` - Outdoor
         status:
           $ref: '#/components/schemas/BookingStatus'
         source:
@@ -8379,6 +11392,7 @@ components:
       - party_size
       - phone
       - reference
+      - seating
       - source
       - time
       - updated_at
@@ -8485,6 +11499,14 @@ components:
           format: uuid
       required:
       - location
+    BookingSeatingEnum:
+      enum:
+      - indoor
+      - outdoor
+      type: string
+      description: |-
+        * `indoor` - Indoor
+        * `outdoor` - Outdoor
     BookingSlot:
       type: object
       properties:
@@ -8563,6 +11585,20 @@ components:
       - SETTINGS
       - generatedAt
       - version
+    BrandEnum:
+      enum:
+      - visa
+      - mastercard
+      - amex
+      - jcb
+      - other
+      type: string
+      description: |-
+        * `visa` - visa
+        * `mastercard` - mastercard
+        * `amex` - amex
+        * `jcb` - jcb
+        * `other` - other
     BulkAvailabilityRequest:
       type: object
       properties:
@@ -8601,6 +11637,9 @@ components:
         name:
           type: string
           maxLength: 120
+        short_name:
+          type: string
+          maxLength: 40
         note:
           type: string
           maxLength: 300
@@ -8628,6 +11667,22 @@ components:
       - slug
       - updated_at
       - updated_by
+    CategoryOut:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        shortName:
+          type: string
+        note:
+          type: string
+      required:
+      - id
+      - name
+      - note
+      - shortName
     CategoryRequest:
       type: object
       properties:
@@ -8640,6 +11695,9 @@ components:
           type: string
           minLength: 1
           maxLength: 120
+        short_name:
+          type: string
+          maxLength: 40
         note:
           type: string
           maxLength: 300
@@ -8652,6 +11710,105 @@ components:
       required:
       - name
       - slug
+    CateringEnquiryInRequest:
+      type: object
+      description: Checked by views.validate_enquiry (package first, then every field).
+      properties:
+        packageId:
+          type: string
+          maxLength: 50
+        firstName:
+          type: string
+          default: ''
+          maxLength: 80
+        lastName:
+          type: string
+          default: ''
+          maxLength: 80
+        email:
+          type: string
+          default: ''
+          maxLength: 254
+        phone:
+          type: string
+          default: ''
+          maxLength: 32
+        company:
+          type: string
+          default: ''
+          maxLength: 200
+        occasion:
+          type: string
+          default: ''
+          maxLength: 200
+        date:
+          type: string
+          nullable: true
+          maxLength: 20
+        time:
+          type: string
+          nullable: true
+          maxLength: 10
+        guests: {}
+        location:
+          type: string
+          default: ''
+          maxLength: 300
+        dietary:
+          type: array
+          items:
+            $ref: '#/components/schemas/AppDietaryLabelEnum'
+          maxItems: 4
+        notes:
+          type: string
+          default: ''
+          maxLength: 5000
+      required:
+      - packageId
+    CateringEnquiryOut:
+      type: object
+      properties:
+        id:
+          type: string
+        packageId:
+          type: string
+        packageName:
+          type: string
+        guests:
+          type: integer
+          nullable: true
+        date:
+          type: string
+          format: date
+          nullable: true
+        occasion:
+          type: string
+        status:
+          $ref: '#/components/schemas/CateringEnquiryOutStatusEnum'
+        createdAt:
+          type: string
+          format: date-time
+      required:
+      - createdAt
+      - date
+      - guests
+      - id
+      - occasion
+      - packageId
+      - packageName
+      - status
+    CateringEnquiryOutStatusEnum:
+      enum:
+      - enquiry_sent
+      - quoted
+      - confirmed
+      - closed
+      type: string
+      description: |-
+        * `enquiry_sent` - enquiry_sent
+        * `quoted` - quoted
+        * `confirmed` - confirmed
+        * `closed` - closed
     CateringPackage:
       type: object
       properties:
@@ -8721,6 +11878,40 @@ components:
       - slug
       - updated_at
       - updated_by
+    CateringPackageOut:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        pricePerPersonCents:
+          type: integer
+        priceLabel:
+          type: string
+        unit:
+          type: string
+        imageUrl:
+          type: string
+          nullable: true
+        imagePosition:
+          type: string
+        blurb:
+          type: string
+        inclusions:
+          type: array
+          items:
+            type: string
+      required:
+      - blurb
+      - id
+      - imagePosition
+      - imageUrl
+      - inclusions
+      - name
+      - priceLabel
+      - pricePerPersonCents
+      - unit
     CateringPackageRequest:
       type: object
       properties:
@@ -8768,6 +11959,28 @@ components:
       - name
       - price_cents
       - slug
+    ChoiceEnum:
+      enum:
+      - apple_pay
+      - saved_card
+      - new_card
+      type: string
+      description: |-
+        * `apple_pay` - apple_pay
+        * `saved_card` - saved_card
+        * `new_card` - new_card
+    ContactInRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 160
+        phone:
+          type: string
+          maxLength: 32
+      required:
+      - name
+      - phone
     ContentBlock:
       type: object
       properties:
@@ -8842,6 +12055,26 @@ components:
       - key
       - page
       - type
+    CustomerOut:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+        phone:
+          type: string
+        memberSince:
+          type: string
+          format: date
+      required:
+      - email
+      - id
+      - memberSince
+      - name
+      - phone
     CustomerProfile:
       type: object
       properties:
@@ -8859,6 +12092,18 @@ components:
           nullable: true
       required:
       - id
+    DayHoursOut:
+      type: object
+      properties:
+        open:
+          type: string
+          description: HH:MM, café time
+        close:
+          type: string
+          description: HH:MM, café time
+      required:
+      - close
+      - open
     DietaryTag:
       type: object
       properties:
@@ -8930,6 +12175,15 @@ components:
         * `sending` - Sending
         * `sent` - Sent
         * `failed` - Failed
+    EmailInRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          minLength: 1
+          maxLength: 254
+      required:
+      - email
     EmailRequestRequest:
       type: object
       properties:
@@ -9065,10 +12319,16 @@ components:
           type: string
           format: uuid
           nullable: true
+        customer:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
       required:
       - company
       - created_at
       - created_by
+      - customer
       - email
       - event_date
       - headcount
@@ -9116,6 +12376,62 @@ components:
         * `won` - Won
         * `lost` - Lost
         * `closed` - Closed
+    ErrorDetailOut:
+      type: object
+      properties:
+        code:
+          type: string
+          description: VALIDATION, NOT_FOUND, PRICE_CHANGED, ...
+        message:
+          type: string
+          description: Customer-ready copy; show it as is.
+        fields:
+          type: object
+          additionalProperties:
+            type: string
+      required:
+      - code
+      - fields
+      - message
+    ErrorOut:
+      type: object
+      properties:
+        error:
+          $ref: '#/components/schemas/ErrorDetailOut'
+      required:
+      - error
+    FaqOut:
+      type: object
+      properties:
+        question:
+          type: string
+        answer:
+          type: string
+      required:
+      - answer
+      - question
+    FavouritesOut:
+      type: object
+      properties:
+        itemIds:
+          type: array
+          items:
+            type: string
+      required:
+      - itemIds
+    FlagsOut:
+      type: object
+      properties:
+        flagship:
+          type: boolean
+        limitedMenu:
+          type: boolean
+        glutenFree:
+          type: boolean
+      required:
+      - flagship
+      - glutenFree
+      - limitedMenu
     FolderEnum:
       enum:
       - menu
@@ -9138,6 +12454,70 @@ components:
         * `pickup` - pickup
         * `delivery` - delivery
         * `dine_in` - dine_in
+    GiftActivityOut:
+      type: object
+      properties:
+        id:
+          type: string
+        kind:
+          $ref: '#/components/schemas/GiftActivityOutKindEnum'
+        description:
+          type: string
+        amountCents:
+          type: integer
+          description: Always positive; kind gives the direction.
+        occurredAt:
+          type: string
+          format: date-time
+      required:
+      - amountCents
+      - description
+      - id
+      - kind
+      - occurredAt
+    GiftActivityOutKindEnum:
+      enum:
+      - added
+      - spent
+      - sent
+      type: string
+      description: |-
+        * `added` - added
+        * `spent` - spent
+        * `sent` - sent
+    GiftCardOut:
+      type: object
+      properties:
+        last4:
+          type: string
+        balanceCents:
+          type: integer
+      required:
+      - balanceCents
+      - last4
+    GiftSendInRequest:
+      type: object
+      properties:
+        amountCents:
+          type: integer
+        recipientName:
+          type: string
+          maxLength: 160
+        recipientEmail:
+          type: string
+          maxLength: 254
+        message:
+          type: string
+          default: ''
+          maxLength: 500
+        paymentToken:
+          type: string
+          default: ''
+          maxLength: 4096
+      required:
+      - amountCents
+      - recipientEmail
+      - recipientName
     JobResult:
       type: object
       properties:
@@ -9145,6 +12525,43 @@ components:
           type: integer
       required:
       - processed
+    LabelEnum:
+      enum:
+      - home
+      - work
+      - other
+      type: string
+      description: |-
+        * `home` - home
+        * `work` - work
+        * `other` - other
+    LineInRequest:
+      type: object
+      properties:
+        itemId:
+          type: string
+          minLength: 1
+          maxLength: 50
+        qty:
+          type: integer
+          maximum: 99
+          minimum: 1
+        selections:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+              minLength: 1
+              maxLength: 120
+            maxItems: 40
+        note:
+          type: string
+          default: ''
+          maxLength: 500
+      required:
+      - itemId
+      - qty
     Location:
       type: object
       properties:
@@ -9173,6 +12590,12 @@ components:
           type: string
           maxLength: 120
         subtitle:
+          type: string
+          maxLength: 240
+        area:
+          type: string
+          maxLength: 120
+        headline:
           type: string
           maxLength: 240
         address:
@@ -9357,6 +12780,89 @@ components:
       - menu_item
       - updated_at
       - updated_by
+    LocationOut:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        subtitle:
+          type: string
+        area:
+          type: string
+        headline:
+          type: string
+        address:
+          type: string
+        phone:
+          type: string
+          nullable: true
+        email:
+          type: string
+          nullable: true
+        hoursLabel:
+          type: string
+        hoursShort:
+          type: string
+        weeklyHours:
+          allOf:
+          - $ref: '#/components/schemas/WeeklyHoursOut'
+          nullable: true
+        status:
+          $ref: '#/components/schemas/LocationOutStatusEnum'
+        fulfilmentMethods:
+          type: array
+          items:
+            $ref: '#/components/schemas/FulfilmentMethodsEnum'
+        note:
+          type: string
+        waitLabel:
+          type: string
+          nullable: true
+        imageUrl:
+          type: string
+          nullable: true
+        galleryUrls:
+          type: array
+          items:
+            type: string
+        externalOrderUrl:
+          type: string
+          nullable: true
+        bookingLabel:
+          type: string
+        flags:
+          $ref: '#/components/schemas/FlagsOut'
+      required:
+      - address
+      - area
+      - bookingLabel
+      - email
+      - externalOrderUrl
+      - flags
+      - fulfilmentMethods
+      - galleryUrls
+      - headline
+      - hoursLabel
+      - hoursShort
+      - id
+      - imageUrl
+      - name
+      - note
+      - phone
+      - status
+      - subtitle
+      - waitLabel
+      - weeklyHours
+    LocationOutStatusEnum:
+      enum:
+      - open
+      - coming_soon
+      type: string
+      description: |-
+        * `open` - open
+        * `coming_soon` - coming_soon
     LocationRequest:
       type: object
       properties:
@@ -9375,6 +12881,12 @@ components:
           minLength: 1
           maxLength: 120
         subtitle:
+          type: string
+          maxLength: 240
+        area:
+          type: string
+          maxLength: 120
+        headline:
           type: string
           maxLength: 240
         address:
@@ -9464,6 +12976,61 @@ components:
           maxLength: 4096
       required:
       - refresh
+    LoyaltyActivityOut:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          $ref: '#/components/schemas/AppLoyaltyActivityTypeEnum'
+        description:
+          type: string
+        locationName:
+          type: string
+        occurredAt:
+          type: string
+          format: date-time
+      required:
+      - description
+      - id
+      - locationName
+      - occurredAt
+      - type
+    LoyaltyCardOut:
+      type: object
+      properties:
+        stamps:
+          type: integer
+        stampsPerReward:
+          type: integer
+        memberNumber:
+          type: string
+        eligibility:
+          type: string
+        rewardDescription:
+          type: string
+        walletPassAdded:
+          type: boolean
+      required:
+      - eligibility
+      - memberNumber
+      - rewardDescription
+      - stamps
+      - stampsPerReward
+      - walletPassAdded
+    LoyaltyPageOut:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/LoyaltyActivityOut'
+        nextCursor:
+          type: string
+          nullable: true
+      required:
+      - items
+      - nextCursor
     MediaAsset:
       type: object
       properties:
@@ -9710,6 +13277,43 @@ components:
       required:
       - menu_item
       - modifier_group
+    MenuItemOut:
+      type: object
+      properties:
+        id:
+          type: string
+        categoryId:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        priceCents:
+          type: integer
+        dietary:
+          type: array
+          items:
+            type: string
+          description: GF*, DF*, Gluten free, Dairy free, Vegan, Vegetarian
+        imageUrl:
+          type: string
+          nullable: true
+        featured:
+          type: boolean
+        modifierGroups:
+          type: array
+          items:
+            $ref: '#/components/schemas/ModifierGroupOut'
+      required:
+      - categoryId
+      - description
+      - dietary
+      - featured
+      - id
+      - imageUrl
+      - modifierGroups
+      - name
+      - priceCents
     MenuItemRequest:
       type: object
       properties:
@@ -9827,6 +13431,28 @@ components:
       - name
       - updated_at
       - updated_by
+    ModifierGroupOut:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        required:
+          type: boolean
+        maxSelections:
+          type: integer
+          description: 1 = single choice, 0 = any number
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/OptionOut'
+      required:
+      - id
+      - maxSelections
+      - name
+      - options
+      - required
     ModifierGroupRequest:
       type: object
       properties:
@@ -10054,6 +13680,115 @@ components:
       required:
       - label
       - menu
+    NotificationFeedOut:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/NotificationOut'
+        unseenIds:
+          type: array
+          items:
+            type: string
+      required:
+      - items
+      - unseenIds
+    NotificationOut:
+      type: object
+      properties:
+        id:
+          type: string
+        kind:
+          $ref: '#/components/schemas/NotificationOutKindEnum'
+        text:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        unread:
+          type: boolean
+      required:
+      - createdAt
+      - id
+      - kind
+      - text
+      - unread
+    NotificationOutKindEnum:
+      enum:
+      - order
+      - loyalty
+      - booking
+      - offer
+      - gift_card
+      type: string
+      description: |-
+        * `order` - order
+        * `loyalty` - loyalty
+        * `booking` - booking
+        * `offer` - offer
+        * `gift_card` - gift_card
+    NotificationPrefs:
+      type: object
+      properties:
+        orderUpdates:
+          type: boolean
+        bookings:
+          type: boolean
+        coffeeCard:
+          type: boolean
+        offersAndNews:
+          type: boolean
+        giftCardActivity:
+          type: boolean
+      required:
+      - bookings
+      - coffeeCard
+      - giftCardActivity
+      - offersAndNews
+      - orderUpdates
+    NotificationPrefsRequest:
+      type: object
+      properties:
+        orderUpdates:
+          type: boolean
+        bookings:
+          type: boolean
+        coffeeCard:
+          type: boolean
+        offersAndNews:
+          type: boolean
+        giftCardActivity:
+          type: boolean
+      required:
+      - bookings
+      - coffeeCard
+      - giftCardActivity
+      - offersAndNews
+      - orderUpdates
+    OfferOut:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        tag:
+          type: string
+        line:
+          type: string
+        fine:
+          type: string
+        imageUrl:
+          type: string
+          nullable: true
+      required:
+      - fine
+      - id
+      - imageUrl
+      - line
+      - name
+      - tag
     OpeningHours:
       type: object
       properties:
@@ -10127,6 +13862,175 @@ components:
       required:
       - location
       - weekday
+    OptionOut:
+      type: object
+      properties:
+        name:
+          type: string
+        priceCents:
+          type: integer
+      required:
+      - name
+      - priceCents
+    OrderInRequest:
+      type: object
+      properties:
+        locationId:
+          type: string
+          minLength: 1
+          maxLength: 50
+        method:
+          $ref: '#/components/schemas/FulfilmentMethodsEnum'
+        deliveryAddress:
+          type: string
+          nullable: true
+          maxLength: 300
+        tableNumber:
+          type: string
+          nullable: true
+          maxLength: 20
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineInRequest'
+        payment:
+          $ref: '#/components/schemas/PaymentInRequest'
+        useGiftCard:
+          type: boolean
+          default: false
+        useReward:
+          type: boolean
+          default: false
+        timing:
+          $ref: '#/components/schemas/TimingInRequest'
+        contact:
+          $ref: '#/components/schemas/ContactInRequest'
+        expectedTotalCents:
+          type: integer
+          minimum: 0
+      required:
+      - contact
+      - expectedTotalCents
+      - lines
+      - locationId
+      - method
+      - payment
+      - timing
+    OrderLineOut:
+      type: object
+      properties:
+        itemId:
+          type: string
+        name:
+          type: string
+        qty:
+          type: integer
+        unitPriceCents:
+          type: integer
+        selections:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+        modifiersLabel:
+          type: string
+        note:
+          type: string
+      required:
+      - itemId
+      - modifiersLabel
+      - name
+      - note
+      - qty
+      - selections
+      - unitPriceCents
+    OrderOut:
+      type: object
+      properties:
+        id:
+          type: string
+        number:
+          type: string
+        locationId:
+          type: string
+        locationName:
+          type: string
+        method:
+          $ref: '#/components/schemas/FulfilmentMethodsEnum'
+        status:
+          $ref: '#/components/schemas/OrderOutStatusEnum'
+        createdAt:
+          type: string
+          format: date-time
+        timing:
+          $ref: '#/components/schemas/TimingOut'
+        deliveryAddress:
+          type: string
+          nullable: true
+        tableNumber:
+          type: string
+          nullable: true
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderLineOut'
+        totals:
+          $ref: '#/components/schemas/TotalsOut'
+        paymentLabel:
+          type: string
+        stampsEarned:
+          type: integer
+        rewardRedeemed:
+          type: boolean
+        estimatedWait:
+          type: string
+      required:
+      - createdAt
+      - deliveryAddress
+      - estimatedWait
+      - id
+      - lines
+      - locationId
+      - locationName
+      - method
+      - number
+      - paymentLabel
+      - rewardRedeemed
+      - stampsEarned
+      - status
+      - tableNumber
+      - timing
+      - totals
+    OrderOutStatusEnum:
+      enum:
+      - received
+      - confirmed
+      - preparing
+      - ready
+      - completed
+      - declined
+      type: string
+      description: |-
+        * `received` - received
+        * `confirmed` - confirmed
+        * `preparing` - preparing
+        * `ready` - ready
+        * `completed` - completed
+        * `declined` - declined
+    OrderPageOut:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderOut'
+        nextCursor:
+          type: string
+          nullable: true
+      required:
+      - items
+      - nextCursor
     Page:
       type: object
       properties:
@@ -10822,6 +14726,9 @@ components:
           type: string
           minLength: 1
           maxLength: 120
+        short_name:
+          type: string
+          maxLength: 40
         note:
           type: string
           maxLength: 300
@@ -10963,6 +14870,12 @@ components:
           minLength: 1
           maxLength: 120
         subtitle:
+          type: string
+          maxLength: 240
+        area:
+          type: string
+          maxLength: 120
+        headline:
           type: string
           maxLength: 240
         address:
@@ -11213,6 +15126,40 @@ components:
           type: string
           format: date-time
           nullable: true
+    PatchedPreferencesInRequest:
+      type: object
+      properties:
+        homeCafeId:
+          type: string
+          minLength: 1
+          maxLength: 50
+        dietary:
+          type: array
+          items:
+            $ref: '#/components/schemas/AppDietaryPreferenceEnum'
+          maxItems: 4
+        notifications:
+          $ref: '#/components/schemas/NotificationPrefsRequest'
+        security:
+          $ref: '#/components/schemas/SecurityPrefsRequest'
+        avatar:
+          type: integer
+          maximum: 5
+          minimum: 0
+    PatchedProfileInRequest:
+      type: object
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        email:
+          type: string
+          minLength: 1
+          maxLength: 254
+        phone:
+          type: string
+          maxLength: 32
     PatchedProfileRequest:
       type: object
       properties:
@@ -11304,6 +15251,40 @@ components:
           $ref: '#/components/schemas/RoleEnum'
         is_active:
           type: boolean
+    PaymentInRequest:
+      type: object
+      properties:
+        choice:
+          $ref: '#/components/schemas/ChoiceEnum'
+        paymentMethodId:
+          type: string
+          maxLength: 100
+        token:
+          type: string
+          maxLength: 4096
+      required:
+      - choice
+    PreferencesOut:
+      type: object
+      properties:
+        homeCafeId:
+          type: string
+        dietary:
+          type: array
+          items:
+            $ref: '#/components/schemas/AppDietaryPreferenceEnum'
+        notifications:
+          $ref: '#/components/schemas/NotificationPrefs'
+        security:
+          $ref: '#/components/schemas/SecurityPrefs'
+        avatar:
+          type: integer
+      required:
+      - avatar
+      - dietary
+      - homeCafeId
+      - notifications
+      - security
     Profile:
       type: object
       properties:
@@ -11731,6 +15712,96 @@ components:
       - footer
       - navigation
       - social_links
+    QuoteInRequest:
+      type: object
+      properties:
+        locationId:
+          type: string
+          minLength: 1
+          maxLength: 50
+        method:
+          $ref: '#/components/schemas/FulfilmentMethodsEnum'
+        deliveryAddress:
+          type: string
+          nullable: true
+          maxLength: 300
+        tableNumber:
+          type: string
+          nullable: true
+          maxLength: 20
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/LineInRequest'
+        payment:
+          $ref: '#/components/schemas/QuotePaymentInRequest'
+        useGiftCard:
+          type: boolean
+          default: false
+        useReward:
+          type: boolean
+          default: false
+      required:
+      - lines
+      - locationId
+      - method
+      - payment
+    QuoteLineOut:
+      type: object
+      properties:
+        itemId:
+          type: string
+        name:
+          type: string
+        qty:
+          type: integer
+        unitPriceCents:
+          type: integer
+        modifiersLabel:
+          type: string
+      required:
+      - itemId
+      - modifiersLabel
+      - name
+      - qty
+      - unitPriceCents
+    QuoteOut:
+      type: object
+      properties:
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuoteLineOut'
+        totals:
+          $ref: '#/components/schemas/TotalsOut'
+        rewardAvailable:
+          type: boolean
+        coffeeCount:
+          type: integer
+        itemCount:
+          type: integer
+      required:
+      - coffeeCount
+      - itemCount
+      - lines
+      - rewardAvailable
+      - totals
+    QuotePaymentInRequest:
+      type: object
+      properties:
+        choice:
+          $ref: '#/components/schemas/ChoiceEnum'
+      required:
+      - choice
+    RefreshInRequest:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          minLength: 1
+          maxLength: 4096
+      required:
+      - refreshToken
     RefreshRequest:
       type: object
       properties:
@@ -11774,6 +15845,87 @@ components:
       required:
       - email
       - password
+    ReservationInRequest:
+      type: object
+      description: Checked by views.validate_reservation so the errors follow the
+        app's documented order.
+      properties:
+        locationId:
+          type: string
+          minLength: 1
+          maxLength: 50
+        date:
+          type: string
+          default: ''
+          maxLength: 20
+        time:
+          type: string
+          default: ''
+          maxLength: 10
+        guests: {}
+        seating:
+          allOf:
+          - $ref: '#/components/schemas/AppSeatingEnum'
+          default: indoor
+        name:
+          type: string
+          default: ''
+          maxLength: 160
+        phone:
+          type: string
+          default: ''
+          maxLength: 32
+        email:
+          type: string
+          default: ''
+          maxLength: 254
+        notes:
+          type: string
+          default: ''
+          maxLength: 3000
+      required:
+      - locationId
+    ReservationOut:
+      type: object
+      properties:
+        id:
+          type: string
+        locationId:
+          type: string
+        date:
+          type: string
+          format: date
+        time:
+          type: string
+          description: HH:MM
+        guests:
+          type: integer
+        seating:
+          $ref: '#/components/schemas/AppSeatingEnum'
+        status:
+          $ref: '#/components/schemas/ReservationOutStatusEnum'
+        createdAt:
+          type: string
+          format: date-time
+      required:
+      - createdAt
+      - date
+      - guests
+      - id
+      - locationId
+      - seating
+      - status
+      - time
+    ReservationOutStatusEnum:
+      enum:
+      - requested
+      - confirmed
+      - cancelled
+      type: string
+      description: |-
+        * `requested` - requested
+        * `confirmed` - confirmed
+        * `cancelled` - cancelled
     ResetConfirmRequest:
       type: object
       properties:
@@ -11808,6 +15960,118 @@ components:
         * `manager` - Manager
         * `staff` - Staff
         * `customer` - Customer
+    SavedCardOut:
+      type: object
+      properties:
+        id:
+          type: string
+        brand:
+          $ref: '#/components/schemas/BrandEnum'
+        last4:
+          type: string
+        expMonth:
+          type: integer
+        expYear:
+          type: integer
+      required:
+      - brand
+      - expMonth
+      - expYear
+      - id
+      - last4
+    SecurityPrefs:
+      type: object
+      properties:
+        biometricSignIn:
+          type: boolean
+        useLocation:
+          type: boolean
+        rememberOrderSettings:
+          type: boolean
+      required:
+      - biometricSignIn
+      - rememberOrderSettings
+      - useLocation
+    SecurityPrefsRequest:
+      type: object
+      properties:
+        biometricSignIn:
+          type: boolean
+        useLocation:
+          type: boolean
+        rememberOrderSettings:
+          type: boolean
+      required:
+      - biometricSignIn
+      - rememberOrderSettings
+      - useLocation
+    SessionOut:
+      type: object
+      properties:
+        customerId:
+          type: string
+        accessToken:
+          type: string
+          description: JWT, valid 15 minutes.
+        refreshToken:
+          type: string
+          nullable: true
+          description: 'Single use: every refresh returns a new one.'
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - accessToken
+      - customerId
+      - expiresAt
+      - refreshToken
+    SignInInRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          minLength: 1
+          maxLength: 254
+        password:
+          type: string
+          minLength: 1
+          maxLength: 128
+      required:
+      - email
+      - password
+    SignOutInRequest:
+      type: object
+      properties:
+        refreshToken:
+          type: string
+          nullable: true
+          minLength: 1
+          maxLength: 4096
+    SignUpInRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          minLength: 1
+          maxLength: 254
+        password:
+          type: string
+          minLength: 1
+          maxLength: 128
+        name:
+          type: string
+          minLength: 1
+          maxLength: 200
+        phone:
+          type: string
+          minLength: 1
+          maxLength: 32
+      required:
+      - email
+      - name
+      - password
+      - phone
     SiteSettings:
       type: object
       properties:
@@ -11988,6 +16252,26 @@ components:
       required:
       - location
       - user
+    TimingInRequest:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/AppTimingTypeEnum'
+        time:
+          type: string
+          format: time
+      required:
+      - type
+    TimingOut:
+      type: object
+      properties:
+        type:
+          $ref: '#/components/schemas/AppTimingTypeEnum'
+        time:
+          type: string
+          description: HH:MM; only when scheduled
+      required:
+      - type
     TokenActionRequest:
       type: object
       properties:
@@ -12012,6 +16296,28 @@ components:
       required:
       - access
       - refresh
+    TotalsOut:
+      type: object
+      properties:
+        subtotalCents:
+          type: integer
+        deliveryCents:
+          type: integer
+        rewardCents:
+          type: integer
+        surchargeCents:
+          type: integer
+        giftCardCents:
+          type: integer
+        totalCents:
+          type: integer
+      required:
+      - deliveryCents
+      - giftCardCents
+      - rewardCents
+      - subtotalCents
+      - surchargeCents
+      - totalCents
     TypeEnum:
       enum:
       - hero
@@ -12148,6 +16454,52 @@ components:
           type: integer
       required:
       - version
+    WalletPassOut:
+      type: object
+      properties:
+        url:
+          type: string
+      required:
+      - url
+    WeeklyHoursOut:
+      type: object
+      properties:
+        sun:
+          allOf:
+          - $ref: '#/components/schemas/DayHoursOut'
+          nullable: true
+        mon:
+          allOf:
+          - $ref: '#/components/schemas/DayHoursOut'
+          nullable: true
+        tue:
+          allOf:
+          - $ref: '#/components/schemas/DayHoursOut'
+          nullable: true
+        wed:
+          allOf:
+          - $ref: '#/components/schemas/DayHoursOut'
+          nullable: true
+        thu:
+          allOf:
+          - $ref: '#/components/schemas/DayHoursOut'
+          nullable: true
+        fri:
+          allOf:
+          - $ref: '#/components/schemas/DayHoursOut'
+          nullable: true
+        sat:
+          allOf:
+          - $ref: '#/components/schemas/DayHoursOut'
+          nullable: true
+      required:
+      - fri
+      - mon
+      - sat
+      - sun
+      - thu
+      - tue
+      - wed
     APIError:
       type: object
       required:

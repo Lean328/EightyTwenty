@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.db import models
 from django.utils import timezone
 
@@ -30,3 +31,28 @@ class EmailMessage(BaseModel):
     class Meta(BaseModel.Meta):
         verbose_name = "email"
         verbose_name_plural = "email delivery"
+
+
+class AppNotification(BaseModel):
+    """One line in a customer's in-app feed (the bell). Push delivery is not built."""
+
+    class Kind(models.TextChoices):
+        ORDER = "order"
+        LOYALTY = "loyalty"
+        BOOKING = "booking"
+        OFFER = "offer"
+        GIFT_CARD = "gift_card"
+
+    def __str__(self):
+        return self.text
+
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="app_notifications"
+    )
+    kind = models.CharField(max_length=10, choices=Kind.choices)
+    text = models.CharField(max_length=300)
+    unread = models.BooleanField(default=True)
+
+    class Meta(BaseModel.Meta):
+        verbose_name = "app notification"
+        indexes = [models.Index(fields=["user", "created_at"])]

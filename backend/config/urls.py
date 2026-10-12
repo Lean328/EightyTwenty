@@ -4,6 +4,7 @@ from django.urls import include, path, re_path
 from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
 from rest_framework.routers import SimpleRouter
 
+from apps.accounts import pages as account_pages
 from apps.accounts import views as accounts
 from apps.bookings import views as bookings
 from apps.cms import views as cms
@@ -86,6 +87,9 @@ urlpatterns = [
         menu.AvailabilityView.as_view(),
     ),
     path("api/v1/bos/", include(router.urls)),
+    # Customer mobile app (EightyTwentyMobile): its own contract, see docs/APP_API.md.
+    path("api/v1/app/", include("apps.mobile.urls")),
+    path("account/reset-password", account_pages.reset_password, name="account_reset_password"),
     path("api/v1/jobs/retry-emails", operations.RetryEmailsView.as_view()),
     path("api/v1/jobs/cleanup", operations.CleanupView.as_view()),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),

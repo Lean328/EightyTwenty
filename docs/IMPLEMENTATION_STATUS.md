@@ -2,7 +2,7 @@
 
 Đã xây dựng backend Phase 1 + auth/customer profile/availability thuộc Phase 1.5, đầy đủ file Python, migration, Django Admin, OpenAPI, seed, CI và cấu hình vận hành. Django Admin nay là một BOS workspace hoàn chỉnh với giao diện tự viết (không còn Jazzmin, 09/10/2026) và dashboard dữ liệu thật. Không thay đổi quyết định payment/POS và không triển khai phase tài chính sau.
 
-Lần kiểm tra gần nhất (10/10/2026): **154 test pass trên PostgreSQL 17**; **158 pass, 3 skip trên SQLite** (12/10/2026) (ba test cần PostgreSQL). Ruff check/format, Django check, migration drift và OpenAPI validate đều qua. `check --deploy` chỉ còn W021 về HSTS preload chưa bật có chủ đích.
+Lần kiểm tra gần nhất (10/10/2026): **154 test pass trên PostgreSQL 17**; **186 pass, 3 skip trên SQLite** (12/10/2026, gồm 28 test API app `tests/test_mobile_api.py`) (ba test cần PostgreSQL). Ruff check/format, Django check, migration drift và OpenAPI validate đều qua. `check --deploy` chỉ còn W021 về HSTS preload chưa bật có chủ đích.
 
 ## Đã xác minh local
 
@@ -27,7 +27,8 @@ Số test chính xác xem lần chạy CI/pytest gần nhất; các test Postgre
 - Chưa deploy Render/Vercel/Supabase; backup/job workflow chưa được chạy trên production.
 - Chưa có BOS React SPA. Django Admin hiện là BOS cho cả chủ chuỗi, chủ quán và nhân viên (phân quyền theo quán).
 - Chưa chốt chi nhánh nhận booking, sức chứa, các câu hỏi mục 14. Booking rule default disabled.
-- Chưa có payment/POS integration, order/checkout, sales reports, gift cards, loyalty, inventory hay Apple Wallet.
+- API app điện thoại (12/10/2026): đã so khớp với dữ liệu app dùng (DB SQLite tạm seed từ `mock-data.js`: 10 quán gồm giờ/cờ/area/headline, 12 danh mục, 84 món gồm giá/modifier/thứ tự, 3 gói catering, FAQ, offer — 0 lệch) và chạy luồng order mẫu §9.1 của app (2930 + 86 − 1000 = 2016¢). Chưa chạy với app thật, chưa migrate lên Supabase (Render tự migrate khi push).
+- Chưa có cổng thanh toán (order có tiền phải trả → 501; `PAYMENT_PROVIDER=demo` để test), thẻ lưu, gửi eGift thật, Apple Wallet, push notification, sales reports, inventory.
 
 ## Các giới hạn có chủ đích
 

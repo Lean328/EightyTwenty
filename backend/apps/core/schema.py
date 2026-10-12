@@ -44,19 +44,27 @@ def add_error_responses(result, generator, request, public):
     for path, operations in result["paths"].items():
         if not path.startswith("/api/v1/"):
             continue
+        segments = path.strip("/").split("/")
+        # The mobile app API keeps its own tags and error codes (apps/mobile/errors.py).
+        app = segments[2] == "app"
+        envelope = "ErrorOut" if app else "APIError"
         for method, operation in operations.items():
-            if method not in {"get", "post", "patch", "delete"}:
+            if method not in {"get", "post", "put", "patch", "delete"}:
                 continue
-            segments = path.strip("/").split("/")
-            operation["tags"] = ["/".join(segments[2:4]) if segments[2] == "bos" else segments[2]]
+            if not app:
+                operation["tags"] = [
+                    "/".join(segments[2:4]) if segments[2] == "bos" else segments[2]
+                ]
             for code in ["400", "401", "403", "404", "409", "429", "503"]:
                 operation["responses"].setdefault(
                     code,
                     {
-                        "description": "Standard API error envelope",
+                        "description": "App error: {error: {code, message, fields}}"
+                        if app
+                        else "Standard API error envelope",
                         "content": {
                             "application/json": {
-                                "schema": {"$ref": "#/components/schemas/APIError"}
+                                "schema": {"$ref": f"#/components/schemas/{envelope}"}
                             }
                         },
                     },

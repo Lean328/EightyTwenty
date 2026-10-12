@@ -26,11 +26,12 @@ class EmailVerificationTokenGenerator(PasswordResetTokenGenerator):
 email_token_generator = EmailVerificationTokenGenerator()
 
 
-def send_account_link(user, kind):
+def send_account_link(user, kind, base=None):
+    """base: where the link page lives (default the website; the app uses this server)."""
     generator = email_token_generator if kind == "verify-email" else default_token_generator
     token = generator.make_token(user)
     query = urlencode({"uid": urlsafe_base64_encode(force_bytes(user.pk)), "token": token})
-    url = f"{settings.CLIENT_BASE_URL}/{kind}?{query}"
+    url = f"{base or settings.CLIENT_BASE_URL}/{kind}?{query}"
     # Tokens are never returned by the API or logged by the application in production.
     import hashlib
 

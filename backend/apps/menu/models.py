@@ -6,6 +6,8 @@ from apps.core.models import ManagedModel
 class Category(ManagedModel):
     slug = models.SlugField(unique=True)
     name = models.CharField(max_length=120)
+    # Compact label for the mobile app's category rail ("Coffee"); falls back to the name.
+    short_name = models.CharField(max_length=40, blank=True, default="", db_default="")
     note = models.CharField(max_length=300, blank=True)
     sort_order = models.PositiveIntegerField(default=0)
     is_active = models.BooleanField(default=True)

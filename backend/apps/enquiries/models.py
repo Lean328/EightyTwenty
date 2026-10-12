@@ -68,6 +68,14 @@ class Enquiry(ManagedModel):
         settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL
     )
     internal_notes = models.TextField(blank=True)
+    # Signed-in app customer who sent it (website enquiries stay anonymous).
+    customer = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.SET_NULL,
+        related_name="enquiries",
+    )
 
     class Meta(ManagedModel.Meta):
         verbose_name_plural = "enquiries"

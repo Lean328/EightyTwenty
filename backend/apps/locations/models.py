@@ -9,6 +9,9 @@ class Location(ManagedModel):
     slug = models.SlugField(unique=True)
     name = models.CharField(max_length=120)
     subtitle = models.CharField(max_length=240, blank=True)
+    # Mobile app copy: short card label and the Home featured-card line.
+    area = models.CharField(max_length=120, blank=True, default="", db_default="")
+    headline = models.CharField(max_length=240, blank=True, default="", db_default="")
     address = models.CharField(max_length=500, blank=True)
     phone = models.CharField(max_length=32, blank=True)
     email = models.EmailField(blank=True)

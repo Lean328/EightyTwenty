@@ -5,8 +5,9 @@ from django.db.models import Sum
 from django.utils import timezone
 
 from apps.core.exceptions import DomainError
+from apps.core.models import SiteSettings
 from apps.core.services import audit, snapshot
-from apps.notifications.services import enqueue_email
+from apps.notifications.services import enqueue_email, notify
 
 from .models import Booking, BookingRule
 
@@ -127,6 +128,113 @@ def update_booking(booking, changes, request):
             f"Your booking at {booking.location.name} on {booking.date} at {booking.time} is now {new_status}.",
             f"booking-{booking.pk}-{new_status}",
         )
+        if text := app_message(booking):
+            notify(booking.customer, "booking", text)
+    return booking
+
+
+def app_message(booking):
+    """In-app feed line for a signed-in customer's booking (mobile app bell)."""
+    hour = booking.time.hour % 12 or 12
+    meridiem = "am" if booking.time.hour < 12 else "pm"
+    when = f"{booking.date:%A} {booking.date.day} {booking.date:%B}, {hour}:{booking.time:%M} {meridiem}"
+    table = f"table for {booking.party_size} at {booking.location.name}"
+    return {
+        "confirmed": f"Your {table} is set for {when}.",
+        "declined": f"{booking.location.name} couldn’t take your booking for {when}. "
+        "Please call the café to find another time.",
+        "cancelled": f"Your booking at {booking.location.name} for {when} was cancelled.",
+    }.get(booking.status, "")
+
+
+def app_booking_problems(location, date, time, now=None):
+    """
+    The mobile app's booking rules, in Canberra time (src/domain/reservations.ts): open
+    hours only, last booking 30 minutes before close, at least 12 hours' notice.
+    Returns a customer message or "".
+    """
+    hours = hours_for(location, date)
+    if not hours or hours.is_closed or not hours.opens_at or not hours.closes_at:
+        return "Café is closed on this date"
+    last = datetime.combine(date, hours.closes_at) - timedelta(minutes=30)
+    if time < hours.opens_at or datetime.combine(date, time) > last:
+        return "Café is closed at this time"
+    try:
+        moment = local_datetime(date, time)
+    except DomainError:
+        return "Café is closed at this time"
+    if moment - (now or timezone.now()) < timedelta(hours=12):
+        return "Bookings need at least 12 hours’ notice"
+    return ""
+
+
+@transaction.atomic
+def create_app_booking(customer, data):
+    """
+    A booking *request* from the app. The café confirms it (today's process is a request by
+    email), so this records it in BOS and emails the café inbox and the guest; it does not
+    need the website's online-booking rule switched on.
+    """
+    location = data["location"]
+    booking = Booking.objects.create(**data, customer=customer, source="app")
+    enqueue_email(
+        booking.email,
+        f"Booking request {booking.reference}",
+        f"We received your booking request for {location.name}, {booking.date} {booking.time:%H:%M}, "
+        f"party of {booking.party_size}. Your booking is requested, not confirmed. "
+        "The café will confirm it with you.",
+        f"booking-{booking.pk}-requested",
+    )
+    enqueue_email(
+        location.email or SiteSettings.load().contact_email,
+        f"EightyTwenty booking request — {location.name}",
+        "\n".join(
+            [
+                f"Reference: {booking.reference} (BOS workspace → Bookings)",
+                f"Café: {location.name}",
+                f"Guests: {booking.party_size}",
+                f"Date: {booking.date}",
+                f"Time: {booking.time:%H:%M}",
+                f"Table: {booking.get_seating_display() or 'No preference'}",
+                f"Name: {booking.name}",
+                f"Phone: {booking.phone}",
+                f"Email: {booking.email}",
+                f"Special requests: {booking.notes or 'None'}",
+            ]
+        ),
+        f"booking-{booking.pk}-cafe",
+    )
+    return booking
+
+
+@transaction.atomic
+def cancel_by_customer(booking, request):
+    booking = (
+        Booking.objects.select_for_update(of=("self",))
+        .select_related("location")
+        .get(pk=booking.pk)
+    )
+    if booking.status in {"cancelled", "declined"}:
+        return booking
+    if booking.status != "requested":
+        raise DomainError(
+            "booking_confirmed",
+            "This booking is already confirmed. Please call the café to change it.",
+            409,
+        )
+    before = snapshot(booking)
+    booking.status = "cancelled"
+    booking.handled_at = timezone.now()
+    booking.updated_by = request.user
+    booking.save()
+    audit(request, booking, before, "cancel")
+    enqueue_email(
+        booking.location.email or SiteSettings.load().contact_email,
+        f"Booking request cancelled — {booking.reference}",
+        f"{booking.name} cancelled their request for {booking.date} at {booking.time:%H:%M} "
+        f"({booking.party_size} guests) at {booking.location.name}.",
+        f"booking-{booking.pk}-cancelled-by-guest",
+    )
     return booking
 
 

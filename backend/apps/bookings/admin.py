@@ -71,6 +71,7 @@ class BookingAdmin(ReadOnlyAdmin):
                     "date",
                     "time",
                     "party_size",
+                    "seating",
                     "notes",
                 )
             },

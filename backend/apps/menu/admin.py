@@ -169,7 +169,7 @@ class CategoryAdmin(OperationsAdmin):
     search_fields = ("name", "slug")
     prepopulated_fields = {"slug": ("name",)}
     fieldsets = [
-        ("Category", {"fields": ("name", "slug", "note", "sort_order", "is_active")}),
+        ("Category", {"fields": ("name", "slug", "short_name", "note", "sort_order", "is_active")}),
         RECORD_FIELDS,
     ]
 

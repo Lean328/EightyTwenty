@@ -2,6 +2,8 @@
 
 Nguồn chính xác về từng field và response: [openapi.yaml](openapi.yaml), hoặc `/api/docs/` khi chạy server. Tài liệu này giải thích cách ghép các endpoint thành luồng nghiệp vụ.
 
+> **App điện thoại (Expo `EightyTwentyMobile`) dùng API riêng `/api/v1/app/...`** theo đúng hợp đồng app đã code sẵn (camelCase, mã lỗi `VALIDATION`/`PRICE_CHANGED`…): xem [APP_API.md](APP_API.md). Tài liệu dưới đây là API cho website và BOS.
+
 ## Quy ước
 
 - Base local: `http://127.0.0.1:8000/api/v1`. Endpoint API **không có dấu `/` cuối**. Riêng `/api/docs/`, `/api/schema/` và các trang BOS workspace (Django Admin ở gốc `/`) có dấu `/`.

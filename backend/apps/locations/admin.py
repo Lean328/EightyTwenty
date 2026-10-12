@@ -109,6 +109,13 @@ class LocationAdmin(OperationsAdmin):
             "Customer messages",
             {"fields": ("note", "wait_text", "booking_label", "hours_text", "hours_short_text")},
         ),
+        (
+            "Mobile app",
+            {
+                "fields": ("area", "headline"),
+                "description": "Short card label and the line on the app's Home featured card.",
+            },
+        ),
         RECORD_FIELDS,
     ]
 

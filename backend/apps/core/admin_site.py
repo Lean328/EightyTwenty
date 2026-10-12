@@ -16,6 +16,7 @@ NAVIGATION = (
         "Daily operations",
         (
             ("view:bos_schedule", "Schedule", "clipboard"),
+            ("orders.order", "App orders", "bowl"),
             ("bookings.booking", "Bookings", "calendar"),
             ("enquiries.enquiry", "Enquiries", "inbox"),
             ("bookings.bookingrule", "Booking rules", "settings"),
@@ -49,6 +50,8 @@ NAVIGATION = (
             ("cms.page", "Pages", "file-text"),
             ("cms.contentblock", "Content blocks", "grid"),
             ("cms.navigationitem", "Navigation", "compass"),
+            ("cms.offer", "App offers", "megaphone"),
+            ("cms.faq", "App FAQs", "message"),
             ("media.mediaasset", "Media library", "image"),
             ("core.sitesettings", "Site settings", "settings"),
         ),
@@ -59,6 +62,8 @@ NAVIGATION = (
             ("accounts.user", "Users", "users"),
             ("accounts.staffassignment", "Team assignments", "user-check"),
             ("accounts.customerprofile", "Customer profiles", "user"),
+            ("loyalty.loyaltycard", "Coffee cards", "coffee"),
+            ("loyalty.giftcard", "Gift cards", "wallet"),
         ),
     ),
     (
@@ -82,6 +87,7 @@ VIEW_ROLES = {
 
 # Which items carry a count of work waiting, and the SQL that feeds it.
 BADGES = {
+    "orders.order": ("orders_order", "status = 'received'"),
     "bookings.booking": ("bookings_booking", "status = 'requested'"),
     "enquiries.enquiry": ("enquiries_enquiry", "status = 'new'"),
     "notifications.emailmessage": ("notifications_emailmessage", "status = 'failed'"),
@@ -92,9 +98,14 @@ def scoped_badge_counts(user, keys):
     """The same counts for a café owner or staff member, limited to their cafés."""
     from apps.bookings.models import Booking
     from apps.enquiries.models import Enquiry
+    from apps.orders.models import Order
 
     counts = {}
     try:
+        if "orders.order" in keys:
+            counts["orders.order"] = Order.objects.filter(
+                scope_filter(user), status="received"
+            ).count()
         if "bookings.booking" in keys:
             counts["bookings.booking"] = Booking.objects.filter(
                 scope_filter(user), status="requested"

@@ -47,6 +47,9 @@ INSTALLED_APPS = [
     "apps.bookings",
     "apps.enquiries",
     "apps.notifications",
+    "apps.loyalty",
+    "apps.orders",
+    "apps.mobile",
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -184,6 +187,15 @@ SPECTACULAR_SETTINGS = {
             ("sent", "Sent"),
             ("failed", "Failed"),
         ],
+        # Mobile app API (apps/mobile/serializers.py) and the matching model choices.
+        "FulfilmentMethodsEnum": ["pickup", "delivery", "dine_in"],
+        "TypeEnum": [(v, v) for v in ["hero", "rich_text", "image", "gallery", "cta", "faq"]],
+        "AppSeatingEnum": ["indoor", "outdoor"],
+        "BookingSeatingEnum": [("indoor", "Indoor"), ("outdoor", "Outdoor")],
+        "AppDietaryPreferenceEnum": ["gluten_free", "dairy_free", "vegan", "vegetarian"],
+        "AppDietaryLabelEnum": ["Gluten free", "Dairy free", "Vegan", "Vegetarian"],
+        "AppTimingTypeEnum": ["asap", "scheduled"],
+        "AppLoyaltyActivityTypeEnum": ["earn", "redeem"],
     },
     "POSTPROCESSING_HOOKS": [
         "drf_spectacular.hooks.postprocess_schema_enums",
@@ -207,6 +219,10 @@ TURNSTILE_SECRET_KEY = env("TURNSTILE_SECRET_KEY", default="")
 TURNSTILE_ENABLED = env.bool("TURNSTILE_ENABLED", default=False)
 TURNSTILE_ALLOWED_HOSTNAMES = env.list("TURNSTILE_ALLOWED_HOSTNAMES", default=[])
 JOB_TOKEN = env("JOB_TOKEN", default="")
+# Mobile app payments. No provider has been chosen yet: empty = card/Apple Pay charges answer
+# 501 NOT_IMPLEMENTED (orders fully covered by a gift card still go through). "demo" accepts
+# the app's demo_… tokens and charges nothing — only for testing the app end to end.
+PAYMENT_PROVIDER = env("PAYMENT_PROVIDER", default="")
 DOCS_ENABLED = env.bool("DOCS_ENABLED", default=True)
 DATA_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024
 SECURE_CONTENT_TYPE_NOSNIFF = True
@@ -238,7 +254,7 @@ if TESTING:
     MIDDLEWARE = [m for m in MIDDLEWARE if m != "whitenoise.middleware.WhiteNoiseMiddleware"]
     JOB_TOKEN = "test-job-secret-not-for-production"
     SUPABASE_URL = SUPABASE_SERVICE_ROLE_KEY = SUPABASE_PUBLIC_MEDIA_BASE = ""
-    EMAIL_PROVIDER_API_KEY = TURNSTILE_SECRET_KEY = ""
+    EMAIL_PROVIDER_API_KEY = TURNSTILE_SECRET_KEY = PAYMENT_PROVIDER = ""
     # backend/.env points at the shared Supabase database, so anything that is not a local
     # PostgreSQL (CI, docker compose) becomes an in-memory SQLite database.
     if DATABASES["default"]["ENGINE"].endswith("postgresql") and DATABASES["default"].get(

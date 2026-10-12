@@ -4,7 +4,7 @@ from apps.core.admin_base import RECORD_FIELDS, OperationsAdmin, OperationsInlin
 from apps.core.admin_forms import ValidatedAdminForm
 from apps.core.templatetags.bos_admin import status_badge
 
-from .models import ContentBlock, NavigationItem, Page
+from .models import ContentBlock, Faq, NavigationItem, Offer, Page
 from .serializers import ContentBlockSerializer, NavigationSerializer
 
 
@@ -71,5 +71,33 @@ class NavigationAdmin(OperationsAdmin):
             "Navigation link",
             {"fields": ("label", "menu", "page", "url", "parent", "sort_order", "is_active")},
         ),
+        RECORD_FIELDS,
+    ]
+
+
+@admin.register(Offer)
+class OfferAdmin(OperationsAdmin):
+    list_display = ("name", "tag", "sort_order", "is_active")
+    list_filter = ("is_active",)
+    search_fields = ("name", "line")
+    prepopulated_fields = {"slug": ("name",)}
+    description = (
+        "In-store offers shown in the mobile app (Home and Offers). Nothing is redeemed online."
+    )
+    fieldsets = [
+        ("Offer", {"fields": ("name", "slug", "tag", "line", "fine", "image")}),
+        ("Visibility", {"fields": ("sort_order", "is_active")}),
+        RECORD_FIELDS,
+    ]
+
+
+@admin.register(Faq)
+class FaqAdmin(OperationsAdmin):
+    list_display = ("question", "sort_order", "is_active")
+    list_filter = ("is_active",)
+    search_fields = ("question", "answer")
+    description = "Help questions in the mobile app. Keep answers in step with the real rules (surcharge, booking notice)."
+    fieldsets = [
+        ("Question", {"fields": ("question", "answer", "sort_order", "is_active")}),
         RECORD_FIELDS,
     ]

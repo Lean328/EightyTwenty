@@ -27,6 +27,10 @@ STATUS_TONES = {
     "failed": "bad",
     "pending": "warn",
     "sending": "info",
+    "received": "warn",
+    "preparing": "info",
+    "ready": "live",
+    "completed": "good",
 }
 STATUS_LABELS = {"no_show": "No-show", "tbc": "TBC"}
 

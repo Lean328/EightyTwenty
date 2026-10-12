@@ -516,3 +516,11 @@ Website nằm ở `website/` (không phải `web/`), không đổi cấu hình V
 - Menu = **menu chung + món riêng từng quán**: `MenuItem.location` (nullable FK). Rỗng = món toàn chuỗi (chỉ chủ chuỗi sửa); có giá trị = món chỉ quán đó bán (chủ quán đó sửa). Public bootstrap chỉ chứa món chung (giữ shape mock-data); `/api/v1/public/menu?location=` thêm món riêng của quán đó.
 - Chủ quán chỉ quản lý user có role `staff` gán vào quán mình; người làm ở nhiều quán không bị một chủ quán khóa tài khoản.
 - Quyền REST API `/api/v1/bos/*` không đổi trong đợt này.
+
+## 18. Ghi nhận 12/10/2026 — API cho app điện thoại
+
+- Khách gửi giao diện + code app Expo (`EightyTwentyMobile`, do dev khác nối API). App đã code sẵn theo hợp đồng riêng (`docs/API_CONTRACTS.md` của app: camelCase, cents, lỗi `{error:{code: VALIDATION|PRICE_CHANGED|…}}`, refresh token xoay vòng, Idempotency-Key). Backend làm **API riêng cho app** ở `/api/v1/app/...` (app `apps/mobile`: chỉ views/serializers/presenters/errors, không model), khớp từng path trong `endpoints.ts`; API website/BOS giữ nguyên. Hướng dẫn: `docs/APP_API.md`.
+- Domain mới: `apps/orders` (Order, OrderLine; tính giá phía server = port `computeTotals` của app, integer cents, half-up ở bước phí giao + phụ phí thẻ; trạng thái received→confirmed→preparing→ready→completed | declined, nhân viên được nhảy bước; decline hoàn gift card + stamp), `apps/loyalty` (LoyaltyCard 9 stamp → ly thứ 10 miễn phí, LoyaltyActivity, GiftCard, GiftCardActivity), `AppNotification` (feed trong app), `cms.Offer`/`cms.Faq`, `accounts.SavedAddress` + field app trên CustomerProfile (preferences JSON, favourites, seen-at, closure). Thêm field: `Location.area/headline`, `Category.short_name`, `Booking.seating`, `Enquiry.customer`. `apps/menu/catalog.py` dùng chung cho menu app và tính giá order.
+- **Thanh toán chưa chọn (mục 14 vẫn mở)**: `apps/orders/payments.py` là chỗ duy nhất thay khi chọn cổng. Mặc định trả 501; `PAYMENT_PROVIDER=demo` nhận token demo, không thu tiền.
+- Booking từ app là *yêu cầu* (quy trình hiện tại của quán): lưu vào BOS + email hộp thư quán, không cần BookingRule bật; rule kiểm tra theo app (giờ mở, trước giờ đóng 30 phút, ≥12 giờ, từ ngày mai).
+- Đổi mật khẩu: mật khẩu tối thiểu 10 ký tự (validator Django) — app đang cho 6, server trả 422 rõ ràng. Link reset của app mở trang `/account/reset-password` trên server.

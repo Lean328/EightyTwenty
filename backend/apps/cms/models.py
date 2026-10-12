@@ -38,6 +38,40 @@ class ContentBlock(ManagedModel):
         ]
 
 
+class Offer(ManagedModel):
+    """In-store offers shown in the mobile app (informational; nothing is redeemed online)."""
+
+    def __str__(self):
+        return self.name
+
+    slug = models.SlugField(unique=True)
+    name = models.CharField(max_length=120)
+    tag = models.CharField(max_length=120, blank=True, help_text="e.g. In store · all cafés")
+    line = models.CharField(max_length=300, help_text="Headline sentence.")
+    fine = models.CharField(max_length=300, blank=True, help_text="Fine print.")
+    image = models.ForeignKey("media.MediaAsset", null=True, blank=True, on_delete=models.SET_NULL)
+    sort_order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    class Meta(ManagedModel.Meta):
+        ordering = ["sort_order", "slug"]
+
+
+class Faq(ManagedModel):
+    def __str__(self):
+        return self.question
+
+    question = models.CharField(max_length=300)
+    answer = models.TextField()
+    sort_order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    class Meta(ManagedModel.Meta):
+        ordering = ["sort_order", "created_at"]
+        verbose_name = "FAQ"
+        verbose_name_plural = "FAQs"
+
+
 class NavigationItem(ManagedModel):
     def __str__(self):
         return self.label

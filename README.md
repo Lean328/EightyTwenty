@@ -67,7 +67,9 @@ Booking mặc định tắt. Cần cấu hình `OpeningHours`, ngày ngoại l�
 - Migrations, khóa PostgREST/RLS, CI, cấu hình Render, backup và job định kỳ có công tắc bật.
 - Django Admin là BOS workspace hoàn chỉnh, phân quyền 3 cấp (chủ chuỗi / chủ quán / nhân viên): dashboard vận hành, menu, chi nhánh, booking, enquiry, CMS, media và audit log.
 
-Chưa có giao diện React BOS, website/mobile, order/thanh toán, loyalty, gift card, báo cáo doanh thu hay kho nguyên liệu. Những module đó thuộc phần giao diện hoặc phase sau; API không trả dữ liệu giả cho các chức năng chưa triển khai.
+- API cho app điện thoại `/api/v1/app/...` (12/10/2026) theo hợp đồng của app Expo: đăng ký/đăng nhập, hồ sơ, sở thích, món yêu thích, địa chỉ, quán + menu, order (tính giá phía server, idempotency, theo dõi trạng thái), thẻ tích dấu cà phê, gift card, đặt bàn, catering, thông báo trong app, offer/FAQ. BOS có thêm App orders, Coffee cards, Gift cards, App offers/FAQs. Tài liệu: [docs/APP_API.md](docs/APP_API.md).
+
+Chưa có giao diện React BOS, thanh toán thật (chưa chọn cổng: order có tiền phải trả trả 501), push notification, Apple Wallet, báo cáo doanh thu hay kho nguyên liệu. Những module đó thuộc phần giao diện hoặc phase sau; API không trả dữ liệu giả cho các chức năng chưa triển khai.
 
 ## BOS workspace / Django Admin
 
@@ -111,6 +113,7 @@ Trang lỗi: người đã đăng nhập thấy 403/404 ngay trong workspace (c�
 ## Tài liệu bàn giao
 
 - [API cho web/mobile/BOS](docs/API_GUIDE.md): quy ước, endpoint, JSON mẫu, auth, lỗi và upload.
+- [API cho app điện thoại](docs/APP_API.md) (tiếng Anh, bàn giao cho dev app): cách nối, khác biệt với hợp đồng của app, từng endpoint.
 - [OpenAPI đầy đủ](docs/openapi.yaml): import vào Postman/Insomnia hoặc sinh TypeScript types.
 - [Phân chia công việc và quy tắc code](docs/CONTRIBUTING.md).
 - [Deploy, vận hành và restore](docs/OPERATIONS.md).

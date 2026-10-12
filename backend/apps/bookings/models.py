@@ -55,6 +55,14 @@ class Booking(ManagedModel):
     email = models.EmailField()
     phone = models.CharField(max_length=32)
     notes = models.TextField(blank=True)
+    seating = models.CharField(
+        max_length=7,
+        blank=True,
+        default="",
+        db_default="",
+        choices=[("indoor", "Indoor"), ("outdoor", "Outdoor")],
+        help_text="Table preference from the mobile app.",
+    )
     customer = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         null=True,
