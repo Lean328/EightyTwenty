@@ -45,6 +45,7 @@ from apps.orders import payments
 from apps.orders import services as order_services
 from apps.orders.models import Order
 
+from . import examples as X
 from . import presenters as p
 from . import serializers as s
 from .errors import AppError, app_exception_handler, invalid, not_found
@@ -179,8 +180,26 @@ class PublicView(AppView):
 class SignInView(PublicView):
     throttle_scope = "auth"
 
-    @doc(AUTH, "Sign in with email and password", s.SignInIn, {200: s.SessionOut}, (401, 422))
+    @doc(
+        AUTH,
+        "Sign in with email and password",
+        s.SignInIn,
+        {200: s.SessionOut},
+        (401, 422),
+        examples=X.SIGN_IN,
+    )
     def post(self, request):
+        """
+        Returns a session for an existing customer. The email is trimmed and case-insensitive.
+
+        After signing in, the app calls `GET /me`. Store `accessToken` and `refreshToken` in the
+        device keychain.
+
+        **Errors** — `422 VALIDATION` `fields.email: "invalid"` "Enter a valid email address." ·
+        `422` `fields.password: "too_short"` "Your password needs at least 6 characters." ·
+        `401 UNAUTHORIZED` "That email and password don’t match. Try again or reset your password."
+        · `429` after 10 attempts a minute (per IP and per email).
+        """
         data = s.SignInIn(data=request.data)
         data.is_valid(raise_exception=True)
         user = authenticate(
@@ -198,8 +217,30 @@ class SignInView(PublicView):
 class SignUpView(PublicView):
     throttle_scope = "auth"
 
-    @doc(AUTH, "Create a customer account", s.SignUpIn, {201: s.SessionOut}, (409, 422))
+    @doc(
+        AUTH,
+        "Create a customer account",
+        s.SignUpIn,
+        {201: s.SessionOut},
+        (409, 422),
+        examples=X.SIGN_UP,
+    )
     def post(self, request):
+        """
+        Creates a customer and signs them in (`201` + session).
+
+        Also creates their coffee card (0 stamps, member number `8020 NNNN NNNN`), a $0 gift card and
+        default preferences (home café Phillip, "Offers & news" off, everything else on).
+
+        **Password rule:** at least **10 characters**, not a common password, not only digits, not
+        similar to the name or email. (The app's form allows 6; a weaker password gets a 422 with a
+        clear message under the password field.)
+
+        **Errors** (first failing field) — `name` "Add your full name." · `phone` (8+ digits)
+        "Add a mobile number." · `email` "Enter a valid email address." · `password`
+        (`too_short`/`invalid`) · `409 CONFLICT` `fields.email: "taken"` "An account with this email
+        already exists. Log in instead."
+        """
         data = s.SignUpIn(data=request.data)
         data.is_valid(raise_exception=True)
         values = data.validated_data
@@ -234,6 +275,10 @@ class SignUpView(PublicView):
 class SignOutView(PublicView):
     @doc(AUTH, "Sign out (revoke the refresh token)", s.SignOutIn, {204: None})
     def post(self, request):
+        """
+        Revokes the refresh token. Always `204`, even when the token is unknown, expired or already
+        revoked, and even without a valid access token. The app clears its local session anyway.
+        """
         token = request.data.get("refreshToken") if isinstance(request.data, dict) else None
         if token:
             try:
@@ -249,6 +294,16 @@ class RefreshView(PublicView):
     @doc(AUTH, "Swap a refresh token for a new session", s.RefreshIn, {200: s.SessionOut}, (401,))
     @transaction.atomic
     def post(self, request):
+        """
+        Swaps a refresh token for a **new access token and a new refresh token**.
+
+        Refresh tokens are single use and last 30 days; access tokens last 15 minutes. The app's
+        HTTP client calls this once when any call answers `401`, then retries the call.
+
+        **Errors** — `401 UNAUTHORIZED` when the token is expired, revoked or already used (the app
+        then signs the customer out: "Your session has expired"). Server or network trouble answers
+        `5xx` instead, so the app keeps the customer signed in.
+        """
         data = s.RefreshIn(data=request.data)
         data.is_valid(raise_exception=True)
         expired = AppError("UNAUTHORIZED", "Your session has expired. Please log in again.", 401)
@@ -273,6 +328,14 @@ class PasswordResetView(PublicView):
 
     @doc(AUTH, "Email a password reset link", s.EmailIn, {204: None}, (422,))
     def post(self, request):
+        """
+        Emails a reset link when the email belongs to an account. Always `204`, so the form cannot
+        reveal who has an account.
+
+        The link opens `https://<api-host>/account/reset-password?uid=…&token=…`, a small page on
+        this server where the customer chooses a new password. It works once, for 3 days, and
+        signs the customer out everywhere. The app only shows "Check your email for a reset link".
+        """
         data = s.EmailIn(data=request.data)
         data.is_valid(raise_exception=True)
         user = User.objects.filter(
@@ -291,11 +354,20 @@ class PasswordResetView(PublicView):
 class MeView(AppView):
     @doc(ACCOUNT, "Profile", responses={200: s.CustomerOut}, errors=(401,))
     def get(self, request):
+        """The signed-in customer's profile. `memberSince` is the sign-up date (Canberra)."""
         return out(s.CustomerOut, p.customer(request.user))
 
     @doc(ACCOUNT, "Update name, email or phone", s.ProfileIn, {200: s.CustomerOut}, (409, 422))
     @transaction.atomic
     def patch(self, request):
+        """
+        Updates any of `name`, `email`, `phone`; send only what changes. Returns the full profile.
+
+        **Errors** — `name` blank "Add your name." · `email` "Enter a valid email address." ·
+        `phone` (when not empty, 8+ digits) "Add a mobile number." · `409 CONFLICT`
+        `fields.email: "taken"` "Another account already uses this email." Changing only the letter
+        case of your own email is fine.
+        """
         data = s.ProfileIn(data=request.data, partial=True)
         data.is_valid(raise_exception=True)
         values = data.validated_data
@@ -318,6 +390,10 @@ class MeView(AppView):
 class ClosureRequestView(AppView):
     @doc(ACCOUNT, "Ask the team to close this account", responses={204: None})
     def post(self, request):
+        """
+        Asks the team to close the account (`204`). The team is emailed and closes it by hand after
+        checking the gift card balance. The app shows "Account closure requested".
+        """
         profile = profile_of(request.user)
         profile.closure_requested_at = timezone.now()
         profile.save(update_fields=["closure_requested_at", "updated_at"])
@@ -336,6 +412,10 @@ class ClosureRequestView(AppView):
 class PreferencesView(AppView):
     @doc(ACCOUNT, "Preferences", responses={200: s.PreferencesOut})
     def get(self, request):
+        """
+        Home café, dietary preferences, notification categories, privacy/security toggles and avatar
+        (index 0–5 into the app's palette). New customers get the defaults.
+        """
         profile = profile_of(request.user)
         return out(s.PreferencesOut, p.preferences(profile, home_cafe(profile)))
 
@@ -348,6 +428,14 @@ class PreferencesView(AppView):
     )
     @transaction.atomic
     def patch(self, request):
+        """
+        Updates any subset of the preferences and returns all of them. Merge is top level:
+        `notifications` and `security`, when sent, must be complete objects (all keys) — the app
+        already sends them that way.
+
+        **Errors** — `fields.homeCafeId: "invalid"` "Choose one of our cafés." · `dietary` values
+        must be `gluten_free | dairy_free | vegan | vegetarian` · `avatar` 0–5.
+        """
         data = s.PreferencesIn(data=request.data, partial=True)
         data.is_valid(raise_exception=True)
         values = dict(data.validated_data)
@@ -382,6 +470,10 @@ def favourite_ids(profile):
 class FavouritesView(AppView):
     @doc(ACCOUNT, "Favourite menu items", responses={200: s.FavouritesOut})
     def get(self, request):
+        """
+        Favourite menu item ids in the order they were added. Items that have left the menu are
+        dropped automatically.
+        """
         return out(s.FavouritesOut, {"itemIds": favourite_ids(profile_of(request.user))})
 
 
@@ -389,6 +481,10 @@ class FavouriteView(AppView):
     @doc(ACCOUNT, "Add a favourite (idempotent)", responses={200: s.FavouritesOut}, errors=(404,))
     @transaction.atomic
     def put(self, request, item_id):
+        """
+        Adds an item to the favourites. Idempotent; **returns `200` with the full list** (never 204 —
+        the app reads `itemIds`). `404` "That item is no longer on the menu." for an unknown item.
+        """
         if not live_items([item_id]):
             raise not_found("That item is no longer on the menu.")
         profile = profile_of(request.user, lock=True)
@@ -401,6 +497,9 @@ class FavouriteView(AppView):
     @doc(ACCOUNT, "Remove a favourite (idempotent)", responses={200: s.FavouritesOut})
     @transaction.atomic
     def delete(self, request, item_id):
+        """
+        Removes an item from the favourites. Idempotent; **returns `200` with the full list**.
+        """
         profile = profile_of(request.user, lock=True)
         stored = profile.favourite_items or []
         if item_id in stored:
@@ -412,11 +511,16 @@ class FavouriteView(AppView):
 class AddressesView(AppView):
     @doc(ACCOUNT, "Saved delivery addresses", responses={200: s.AddressOut(many=True)})
     def get(self, request):
+        """Saved delivery addresses (oldest first)."""
         rows = SavedAddress.objects.filter(user=request.user)
         return out(s.AddressOut, [p.address(row) for row in rows], many=True)
 
     @doc(ACCOUNT, "Save an address", s.AddressIn, {201: s.AddressOut}, (422,))
     def post(self, request):
+        """
+        Saves a delivery address. `label` is `home`, `work` or `other`; `line` is one free-text line
+        (not geocoded). Blank line → `422` `fields.line: "required"` "Add an address."
+        """
         data = s.AddressIn(data=request.data)
         data.is_valid(raise_exception=True)
         row = SavedAddress.objects.create(
@@ -430,6 +534,7 @@ class AddressesView(AppView):
 class AddressView(AppView):
     @doc(ACCOUNT, "Remove a saved address (idempotent)", responses={204: None})
     def delete(self, request, address_id):
+        """Removes a saved address. Always `204` (idempotent)."""
         try:
             SavedAddress.objects.filter(user=request.user, pk=uuid.UUID(address_id)).delete()
         except ValueError:
@@ -445,14 +550,28 @@ class LocationsView(PublicView):
         CATALOGUE,
         "Cafés (display order, coming-soon ones included)",
         responses={200: s.LocationOut(many=True)},
+        examples=X.LOCATIONS,
     )
     def get(self, request):
+        """
+        Every published café in display order, **coming-soon cafés included**.
+
+        - `weeklyHours`: all seven days, `HH:MM` Canberra time, `null` for a closed day. The whole
+          field is `null` while hours are not confirmed.
+        - `status` is `coming_soon` when the café is TBC or has no hours entered — no orders or
+          bookings there. Otherwise `open`.
+        - `fulfilmentMethods` limits the order methods offered at checkout.
+        - `phone`, `email`, `waitLabel`, `imageUrl`, `externalOrderUrl` are `null` when empty.
+        - Photos are 800 px WebP files on Supabase Storage (`imageUrl` = hero, `galleryUrls` = the
+          others).
+        """
         return out(s.LocationOut, [p.location(row) for row in published_locations()], many=True)
 
 
 class LocationView(PublicView):
     @doc(CATALOGUE, "One café", responses={200: s.LocationOut}, errors=(404,))
     def get(self, request, slug):
+        """One café, same shape as the list. `404` "That café could not be found." """
         return out(s.LocationOut, p.location(find_location(slug)))
 
 
@@ -462,8 +581,22 @@ class LocationMenuView(PublicView):
         "A café's menu (sold-out and hidden items left out)",
         responses={200: s.MenuItemOut(many=True)},
         errors=(404,),
+        examples=X.MENU,
     )
     def get(self, request, slug):
+        """
+        The menu at one café, in menu order: chain-wide items plus items only this café sells, with
+        this café's prices. Items the café marked **sold out** or **hidden** in BOS are left out.
+
+        - `priceCents` is the base price; each option's `priceCents` is added when chosen.
+        - `maxSelections`: 1 = single choice, 0 = any number. A `required` group needs at least one
+          option.
+        - Option **names** identify options inside a group: send them back in `selections`.
+        - `dietary` uses display strings: `GF*`, `DF*`, `Gluten free`, `Dairy free`, `Vegan`,
+          `Vegetarian` (`*` = option on request).
+
+        `404` "That café could not be found."
+        """
         location = find_location(slug)
         rows = [p.menu_item(entry) for entry in menu_items(location) if entry.available]
         return out(s.MenuItemOut, rows, many=True)
@@ -472,6 +605,10 @@ class LocationMenuView(PublicView):
 class CategoriesView(PublicView):
     @doc(CATALOGUE, "Menu categories (rail order)", responses={200: s.CategoryOut(many=True)})
     def get(self, request):
+        """
+        Menu categories in rail order. `shortName` is the compact rail label. The ids `coffee` and
+        `cold` decide which items earn coffee stamps.
+        """
         rows = Category.objects.filter(is_active=True)
         return out(s.CategoryOut, [p.category(row) for row in rows], many=True)
 
@@ -481,6 +618,10 @@ class MenuItemView(PublicView):
         CATALOGUE, "One menu item, whatever the café", responses={200: s.MenuItemOut}, errors=(404,)
     )
     def get(self, request, slug):
+        """
+        One menu item whatever the café (used for favourites and deep links). `404` "That item is no
+        longer on the menu."
+        """
         entries = menu_items(any_location=True, slugs={slug})
         if not entries:
             raise not_found("That item is no longer on the menu.")
@@ -502,8 +643,37 @@ class OrdersView(AppView):
         {201: s.OrderOut},
         (402, 409, 422, 501),
         parameters=[OpenApiParameter("Idempotency-Key", str, OpenApiParameter.HEADER)],
+        examples=X.CREATE_ORDER,
     )
     def post(self, request):
+        """
+        Places an order. **The server re-prices every line** from its own menu and charges only the
+        total the customer saw (`expectedTotalCents`).
+
+        Send an `Idempotency-Key` header (the app sends `ord_…`). A retry with the same key and the
+        same body returns the original order (`201`) without charging again; the same key with a
+        different body → `409 CONFLICT`.
+
+        **Pricing**, in integer cents: subtotal → +10% delivery → −free coffee (one unit of the
+        cheapest coffee line, with 9 stamps and `useReward: true`) → +2.95% card surcharge
+        (`saved_card`/`new_card`, never Apple Pay) → −gift card → total. The two rate steps round
+        half-up to a cent.
+
+        **Checks, in order** (first failure returned):
+        1. café takes orders — else `422 LOCATION_UNAVAILABLE` "This café isn’t taking orders yet."
+        2. `method` offered there — "Delivery isn’t offered at Civic."
+        3. `deliveryAddress` for delivery / `tableNumber` for dine-in (`fields…: "required"`)
+        4. at least one line — "Your order is empty."
+        5. every item on this café's menu and not sold out — "An item in your order is no longer available."
+        6. options valid and required groups chosen — "Choose options for {item}."
+        7. server total = `expectedTotalCents` — `409 PRICE_CHANGED` "Your total changed to $X.XX. Please review your order."
+        8. `saved_card` — `422` `fields.paymentMethodId` "Choose a saved card." (no saved cards yet)
+        9. money due — `402 PAYMENT_DECLINED` without a token; **`501 NOT_IMPLEMENTED` until a
+           payment provider is connected**. Orders the gift card fully covers need no token.
+
+        On success the order starts as `received`; stamps are added, a redeemed free coffee resets
+        the card, the gift card is charged and the café inbox is emailed.
+        """
         data = s.OrderIn(data=request.data)
         data.is_valid(raise_exception=True)
         key = request.headers.get("Idempotency-Key", "")[:100]
@@ -513,8 +683,21 @@ class OrdersView(AppView):
 
 
 class OrderQuoteView(AppView):
-    @doc(ORDERS, "Price a cart without ordering (optional)", s.QuoteIn, {200: s.QuoteOut}, (422,))
+    @doc(
+        ORDERS,
+        "Price a cart without ordering (optional)",
+        s.QuoteIn,
+        {200: s.QuoteOut},
+        (422,),
+        examples=X.QUOTE,
+    )
     def post(self, request):
+        """
+        Optional: prices a cart exactly like `POST /orders` without placing it (same body minus
+        `timing`, `contact`, `expectedTotalCents` and payment token). Use the returned
+        `totals.totalCents` as `expectedTotalCents` to avoid `PRICE_CHANGED` round trips. Same
+        errors as order checks 1–6.
+        """
         data = s.QuoteIn(data=request.data)
         data.is_valid(raise_exception=True)
         priced, totals = order_services.quote(request.user, data.validated_data)
@@ -527,8 +710,19 @@ class OrderView(AppView):
         "One order (poll every few seconds while live)",
         responses={200: s.OrderOut},
         errors=(404,),
+        examples=X.ORDER_DETAIL,
     )
     def get(self, request, order_id):
+        """
+        One of the customer's orders. Poll it while it is live (the app polls every 2 s).
+
+        Status lifecycle: `received → confirmed → preparing → ready → completed`, or `declined`.
+        Café staff may **skip steps** (e.g. `received → ready`); `completed` and `declined` never
+        change again. A decline gives back the gift card amount, stamps earned and a redeemed free
+        coffee.
+
+        `404` "Order not found." — also for another customer's order.
+        """
         pk = parse_uuid(order_id, "Order not found.")
         order = my_orders(request.user).filter(pk=pk).first()
         if order is None:
@@ -539,6 +733,7 @@ class OrderView(AppView):
 class MyOrdersView(AppView):
     @doc(ORDERS, "Order history, newest first", responses={200: s.OrderPageOut}, parameters=PAGING)
     def get(self, request):
+        """Order history, newest first, declined orders included. Cursor paging: `?cursor=&limit=` → `{items, nextCursor}`."""
         return out(s.OrderPageOut, page(my_orders(request.user), request, p.order))
 
 
@@ -549,16 +744,23 @@ class PaymentMethodsView(AppView):
         responses={200: s.SavedCardOut(many=True)},
     )
     def get(self, request):
+        """Saved cards. Always `[]` until a payment provider is connected."""
         return out(s.SavedCardOut, [], many=True)
 
     @doc(ORDERS, "Save a card (not available yet: 501)", s.AddCardIn, {201: s.SavedCardOut}, (501,))
     def post(self, request):
+        """
+        Would save a card from the provider's single-use `sourceToken`. Answers `501
+        NOT_IMPLEMENTED` "Saving a card isn’t available in the app yet." until a payment provider is
+        connected.
+        """
         raise AppError("NOT_IMPLEMENTED", "Saving a card isn’t available in the app yet.", 501)
 
 
 class PaymentMethodView(AppView):
     @doc(ORDERS, "Remove a saved card (idempotent)", responses={204: None})
     def delete(self, request, method_id):
+        """Removes a saved card. Always `204` (no cards are stored yet)."""
         return Response(status=204)
 
 
@@ -566,8 +768,12 @@ class PaymentMethodView(AppView):
 
 
 class LoyaltyView(AppView):
-    @doc(REWARDS, "Coffee card", responses={200: s.LoyaltyCardOut})
+    @doc(REWARDS, "Coffee card", responses={200: s.LoyaltyCardOut}, examples=X.LOYALTY)
     def get(self, request):
+        """
+        The coffee card: one stamp per coffee, nine stamps and the 10th coffee is free. `memberNumber`
+        is shown under the barcode and scanned/typed at the counter.
+        """
         return out(s.LoyaltyCardOut, p.loyalty_card(loyalty.card_for(request.user)))
 
 
@@ -579,6 +785,10 @@ class LoyaltyActivityView(AppView):
         parameters=PAGING,
     )
     def get(self, request):
+        """
+        Stamp history, newest first: `earn` ("+1 stamp · order #8020-1197", "+1 stamp · in store") or
+        `redeem` ("Free coffee redeemed"). Cursor paging.
+        """
         rows = LoyaltyActivity.objects.filter(card__user=request.user).order_by("-created_at")
         return out(s.LoyaltyPageOut, page(rows, request, p.loyalty_activity))
 
@@ -591,12 +801,17 @@ class WalletPassView(AppView):
         errors=(404,),
     )
     def get(self, request):
+        """
+        Apple Wallet pass URL. Answers `404` "Wallet passes aren’t available yet." until pass signing
+        exists — the app already treats 404 as "not available".
+        """
         raise not_found("Wallet passes aren’t available yet.")
 
 
 class WalletPassAddedView(AppView):
     @doc(REWARDS, "Record that the pass was added to Wallet", responses={200: s.LoyaltyCardOut})
     def post(self, request):
+        """Records that the pass was added to Wallet; returns the card with `walletPassAdded: true`."""
         card = loyalty.card_for(request.user)
         if not card.wallet_pass_added:
             card.wallet_pass_added = True
@@ -607,12 +822,18 @@ class WalletPassAddedView(AppView):
 class GiftCardView(AppView):
     @doc(REWARDS, "Gift card balance", responses={200: s.GiftCardOut})
     def get(self, request):
+        """The customer's gift card balance in cents. Topped up by the team in BOS; spent on app orders."""
         return out(s.GiftCardOut, p.gift_card(loyalty.gift_card_for(request.user)))
 
 
 class GiftActivityView(AppView):
     @doc(REWARDS, "Gift card activity, newest first", responses={200: s.GiftActivityOut(many=True)})
     def get(self, request):
+        """
+        Gift card activity, newest first. `amountCents` is always positive; `kind` gives the
+        direction: `added` (top-up, refund), `spent` (used on an order), `sent` (eGift bought for
+        someone else).
+        """
         rows = GiftCardActivity.objects.filter(card__user=request.user).order_by("-created_at")[
             :100
         ]
@@ -629,9 +850,20 @@ class GiftSendView(AppView):
         {201: s.GiftActivityOut},
         (402, 409, 422, 501),
         parameters=[OpenApiParameter("Idempotency-Key", str, OpenApiParameter.HEADER)],
+        examples=X.GIFT_SEND,
     )
     @transaction.atomic
     def post(self, request):
+        """
+        Buys an eGift card for someone, paid with an Apple Pay token. Send an `Idempotency-Key`
+        header (`gift_…`). The sender's balance does not change.
+
+        Answers **`501 NOT_IMPLEMENTED` until a payment provider is connected**.
+
+        **Errors** — `422` "Add their name and a valid email." (`fields.recipientName` /
+        `recipientEmail`) · `422` `fields.amountCents` "Choose $25, $50, $75 or $100." · `402
+        PAYMENT_DECLINED` without a token · `409` key reused with a different body.
+        """
         data = s.GiftSendIn(data=request.data)
         data.is_valid(raise_exception=True)
         values = data.validated_data
@@ -734,8 +966,22 @@ class ReservationsView(AppView):
         s.ReservationIn,
         {201: s.ReservationOut},
         (422,),
+        examples=X.RESERVATION,
     )
     def post(self, request):
+        """
+        Sends a table **request**; the café confirms it. Saved in BOS → Bookings; the café inbox and
+        the guest are emailed.
+
+        **Checks, in order** (Canberra time):
+        1. café has confirmed hours — else `422 LOCATION_UNAVAILABLE` "Bookings open when hours are confirmed."
+        2. `date` present and after today — else `422` `fields.date: "invalid"` "Choose a date from tomorrow onwards."
+        3. everything else at once — every failing field (`guests` 1–100, `time`, `name`, `phone`
+           8+ digits, `email`) set to `"invalid"`. The message is the time problem when there is
+           one — "Café is closed on this date", "Café is closed at this time" (last booking 30 min
+           before close), "Bookings need at least 12 hours’ notice" — otherwise "Please check the
+           highlighted fields."
+        """
         data = s.ReservationIn(data=request.data)
         data.is_valid(raise_exception=True)
         booking = booking_services.create_app_booking(
@@ -747,6 +993,10 @@ class ReservationsView(AppView):
 class MyReservationsView(AppView):
     @doc(BOOKINGS, "My booking requests", responses={200: s.ReservationOut(many=True)})
     def get(self, request):
+        """
+        The customer's booking requests, newest date first. `requested` → show "Cancel request";
+        `confirmed` → show "Call café"; `cancelled` (also declined/no-show) → no actions.
+        """
         rows = (
             Booking.objects.filter(customer=request.user)
             .select_related("location")
@@ -758,6 +1008,11 @@ class MyReservationsView(AppView):
 class ReservationView(AppView):
     @doc(BOOKINGS, "Cancel a booking request", responses={204: None}, errors=(404, 409))
     def delete(self, request, booking_id):
+        """
+        Cancels a `requested` booking (`204`) and emails the café. Already cancelled → `204`.
+        Confirmed → `409 CONFLICT` "This booking is already confirmed. Please call the café to change
+        it." Unknown or not yours → `404`.
+        """
         pk = parse_uuid(booking_id, "That booking could not be found.")
         booking = Booking.objects.filter(customer=request.user, pk=pk).first()
         if booking is None:
@@ -769,6 +1024,10 @@ class ReservationView(AppView):
 class CateringPackagesView(PublicView):
     @doc(BOOKINGS, "Catering packages", responses={200: s.CateringPackageOut(many=True)})
     def get(self, request):
+        """
+        Catering packages with "from" prices per person (an estimate, not a quote). `id` is a stable
+        slug (`breakfast`, `lunch`, `afternoon-tea`) to send back as `packageId`.
+        """
         rows = CateringPackage.objects.filter(is_active=True).select_related("image")
         return out(s.CateringPackageOut, [p.catering_package(row) for row in rows], many=True)
 
@@ -818,8 +1077,18 @@ class EnquiriesView(AppView):
         s.CateringEnquiryIn,
         {201: s.CateringEnquiryOut},
         (422,),
+        examples=X.ENQUIRY,
     )
     def post(self, request):
+        """
+        Sends a catering enquiry. It lands in BOS → Enquiries and the customer gets an email.
+        `dietary` uses display values (`Gluten free`, `Dairy free`, `Vegan`, `Vegetarian`);
+        `location` is free text (where the event is).
+
+        **Errors** — unknown package → `fields.packageId` "Choose a catering menu."; then every
+        failing field (`firstName`, `lastName`, `email`, `phone` 8+ digits, `notes`, `date` after
+        today, `guests` 1–10000, `time` HH:MM) → "Please check the highlighted fields."
+        """
         data = s.CateringEnquiryIn(data=request.data)
         data.is_valid(raise_exception=True)
         values = data.validated_data
@@ -855,6 +1124,10 @@ class MyEnquiriesView(AppView):
         responses={200: s.CateringEnquiryOut(many=True)},
     )
     def get(self, request):
+        """
+        The customer's catering enquiries, newest first. `status`: `enquiry_sent → quoted →
+        confirmed`, or `closed`.
+        """
         rows = (
             Enquiry.objects.filter(customer=request.user, kind="catering")
             .select_related("package")
@@ -867,8 +1140,14 @@ class MyEnquiriesView(AppView):
 
 
 class NotificationsView(AppView):
-    @doc(FEED, "In-app notification feed", responses={200: s.NotificationFeedOut})
+    @doc(FEED, "In-app notification feed", responses={200: s.NotificationFeedOut}, examples=X.FEED)
     def get(self, request):
+        """
+        The in-app feed (latest 50, newest first). Lines are added by the server when an order
+        changes status, stamps are added, the café decides on a booking, or the gift card is topped
+        up. `unseenIds` = unread items newer than the last `seen` call (the bell badge). Push
+        notifications are not built yet.
+        """
         rows = list(AppNotification.objects.filter(user=request.user).order_by("-created_at")[:50])
         seen = profile_of(request.user).notifications_seen_at
         unseen = [str(r.pk) for r in rows if r.unread and (seen is None or r.created_at > seen)]
@@ -879,6 +1158,7 @@ class NotificationsView(AppView):
 
     @doc(FEED, "Clear the feed", responses={204: None})
     def delete(self, request):
+        """Empties the feed ("Clear all"). `204`."""
         AppNotification.objects.filter(user=request.user).delete()
         return Response(status=204)
 
@@ -886,6 +1166,7 @@ class NotificationsView(AppView):
 class NotificationsSeenView(AppView):
     @doc(FEED, "Feed opened: clear the bell badge (unread dots stay)", responses={204: None})
     def post(self, request):
+        """Call when the feed is opened: clears the bell badge (`unseenIds`) but keeps the unread dots. `204`."""
         profile = profile_of(request.user)
         profile.notifications_seen_at = timezone.now()
         profile.save(update_fields=["notifications_seen_at", "updated_at"])
@@ -895,6 +1176,7 @@ class NotificationsSeenView(AppView):
 class NotificationsReadAllView(AppView):
     @doc(FEED, "Mark every notification read", responses={204: None})
     def post(self, request):
+        """Sets every item to `unread: false` ("Mark all read"). `204`."""
         AppNotification.objects.filter(user=request.user, unread=True).update(unread=False)
         return Response(status=204)
 
@@ -902,6 +1184,7 @@ class NotificationsReadAllView(AppView):
 class OffersView(PublicView):
     @doc(FEED, "In-store offers", responses={200: s.OfferOut(many=True)})
     def get(self, request):
+        """In-store offers for Home and the Offers screen (informational; nothing is redeemed online). Edited in BOS → Website → App offers."""
         rows = Offer.objects.filter(is_active=True).select_related("image")
         return out(s.OfferOut, [p.offer(row) for row in rows], many=True)
 
@@ -909,4 +1192,5 @@ class OffersView(PublicView):
 class FaqsView(PublicView):
     @doc(FEED, "Help questions (display order)", responses={200: s.FaqOut(many=True)})
     def get(self, request):
+        """Help questions in display order. Edited in BOS → Website → App FAQs."""
         return out(s.FaqOut, [p.faq(row) for row in Faq.objects.filter(is_active=True)], many=True)

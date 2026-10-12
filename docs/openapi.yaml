@@ -8,6 +8,13 @@ paths:
   /api/v1/app/auth/password-reset:
     post:
       operationId: v1_app_auth_password_reset_create
+      description: |-
+        Emails a reset link when the email belongs to an account. Always `204`, so the form cannot
+        reveal who has an account.
+
+        The link opens `https://<api-host>/account/reset-password?uid=…&token=…`, a small page on
+        this server where the customer chooses a new password. It works once, for 3 days, and
+        signs the customer out everywhere. The app only shows "Check your email for a reset link".
       summary: Email a password reset link
       tags:
       - App · Auth
@@ -73,6 +80,15 @@ paths:
   /api/v1/app/auth/refresh:
     post:
       operationId: v1_app_auth_refresh_create
+      description: |-
+        Swaps a refresh token for a **new access token and a new refresh token**.
+
+        Refresh tokens are single use and last 30 days; access tokens last 15 minutes. The app's
+        HTTP client calls this once when any call answers `401`, then retries the call.
+
+        **Errors** — `401 UNAUTHORIZED` when the token is expired, revoked or already used (the app
+        then signs the customer out: "Your session has expired"). Server or network trouble answers
+        `5xx` instead, so the app keeps the customer signed in.
       summary: Swap a refresh token for a new session
       tags:
       - App · Auth
@@ -136,6 +152,16 @@ paths:
   /api/v1/app/auth/sign-in:
     post:
       operationId: v1_app_auth_sign_in_create
+      description: |-
+        Returns a session for an existing customer. The email is trimmed and case-insensitive.
+
+        After signing in, the app calls `GET /me`. Store `accessToken` and `refreshToken` in the
+        device keychain.
+
+        **Errors** — `422 VALIDATION` `fields.email: "invalid"` "Enter a valid email address." ·
+        `422` `fields.password: "too_short"` "Your password needs at least 6 characters." ·
+        `401 UNAUTHORIZED` "That email and password don’t match. Try again or reset your password."
+        · `429` after 10 attempts a minute (per IP and per email).
       summary: Sign in with email and password
       tags:
       - App · Auth
@@ -144,6 +170,12 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/SignInInRequest'
+            examples:
+              SignIn:
+                value:
+                  email: sophie@example.com
+                  password: my-long-password
+                summary: Sign in
         required: true
       security:
       - {}
@@ -153,12 +185,28 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SessionOut'
+              examples:
+                Session:
+                  value:
+                    customerId: 6f0c2c3e-5f8b-4a3e-9d55-1d2b7f0a9e10
+                    accessToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIn0.signature
+                    refreshToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCJ9.signature
+                    expiresAt: '2026-10-12T08:27:40+11:00'
           description: ''
         '401':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorOut'
+              examples:
+                WrongPassword:
+                  value:
+                    error:
+                      code: UNAUTHORIZED
+                      message: That email and password don’t match. Try again or reset
+                        your password.
+                      fields: {}
+                  summary: Wrong password
           description: ''
         '422':
           content:
@@ -205,6 +253,9 @@ paths:
   /api/v1/app/auth/sign-out:
     post:
       operationId: v1_app_auth_sign_out_create
+      description: |-
+        Revokes the refresh token. Always `204`, even when the token is unknown, expired or already
+        revoked, and even without a valid access token. The app clears its local session anyway.
       summary: Sign out (revoke the refresh token)
       tags:
       - App · Auth
@@ -263,6 +314,20 @@ paths:
   /api/v1/app/auth/sign-up:
     post:
       operationId: v1_app_auth_sign_up_create
+      description: |-
+        Creates a customer and signs them in (`201` + session).
+
+        Also creates their coffee card (0 stamps, member number `8020 NNNN NNNN`), a $0 gift card and
+        default preferences (home café Phillip, "Offers & news" off, everything else on).
+
+        **Password rule:** at least **10 characters**, not a common password, not only digits, not
+        similar to the name or email. (The app's form allows 6; a weaker password gets a 422 with a
+        clear message under the password field.)
+
+        **Errors** (first failing field) — `name` "Add your full name." · `phone` (8+ digits)
+        "Add a mobile number." · `email` "Enter a valid email address." · `password`
+        (`too_short`/`invalid`) · `409 CONFLICT` `fields.email: "taken"` "An account with this email
+        already exists. Log in instead."
       summary: Create a customer account
       tags:
       - App · Auth
@@ -271,6 +336,14 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/SignUpInRequest'
+            examples:
+              NewCustomer:
+                value:
+                  name: Sophie Nguyen
+                  phone: 0400 123 456
+                  email: sophie@example.com
+                  password: my-long-password
+                summary: New customer
         required: true
       security:
       - {}
@@ -280,18 +353,43 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SessionOut'
+              examples:
+                Session:
+                  value:
+                    customerId: 6f0c2c3e-5f8b-4a3e-9d55-1d2b7f0a9e10
+                    accessToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIn0.signature
+                    refreshToken: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCJ9.signature
+                    expiresAt: '2026-10-12T08:27:40+11:00'
           description: ''
         '409':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorOut'
+              examples:
+                EmailTaken:
+                  value:
+                    error:
+                      code: CONFLICT
+                      message: An account with this email already exists. Log in instead.
+                      fields:
+                        email: taken
+                  summary: Email taken
           description: ''
         '422':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorOut'
+              examples:
+                InvalidEmail:
+                  value:
+                    error:
+                      code: VALIDATION
+                      message: Enter a valid email address.
+                      fields:
+                        email: invalid
+                  summary: Invalid email
           description: ''
         '400':
           description: 'App error: {error: {code, message, fields}}'
@@ -332,6 +430,14 @@ paths:
   /api/v1/app/catering-enquiries:
     post:
       operationId: v1_app_catering_enquiries_create
+      description: |-
+        Sends a catering enquiry. It lands in BOS → Enquiries and the customer gets an email.
+        `dietary` uses display values (`Gluten free`, `Dairy free`, `Vegan`, `Vegetarian`);
+        `location` is free text (where the event is).
+
+        **Errors** — unknown package → `fields.packageId` "Choose a catering menu."; then every
+        failing field (`firstName`, `lastName`, `email`, `phone` 8+ digits, `notes`, `date` after
+        today, `guests` 1–10000, `time` HH:MM) → "Please check the highlighted fields."
       summary: Send a catering enquiry
       tags:
       - App · Bookings & catering
@@ -340,6 +446,25 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/CateringEnquiryInRequest'
+            examples:
+              CateringEnquiry:
+                value:
+                  packageId: lunch
+                  firstName: Sophie
+                  lastName: Nguyen
+                  email: sophie@example.com
+                  phone: 0400 123 456
+                  company: ''
+                  occasion: Team lunch
+                  date: '2026-11-02'
+                  time: '12:00'
+                  guests: 30
+                  location: Level 3, 10 Moore St, Canberra
+                  dietary:
+                  - Vegan
+                  - Gluten free
+                  notes: Two coeliac guests.
+                summary: Catering enquiry
         required: true
       security:
       - jwtAuth: []
@@ -349,6 +474,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CateringEnquiryOut'
+              examples:
+                EnquirySent:
+                  value:
+                    id: a6f7c2d1-4b3e-4c55-9f0a-2e8d7b6c5a44
+                    packageId: lunch
+                    packageName: Lunch
+                    guests: 30
+                    date: '2026-11-02'
+                    occasion: Team lunch
+                    status: enquiry_sent
+                    createdAt: '2026-10-12T08:25:00+11:00'
+                  summary: Enquiry sent
           description: ''
         '422':
           content:
@@ -401,6 +538,9 @@ paths:
   /api/v1/app/catering/packages:
     get:
       operationId: v1_app_catering_packages_list
+      description: |-
+        Catering packages with "from" prices per person (an estimate, not a quote). `id` is a stable
+        slug (`breakfast`, `lunch`, `afternoon-tea`) to send back as `packageId`.
       summary: Catering packages
       tags:
       - App · Bookings & catering
@@ -460,6 +600,8 @@ paths:
   /api/v1/app/content/faqs:
     get:
       operationId: v1_app_content_faqs_list
+      description: Help questions in display order. Edited in BOS → Website → App
+        FAQs.
       summary: Help questions (display order)
       tags:
       - App · Notifications & content
@@ -519,6 +661,8 @@ paths:
   /api/v1/app/content/offers:
     get:
       operationId: v1_app_content_offers_list
+      description: In-store offers for Home and the Offers screen (informational;
+        nothing is redeemed online). Edited in BOS → Website → App offers.
       summary: In-store offers
       tags:
       - App · Notifications & content
@@ -578,6 +722,15 @@ paths:
   /api/v1/app/gift-cards/send:
     post:
       operationId: v1_app_gift_cards_send_create
+      description: |-
+        Buys an eGift card for someone, paid with an Apple Pay token. Send an `Idempotency-Key`
+        header (`gift_…`). The sender's balance does not change.
+
+        Answers **`501 NOT_IMPLEMENTED` until a payment provider is connected**.
+
+        **Errors** — `422` "Add their name and a valid email." (`fields.recipientName` /
+        `recipientEmail`) · `422` `fields.amountCents` "Choose $25, $50, $75 or $100." · `402
+        PAYMENT_DECLINED` without a token · `409` key reused with a different body.
       summary: Buy an eGift card for someone (send an Idempotency-Key header)
       parameters:
       - in: header
@@ -591,6 +744,15 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/GiftSendInRequest'
+            examples:
+              EGift:
+                value:
+                  amountCents: 5000
+                  recipientName: Alex
+                  recipientEmail: alex@example.com
+                  message: Happy birthday!
+                  paymentToken: <Apple Pay token>
+                summary: eGift
         required: true
       security:
       - jwtAuth: []
@@ -600,6 +762,14 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/GiftActivityOut'
+              examples:
+                Sent:
+                  value:
+                    id: 5d2e8f10-9a7b-4c6d-8e5f-4a3b2c1d0e9f
+                    kind: sent
+                    description: Sent to Alex
+                    amountCents: 5000
+                    occurredAt: '2026-10-12T08:30:00+11:00'
           description: ''
         '402':
           content:
@@ -624,6 +794,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorOut'
+              examples:
+                NoPaymentProviderYet:
+                  value:
+                    error:
+                      code: NOT_IMPLEMENTED
+                      message: Card and Apple Pay payments aren’t available in the
+                        app yet. Please order at the café.
+                      fields: {}
+                  summary: No payment provider yet
           description: ''
         '400':
           description: 'App error: {error: {code, message, fields}}'
@@ -664,6 +843,17 @@ paths:
   /api/v1/app/locations:
     get:
       operationId: v1_app_locations_list
+      description: |-
+        Every published café in display order, **coming-soon cafés included**.
+
+        - `weeklyHours`: all seven days, `HH:MM` Canberra time, `null` for a closed day. The whole
+          field is `null` while hours are not confirmed.
+        - `status` is `coming_soon` when the café is TBC or has no hours entered — no orders or
+          bookings there. Otherwise `open`.
+        - `fulfilmentMethods` limits the order methods offered at checkout.
+        - `phone`, `email`, `waitLabel`, `imageUrl`, `externalOrderUrl` are `null` when empty.
+        - Photos are 800 px WebP files on Supabase Storage (`imageUrl` = hero, `galleryUrls` = the
+          others).
       summary: Cafés (display order, coming-soon ones included)
       tags:
       - App · Cafés & menu
@@ -677,6 +867,81 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/LocationOut'
+              examples:
+                Cafés:
+                  value:
+                  - - id: braddon
+                      name: Braddon
+                      subtitle: Lonsdale St
+                      area: Lonsdale St
+                      headline: Wholesome food, great coffee on Lonsdale St.
+                      address: 1/18 Lonsdale St, Braddon ACT 2612
+                      phone: 0451 448 018
+                      email: braddon@eightytwentyfood.com.au
+                      hoursLabel: Mon–Sun 6:00am – 3:00pm
+                      hoursShort: 6am – 3pm, 7 days
+                      weeklyHours:
+                        sun:
+                          open: 06:00
+                          close: '15:00'
+                        mon:
+                          open: 06:00
+                          close: '15:00'
+                        tue:
+                          open: 06:00
+                          close: '15:00'
+                        wed:
+                          open: 06:00
+                          close: '15:00'
+                        thu:
+                          open: 06:00
+                          close: '15:00'
+                        fri:
+                          open: 06:00
+                          close: '15:00'
+                        sat:
+                          open: 06:00
+                          close: '15:00'
+                      status: open
+                      fulfilmentMethods:
+                      - pickup
+                      - delivery
+                      - dine_in
+                      note: Located right at the Rainbow Roundabout
+                      waitLabel: 20–25 min
+                      imageUrl: https://example.supabase.co/storage/v1/object/public/media/website/0b5c/800.webp
+                      galleryUrls:
+                      - https://example.supabase.co/storage/v1/object/public/media/website/7d1e/800.webp
+                      externalOrderUrl: https://eightytwentybraddon.lifeintouch.net/
+                      bookingLabel: Braddon - Lonsdale St
+                      flags:
+                        flagship: true
+                        limitedMenu: false
+                        glutenFree: false
+                    - id: akuna
+                      name: Akuna St
+                      subtitle: Heart of City
+                      area: Heart of City
+                      headline: Coming soon to the heart of the city.
+                      address: Akuna St, Canberra City
+                      phone: null
+                      email: null
+                      hoursLabel: Hours to be confirmed
+                      hoursShort: Hours TBC
+                      weeklyHours: null
+                      status: coming_soon
+                      fulfilmentMethods:
+                      - pickup
+                      note: Listed venue, full details to be confirmed
+                      waitLabel: null
+                      imageUrl: https://example.supabase.co/storage/v1/object/public/media/website/0b5c/800.webp
+                      galleryUrls: []
+                      externalOrderUrl: null
+                      bookingLabel: Akuna St - Heart of City
+                      flags:
+                        flagship: false
+                        limitedMenu: false
+                        glutenFree: false
           description: ''
         '400':
           description: 'App error: {error: {code, message, fields}}'
@@ -723,6 +988,8 @@ paths:
   /api/v1/app/locations/{slug}:
     get:
       operationId: v1_app_locations_retrieve
+      description: One café, same shape as the list. `404` "That café could not be
+        found."
       summary: One café
       parameters:
       - in: path
@@ -786,6 +1053,18 @@ paths:
   /api/v1/app/locations/{slug}/menu:
     get:
       operationId: v1_app_locations_menu_list
+      description: |-
+        The menu at one café, in menu order: chain-wide items plus items only this café sells, with
+        this café's prices. Items the café marked **sold out** or **hidden** in BOS are left out.
+
+        - `priceCents` is the base price; each option's `priceCents` is added when chosen.
+        - `maxSelections`: 1 = single choice, 0 = any number. A `required` group needs at least one
+          option.
+        - Option **names** identify options inside a group: send them back in `selections`.
+        - `dietary` uses display strings: `GF*`, `DF*`, `Gluten free`, `Dairy free`, `Vegan`,
+          `Vegetarian` (`*` = option on request).
+
+        `404` "That café could not be found."
       summary: A café's menu (sold-out and hidden items left out)
       parameters:
       - in: path
@@ -805,6 +1084,38 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/MenuItemOut'
+              examples:
+                Menu:
+                  value:
+                  - - id: hotcoffee
+                      categoryId: coffee
+                      name: Milk Based Coffee
+                      description: ''
+                      priceCents: 500
+                      dietary: []
+                      imageUrl: https://example.supabase.co/storage/v1/object/public/media/website/91aa/800.webp
+                      featured: true
+                      modifierGroups:
+                      - id: drink
+                        name: Choose your drink
+                        required: true
+                        maxSelections: 1
+                        options:
+                        - name: Flat White
+                          priceCents: 50
+                        - name: Latte
+                          priceCents: 50
+                        - name: Macchiato
+                          priceCents: 0
+                      - id: var
+                        name: Drink variation
+                        required: false
+                        maxSelections: 0
+                        options:
+                        - name: Large
+                          priceCents: 100
+                        - name: OAT ADC
+                          priceCents: 80
           description: ''
         '404':
           content:
@@ -851,6 +1162,8 @@ paths:
   /api/v1/app/me:
     get:
       operationId: v1_app_me_retrieve
+      description: The signed-in customer's profile. `memberSince` is the sign-up
+        date (Canberra).
       summary: Profile
       tags:
       - App · Account
@@ -907,6 +1220,13 @@ paths:
                 $ref: '#/components/schemas/ErrorOut'
     patch:
       operationId: v1_app_me_partial_update
+      description: |-
+        Updates any of `name`, `email`, `phone`; send only what changes. Returns the full profile.
+
+        **Errors** — `name` blank "Add your name." · `email` "Enter a valid email address." ·
+        `phone` (when not empty, 8+ digits) "Add a mobile number." · `409 CONFLICT`
+        `fields.email: "taken"` "Another account already uses this email." Changing only the letter
+        case of your own email is fine.
       summary: Update name, email or phone
       tags:
       - App · Account
@@ -975,6 +1295,7 @@ paths:
   /api/v1/app/me/addresses:
     get:
       operationId: v1_app_me_addresses_list
+      description: Saved delivery addresses (oldest first).
       summary: Saved delivery addresses
       tags:
       - App · Account
@@ -1033,6 +1354,9 @@ paths:
                 $ref: '#/components/schemas/ErrorOut'
     post:
       operationId: v1_app_me_addresses_create
+      description: |-
+        Saves a delivery address. `label` is `home`, `work` or `other`; `line` is one free-text line
+        (not geocoded). Blank line → `422` `fields.line: "required"` "Add an address."
       summary: Save an address
       tags:
       - App · Account
@@ -1102,6 +1426,7 @@ paths:
   /api/v1/app/me/addresses/{address_id}:
     delete:
       operationId: v1_app_me_addresses_destroy
+      description: Removes a saved address. Always `204` (idempotent).
       summary: Remove a saved address (idempotent)
       parameters:
       - in: path
@@ -1161,6 +1486,9 @@ paths:
   /api/v1/app/me/catering-enquiries:
     get:
       operationId: v1_app_me_catering_enquiries_list
+      description: |-
+        The customer's catering enquiries, newest first. `status`: `enquiry_sent → quoted →
+        confirmed`, or `closed`.
       summary: My catering enquiries, newest first
       tags:
       - App · Bookings & catering
@@ -1220,6 +1548,9 @@ paths:
   /api/v1/app/me/closure-request:
     post:
       operationId: v1_app_me_closure_request_create
+      description: |-
+        Asks the team to close the account (`204`). The team is emailed and closes it by hand after
+        checking the gift card balance. The app shows "Account closure requested".
       summary: Ask the team to close this account
       tags:
       - App · Account
@@ -1273,6 +1604,9 @@ paths:
   /api/v1/app/me/favourites:
     get:
       operationId: v1_app_me_favourites_retrieve
+      description: |-
+        Favourite menu item ids in the order they were added. Items that have left the menu are
+        dropped automatically.
       summary: Favourite menu items
       tags:
       - App · Account
@@ -1330,6 +1664,9 @@ paths:
   /api/v1/app/me/favourites/{item_id}:
     put:
       operationId: v1_app_me_favourites_update
+      description: |-
+        Adds an item to the favourites. Idempotent; **returns `200` with the full list** (never 204 —
+        the app reads `itemIds`). `404` "That item is no longer on the menu." for an unknown item.
       summary: Add a favourite (idempotent)
       parameters:
       - in: path
@@ -1392,6 +1729,8 @@ paths:
                 $ref: '#/components/schemas/ErrorOut'
     delete:
       operationId: v1_app_me_favourites_destroy
+      description: Removes an item from the favourites. Idempotent; **returns `200`
+        with the full list**.
       summary: Remove a favourite (idempotent)
       parameters:
       - in: path
@@ -1455,6 +1794,8 @@ paths:
   /api/v1/app/me/gift-card:
     get:
       operationId: v1_app_me_gift_card_retrieve
+      description: The customer's gift card balance in cents. Topped up by the team
+        in BOS; spent on app orders.
       summary: Gift card balance
       tags:
       - App · Loyalty & gift cards
@@ -1512,6 +1853,10 @@ paths:
   /api/v1/app/me/gift-card/activity:
     get:
       operationId: v1_app_me_gift_card_activity_list
+      description: |-
+        Gift card activity, newest first. `amountCents` is always positive; `kind` gives the
+        direction: `added` (top-up, refund), `spent` (used on an order), `sent` (eGift bought for
+        someone else).
       summary: Gift card activity, newest first
       tags:
       - App · Loyalty & gift cards
@@ -1571,6 +1916,9 @@ paths:
   /api/v1/app/me/loyalty:
     get:
       operationId: v1_app_me_loyalty_retrieve
+      description: |-
+        The coffee card: one stamp per coffee, nine stamps and the 10th coffee is free. `memberNumber`
+        is shown under the barcode and scanned/typed at the counter.
       summary: Coffee card
       tags:
       - App · Loyalty & gift cards
@@ -1582,6 +1930,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/LoyaltyCardOut'
+              examples:
+                CoffeeCard:
+                  value:
+                    stamps: 6
+                    stampsPerReward: 9
+                    memberNumber: 8020 0624 1188
+                    eligibility: Any coffee or hot drink, any size, at any EightyTwenty
+                      café.
+                    rewardDescription: Your 10th coffee is free.
+                    walletPassAdded: false
+                  summary: Coffee card
           description: ''
         '400':
           description: 'App error: {error: {code, message, fields}}'
@@ -1628,6 +1987,9 @@ paths:
   /api/v1/app/me/loyalty/activity:
     get:
       operationId: v1_app_me_loyalty_activity_retrieve
+      description: |-
+        Stamp history, newest first: `earn` ("+1 stamp · order #8020-1197", "+1 stamp · in store") or
+        `redeem` ("Free coffee redeemed"). Cursor paging.
       summary: Coffee card history, newest first
       parameters:
       - in: query
@@ -1696,6 +2058,9 @@ paths:
   /api/v1/app/me/loyalty/wallet-pass:
     get:
       operationId: v1_app_me_loyalty_wallet_pass_retrieve
+      description: |-
+        Apple Wallet pass URL. Answers `404` "Wallet passes aren’t available yet." until pass signing
+        exists — the app already treats 404 as "not available".
       summary: Apple Wallet pass URL (404 until passes are issued)
       tags:
       - App · Loyalty & gift cards
@@ -1753,6 +2118,8 @@ paths:
   /api/v1/app/me/loyalty/wallet-pass/added:
     post:
       operationId: v1_app_me_loyalty_wallet_pass_added_create
+      description: 'Records that the pass was added to Wallet; returns the card with
+        `walletPassAdded: true`.'
       summary: Record that the pass was added to Wallet
       tags:
       - App · Loyalty & gift cards
@@ -1810,6 +2177,11 @@ paths:
   /api/v1/app/me/notifications:
     get:
       operationId: v1_app_me_notifications_retrieve
+      description: |-
+        The in-app feed (latest 50, newest first). Lines are added by the server when an order
+        changes status, stamps are added, the café decides on a booking, or the gift card is topped
+        up. `unseenIds` = unread items newer than the last `seen` call (the bell badge). Push
+        notifications are not built yet.
       summary: In-app notification feed
       tags:
       - App · Notifications & content
@@ -1821,6 +2193,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/NotificationFeedOut'
+              examples:
+                Feed:
+                  value:
+                    items:
+                    - id: 0f1e2d3c-4b5a-4968-8776-655443322110
+                      kind: order
+                      text: 'Order #8020-1197 is ready at the Braddon counter.'
+                      createdAt: '2026-10-12T08:14:00+11:00'
+                      unread: true
+                    unseenIds:
+                    - 0f1e2d3c-4b5a-4968-8776-655443322110
           description: ''
         '400':
           description: 'App error: {error: {code, message, fields}}'
@@ -1866,6 +2249,7 @@ paths:
                 $ref: '#/components/schemas/ErrorOut'
     delete:
       operationId: v1_app_me_notifications_destroy
+      description: Empties the feed ("Clear all"). `204`.
       summary: Clear the feed
       tags:
       - App · Notifications & content
@@ -1919,6 +2303,7 @@ paths:
   /api/v1/app/me/notifications/read-all:
     post:
       operationId: v1_app_me_notifications_read_all_create
+      description: 'Sets every item to `unread: false` ("Mark all read"). `204`.'
       summary: Mark every notification read
       tags:
       - App · Notifications & content
@@ -1972,6 +2357,8 @@ paths:
   /api/v1/app/me/notifications/seen:
     post:
       operationId: v1_app_me_notifications_seen_create
+      description: 'Call when the feed is opened: clears the bell badge (`unseenIds`)
+        but keeps the unread dots. `204`.'
       summary: 'Feed opened: clear the bell badge (unread dots stay)'
       tags:
       - App · Notifications & content
@@ -2025,6 +2412,8 @@ paths:
   /api/v1/app/me/orders:
     get:
       operationId: v1_app_me_orders_retrieve
+      description: 'Order history, newest first, declined orders included. Cursor
+        paging: `?cursor=&limit=` → `{items, nextCursor}`.'
       summary: Order history, newest first
       parameters:
       - in: query
@@ -2093,6 +2482,7 @@ paths:
   /api/v1/app/me/payment-methods:
     get:
       operationId: v1_app_me_payment_methods_list
+      description: Saved cards. Always `[]` until a payment provider is connected.
       summary: Saved cards (empty until a payment provider is connected)
       tags:
       - App · Orders & payments
@@ -2151,6 +2541,10 @@ paths:
                 $ref: '#/components/schemas/ErrorOut'
     post:
       operationId: v1_app_me_payment_methods_create
+      description: |-
+        Would save a card from the provider's single-use `sourceToken`. Answers `501
+        NOT_IMPLEMENTED` "Saving a card isn’t available in the app yet." until a payment provider is
+        connected.
       summary: 'Save a card (not available yet: 501)'
       tags:
       - App · Orders & payments
@@ -2220,6 +2614,7 @@ paths:
   /api/v1/app/me/payment-methods/{method_id}:
     delete:
       operationId: v1_app_me_payment_methods_destroy
+      description: Removes a saved card. Always `204` (no cards are stored yet).
       summary: Remove a saved card (idempotent)
       parameters:
       - in: path
@@ -2279,6 +2674,9 @@ paths:
   /api/v1/app/me/preferences:
     get:
       operationId: v1_app_me_preferences_retrieve
+      description: |-
+        Home café, dietary preferences, notification categories, privacy/security toggles and avatar
+        (index 0–5 into the app's palette). New customers get the defaults.
       summary: Preferences
       tags:
       - App · Account
@@ -2335,6 +2733,13 @@ paths:
                 $ref: '#/components/schemas/ErrorOut'
     patch:
       operationId: v1_app_me_preferences_partial_update
+      description: |-
+        Updates any subset of the preferences and returns all of them. Merge is top level:
+        `notifications` and `security`, when sent, must be complete objects (all keys) — the app
+        already sends them that way.
+
+        **Errors** — `fields.homeCafeId: "invalid"` "Choose one of our cafés." · `dietary` values
+        must be `gluten_free | dairy_free | vegan | vegetarian` · `avatar` 0–5.
       summary: Update preferences (top-level merge)
       tags:
       - App · Account
@@ -2403,6 +2808,9 @@ paths:
   /api/v1/app/me/reservations:
     get:
       operationId: v1_app_me_reservations_list
+      description: |-
+        The customer's booking requests, newest date first. `requested` → show "Cancel request";
+        `confirmed` → show "Call café"; `cancelled` (also declined/no-show) → no actions.
       summary: My booking requests
       tags:
       - App · Bookings & catering
@@ -2462,6 +2870,9 @@ paths:
   /api/v1/app/menu/categories:
     get:
       operationId: v1_app_menu_categories_list
+      description: |-
+        Menu categories in rail order. `shortName` is the compact rail label. The ids `coffee` and
+        `cold` decide which items earn coffee stamps.
       summary: Menu categories (rail order)
       tags:
       - App · Cafés & menu
@@ -2521,6 +2932,9 @@ paths:
   /api/v1/app/menu/items/{slug}:
     get:
       operationId: v1_app_menu_items_retrieve
+      description: |-
+        One menu item whatever the café (used for favourites and deep links). `404` "That item is no
+        longer on the menu."
       summary: One menu item, whatever the café
       parameters:
       - in: path
@@ -2584,6 +2998,33 @@ paths:
   /api/v1/app/orders:
     post:
       operationId: v1_app_orders_create
+      description: |-
+        Places an order. **The server re-prices every line** from its own menu and charges only the
+        total the customer saw (`expectedTotalCents`).
+
+        Send an `Idempotency-Key` header (the app sends `ord_…`). A retry with the same key and the
+        same body returns the original order (`201`) without charging again; the same key with a
+        different body → `409 CONFLICT`.
+
+        **Pricing**, in integer cents: subtotal → +10% delivery → −free coffee (one unit of the
+        cheapest coffee line, with 9 stamps and `useReward: true`) → +2.95% card surcharge
+        (`saved_card`/`new_card`, never Apple Pay) → −gift card → total. The two rate steps round
+        half-up to a cent.
+
+        **Checks, in order** (first failure returned):
+        1. café takes orders — else `422 LOCATION_UNAVAILABLE` "This café isn’t taking orders yet."
+        2. `method` offered there — "Delivery isn’t offered at Civic."
+        3. `deliveryAddress` for delivery / `tableNumber` for dine-in (`fields…: "required"`)
+        4. at least one line — "Your order is empty."
+        5. every item on this café's menu and not sold out — "An item in your order is no longer available."
+        6. options valid and required groups chosen — "Choose options for {item}."
+        7. server total = `expectedTotalCents` — `409 PRICE_CHANGED` "Your total changed to $X.XX. Please review your order."
+        8. `saved_card` — `422` `fields.paymentMethodId` "Choose a saved card." (no saved cards yet)
+        9. money due — `402 PAYMENT_DECLINED` without a token; **`501 NOT_IMPLEMENTED` until a
+           payment provider is connected**. Orders the gift card fully covers need no token.
+
+        On success the order starts as `received`; stamps are added, a redeemed free coffee resets
+        the card, the gift card is charged and the café inbox is emailed.
       summary: Place an order (server re-prices it; send an Idempotency-Key header)
       parameters:
       - in: header
@@ -2597,6 +3038,73 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/OrderInRequest'
+            examples:
+              Pickup,Card+GiftCard:
+                value:
+                  locationId: braddon
+                  method: pickup
+                  timing:
+                    type: asap
+                  deliveryAddress: null
+                  tableNumber: null
+                  lines:
+                  - itemId: hotcoffee
+                    qty: 1
+                    selections:
+                      drink:
+                      - Flat White
+                      var:
+                      - OAT ADC
+                    note: ''
+                  - itemId: bburger
+                    qty: 1
+                    selections:
+                      style:
+                      - Original
+                    note: No beetroot relish
+                  payment:
+                    choice: new_card
+                    token: <single-use provider token>
+                  useGiftCard: true
+                  useReward: false
+                  contact:
+                    name: Sophie Nguyen
+                    phone: 0400 123 456
+                  expectedTotalCents: 2016
+                summary: Pickup, card + gift card
+              Delivery,ApplePay,FreeCoffee:
+                value:
+                  locationId: braddon
+                  method: delivery
+                  timing:
+                    type: asap
+                  deliveryAddress: 12 Smith St, Braddon ACT 2612
+                  tableNumber: null
+                  lines:
+                  - itemId: hotcoffee
+                    qty: 1
+                    selections:
+                      drink:
+                      - Flat White
+                      var:
+                      - OAT ADC
+                    note: ''
+                  - itemId: bburger
+                    qty: 1
+                    selections:
+                      style:
+                      - Original
+                    note: No beetroot relish
+                  payment:
+                    choice: apple_pay
+                    token: <Apple Pay token>
+                  useGiftCard: false
+                  useReward: true
+                  contact:
+                    name: Sophie Nguyen
+                    phone: 0400 123 456
+                  expectedTotalCents: 2593
+                summary: Delivery, Apple Pay, free coffee
         required: true
       security:
       - jwtAuth: []
@@ -2606,30 +3114,110 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OrderOut'
+              examples:
+                OrderReceived:
+                  value:
+                    id: 4458a402-6f66-47eb-893a-63faa08137eb
+                    number: '#8020-1197'
+                    locationId: braddon
+                    locationName: Braddon
+                    method: pickup
+                    status: received
+                    createdAt: '2026-10-12T08:12:40+11:00'
+                    timing:
+                      type: asap
+                    deliveryAddress: null
+                    tableNumber: null
+                    lines:
+                    - itemId: hotcoffee
+                      name: Milk Based Coffee
+                      qty: 1
+                      unitPriceCents: 630
+                      selections:
+                        drink:
+                        - Flat White
+                        var:
+                        - OAT ADC
+                      modifiersLabel: Flat White, OAT ADC
+                      note: ''
+                    - itemId: bburger
+                      name: Breakfast Burger
+                      qty: 1
+                      unitPriceCents: 2300
+                      selections:
+                        style:
+                        - Original
+                      modifiersLabel: Original
+                      note: No beetroot relish
+                    totals:
+                      subtotalCents: 2930
+                      deliveryCents: 0
+                      rewardCents: 0
+                      surchargeCents: 86
+                      giftCardCents: 1000
+                      totalCents: 2016
+                    paymentLabel: Card + gift card
+                    stampsEarned: 1
+                    rewardRedeemed: false
+                    estimatedWait: 20–25 min
+                  summary: Order received
           description: ''
         '402':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorOut'
+              examples:
+                MissingToken:
+                  value:
+                    error:
+                      code: PAYMENT_DECLINED
+                      message: Payment was not completed.
+                      fields: {}
+                  summary: Missing token
           description: ''
         '409':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorOut'
+              examples:
+                PriceChanged:
+                  value:
+                    error:
+                      code: PRICE_CHANGED
+                      message: Your total changed to $20.16. Please review your order.
+                      fields: {}
+                  summary: Price changed
           description: ''
         '422':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorOut'
+              examples:
+                Coming-soonCafé:
+                  value:
+                    error:
+                      code: LOCATION_UNAVAILABLE
+                      message: This café isn’t taking orders yet.
+                      fields: {}
+                  summary: Coming-soon café
           description: ''
         '501':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorOut'
+              examples:
+                NoPaymentProviderYet:
+                  value:
+                    error:
+                      code: NOT_IMPLEMENTED
+                      message: Card and Apple Pay payments aren’t available in the
+                        app yet. Please order at the café.
+                      fields: {}
+                  summary: No payment provider yet
           description: ''
         '400':
           description: 'App error: {error: {code, message, fields}}'
@@ -2670,6 +3258,15 @@ paths:
   /api/v1/app/orders/{order_id}:
     get:
       operationId: v1_app_orders_retrieve
+      description: |-
+        One of the customer's orders. Poll it while it is live (the app polls every 2 s).
+
+        Status lifecycle: `received → confirmed → preparing → ready → completed`, or `declined`.
+        Café staff may **skip steps** (e.g. `received → ready`); `completed` and `declined` never
+        change again. A decline gives back the gift card amount, stamps earned and a redeemed free
+        coffee.
+
+        `404` "Order not found." — also for another customer's order.
       summary: One order (poll every few seconds while live)
       parameters:
       - in: path
@@ -2687,6 +3284,52 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OrderOut'
+              examples:
+                Order:
+                  value:
+                    id: 4458a402-6f66-47eb-893a-63faa08137eb
+                    number: '#8020-1197'
+                    locationId: braddon
+                    locationName: Braddon
+                    method: pickup
+                    status: ready
+                    createdAt: '2026-10-12T08:12:40+11:00'
+                    timing:
+                      type: asap
+                    deliveryAddress: null
+                    tableNumber: null
+                    lines:
+                    - itemId: hotcoffee
+                      name: Milk Based Coffee
+                      qty: 1
+                      unitPriceCents: 630
+                      selections:
+                        drink:
+                        - Flat White
+                        var:
+                        - OAT ADC
+                      modifiersLabel: Flat White, OAT ADC
+                      note: ''
+                    - itemId: bburger
+                      name: Breakfast Burger
+                      qty: 1
+                      unitPriceCents: 2300
+                      selections:
+                        style:
+                        - Original
+                      modifiersLabel: Original
+                      note: No beetroot relish
+                    totals:
+                      subtotalCents: 2930
+                      deliveryCents: 0
+                      rewardCents: 0
+                      surchargeCents: 86
+                      giftCardCents: 1000
+                      totalCents: 2016
+                    paymentLabel: Card + gift card
+                    stampsEarned: 1
+                    rewardRedeemed: false
+                    estimatedWait: 20–25 min
           description: ''
         '404':
           content:
@@ -2733,6 +3376,11 @@ paths:
   /api/v1/app/orders/quote:
     post:
       operationId: v1_app_orders_quote_create
+      description: |-
+        Optional: prices a cart exactly like `POST /orders` without placing it (same body minus
+        `timing`, `contact`, `expectedTotalCents` and payment token). Use the returned
+        `totals.totalCents` as `expectedTotalCents` to avoid `PRICE_CHANGED` round trips. Same
+        errors as order checks 1–6.
       summary: Price a cart without ordering (optional)
       tags:
       - App · Orders & payments
@@ -2741,6 +3389,30 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/QuoteInRequest'
+            examples:
+              Cart:
+                value:
+                  locationId: braddon
+                  method: pickup
+                  lines:
+                  - itemId: hotcoffee
+                    qty: 1
+                    selections:
+                      drink:
+                      - Flat White
+                      var:
+                      - OAT ADC
+                    note: ''
+                  - itemId: bburger
+                    qty: 1
+                    selections:
+                      style:
+                      - Original
+                    note: No beetroot relish
+                  payment:
+                    choice: new_card
+                  useGiftCard: true
+                  useReward: false
         required: true
       security:
       - jwtAuth: []
@@ -2750,6 +3422,31 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/QuoteOut'
+              examples:
+                ServerTotals:
+                  value:
+                    lines:
+                    - itemId: hotcoffee
+                      name: Milk Based Coffee
+                      qty: 1
+                      unitPriceCents: 630
+                      modifiersLabel: Flat White, OAT ADC
+                    - itemId: bburger
+                      name: Breakfast Burger
+                      qty: 1
+                      unitPriceCents: 2300
+                      modifiersLabel: Original
+                    totals:
+                      subtotalCents: 2930
+                      deliveryCents: 0
+                      rewardCents: 0
+                      surchargeCents: 86
+                      giftCardCents: 1000
+                      totalCents: 2016
+                    rewardAvailable: false
+                    coffeeCount: 1
+                    itemCount: 2
+                  summary: Server totals
           description: ''
         '422':
           content:
@@ -2802,6 +3499,18 @@ paths:
   /api/v1/app/reservations:
     post:
       operationId: v1_app_reservations_create
+      description: |-
+        Sends a table **request**; the café confirms it. Saved in BOS → Bookings; the café inbox and
+        the guest are emailed.
+
+        **Checks, in order** (Canberra time):
+        1. café has confirmed hours — else `422 LOCATION_UNAVAILABLE` "Bookings open when hours are confirmed."
+        2. `date` present and after today — else `422` `fields.date: "invalid"` "Choose a date from tomorrow onwards."
+        3. everything else at once — every failing field (`guests` 1–100, `time`, `name`, `phone`
+           8+ digits, `email`) set to `"invalid"`. The message is the time problem when there is
+           one — "Café is closed on this date", "Café is closed at this time" (last booking 30 min
+           before close), "Bookings need at least 12 hours’ notice" — otherwise "Please check the
+           highlighted fields."
       summary: Request a table (the café confirms it)
       tags:
       - App · Bookings & catering
@@ -2810,6 +3519,19 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/ReservationInRequest'
+            examples:
+              TableRequest:
+                value:
+                  locationId: braddon
+                  date: '2026-10-15'
+                  time: 09:30
+                  guests: 2
+                  seating: outdoor
+                  name: Sophie Nguyen
+                  phone: 0400 123 456
+                  email: sophie@example.com
+                  notes: High chair please
+                summary: Table request
         required: true
       security:
       - jwtAuth: []
@@ -2819,12 +3541,40 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ReservationOut'
+              examples:
+                Requested:
+                  value:
+                    id: 1c9e4f22-0e1f-4b8e-a0c5-0d3b8c1f7a11
+                    locationId: braddon
+                    date: '2026-10-15'
+                    time: 09:30
+                    guests: 2
+                    seating: outdoor
+                    status: requested
+                    createdAt: '2026-10-12T08:20:00+11:00'
           description: ''
         '422':
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorOut'
+              examples:
+                DateTooSoon:
+                  value:
+                    error:
+                      code: VALIDATION
+                      message: Choose a date from tomorrow onwards.
+                      fields:
+                        date: invalid
+                  summary: Date too soon
+                OutsideHours:
+                  value:
+                    error:
+                      code: VALIDATION
+                      message: Café is closed at this time
+                      fields:
+                        time: invalid
+                  summary: Outside hours
           description: ''
         '400':
           description: 'App error: {error: {code, message, fields}}'
@@ -2871,6 +3621,10 @@ paths:
   /api/v1/app/reservations/{booking_id}:
     delete:
       operationId: v1_app_reservations_destroy
+      description: |-
+        Cancels a `requested` booking (`204`) and emails the café. Already cancelled → `204`.
+        Confirmed → `409 CONFLICT` "This booking is already confirmed. Please call the café to change
+        it." Unknown or not yours → `404`.
       summary: Cancel a booking request
       parameters:
       - in: path

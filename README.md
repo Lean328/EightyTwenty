@@ -113,7 +113,7 @@ Trang lỗi: người đã đăng nhập thấy 403/404 ngay trong workspace (c�
 ## Tài liệu bàn giao
 
 - [API cho web/mobile/BOS](docs/API_GUIDE.md): quy ước, endpoint, JSON mẫu, auth, lỗi và upload.
-- [API cho app điện thoại](docs/APP_API.md) (tiếng Anh, bàn giao cho dev app): cách nối, khác biệt với hợp đồng của app, từng endpoint.
+- API cho app điện thoại (tiếng Anh, bàn giao cho dev app), publish tại `/api/docs/app/` (Swagger), `/api/docs/app/redoc/`, `/api/docs/app/schema/` — production: https://eightytwenty-api.onrender.com/api/docs/app/ (xem [docs/APP_API.md](docs/APP_API.md)).
 - [OpenAPI đầy đủ](docs/openapi.yaml): import vào Postman/Insomnia hoặc sinh TypeScript types.
 - [Phân chia công việc và quy tắc code](docs/CONTRIBUTING.md).
 - [Deploy, vận hành và restore](docs/OPERATIONS.md).

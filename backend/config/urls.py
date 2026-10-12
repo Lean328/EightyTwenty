@@ -95,9 +95,15 @@ urlpatterns = [
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
 ]
 if settings.DOCS_ENABLED:
-    urlpatterns.append(
-        path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui")
-    )
+    from apps.mobile import docs as app_docs
+
+    urlpatterns += [
+        path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
+        # The mobile app developer's page: only /api/v1/app, with the guide on top.
+        path("api/docs/app/", app_docs.swagger, name="app-docs"),
+        path("api/docs/app/redoc/", app_docs.redoc, name="app-docs-redoc"),
+        path("api/docs/app/schema/", app_docs.schema, name="app-schema"),
+    ]
 urlpatterns += [
     # Unknown API paths answer in JSON; everything else is the BOS workspace at the root.
     re_path(r"^api/(?P<path>.*)$", core.api_not_found),

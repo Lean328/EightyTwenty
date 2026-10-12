@@ -161,6 +161,13 @@ SPECTACULAR_SETTINGS = {
     "VERSION": "1.0.0",
     "DESCRIPTION": "Shared REST API for the website, mobile app and BOS. Money uses integer AUD cents except public compatibility endpoints. No trailing slash.",
     "SERVE_INCLUDE_SCHEMA": False,
+    "SWAGGER_UI_SETTINGS": {
+        "persistAuthorization": True,
+        "displayRequestDuration": True,
+        "filter": True,
+        "docExpansion": "list",
+        "defaultModelsExpandDepth": -1,
+    },
     "COMPONENT_SPLIT_REQUEST": True,
     "APPEND_COMPONENTS": {
         "securitySchemes": {"JobToken": {"type": "apiKey", "in": "header", "name": "X-Job-Token"}}

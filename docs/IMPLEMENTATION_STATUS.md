@@ -2,7 +2,7 @@
 
 Đã xây dựng backend Phase 1 + auth/customer profile/availability thuộc Phase 1.5, đầy đủ file Python, migration, Django Admin, OpenAPI, seed, CI và cấu hình vận hành. Django Admin nay là một BOS workspace hoàn chỉnh với giao diện tự viết (không còn Jazzmin, 09/10/2026) và dashboard dữ liệu thật. Không thay đổi quyết định payment/POS và không triển khai phase tài chính sau.
 
-Lần kiểm tra gần nhất (10/10/2026): **154 test pass trên PostgreSQL 17**; **186 pass, 3 skip trên SQLite** (12/10/2026, gồm 28 test API app `tests/test_mobile_api.py`) (ba test cần PostgreSQL). Ruff check/format, Django check, migration drift và OpenAPI validate đều qua. `check --deploy` chỉ còn W021 về HSTS preload chưa bật có chủ đích.
+Lần kiểm tra gần nhất (10/10/2026): **154 test pass trên PostgreSQL 17**; **187 pass, 3 skip trên SQLite** (12/10/2026, gồm 29 test API app `tests/test_mobile_api.py`) (ba test cần PostgreSQL). Ruff check/format, Django check, migration drift và OpenAPI validate đều qua. `check --deploy` chỉ còn W021 về HSTS preload chưa bật có chủ đích.
 
 ## Đã xác minh local
 

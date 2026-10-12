@@ -661,3 +661,16 @@ def test_images_are_phone_sized_storage_urls(client, cafe, menu):
     items = {item["id"]: item for item in client.get(f"{BASE}/locations/braddon/menu").json()}
     assert items["hotcoffee"]["imageUrl"] == "https://cdn.test/800.webp"
     assert items["bburger"]["imageUrl"] is None
+
+
+def test_app_docs_page_only_documents_the_app_api(client, db):
+    import yaml
+
+    schema = yaml.safe_load(client.get("/api/docs/app/schema/").content)
+    assert schema["info"]["title"] == "EightyTwenty Mobile App API"
+    assert "Connect the app in 2 minutes" in schema["info"]["description"]
+    paths = set(schema["paths"]) - {"/health"}
+    assert paths and all(path.startswith("/api/v1/app/") for path in paths)
+    assert "Idempotency-Key" in schema["paths"]["/api/v1/app/orders"]["post"]["description"]
+    assert client.get("/api/docs/app/").status_code == 200
+    assert client.get("/api/docs/app/redoc/").status_code == 200
