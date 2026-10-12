@@ -1096,7 +1096,7 @@ class EnquiriesView(AppView):
         enquiry = create_enquiry(
             {
                 "kind": "catering",
-                "name": f"{values['firstName'].strip()} {values['lastName'].strip()}",
+                "name": f"{values['firstName'].strip()} {values['lastName'].strip()}"[:160],
                 "email": values["email"].strip().lower(),
                 "phone": values["phone"].strip(),
                 "company": values["company"].strip(),

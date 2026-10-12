@@ -1,6 +1,7 @@
 import secrets
 
 from django.conf import settings
+from django.core.validators import MaxValueValidator
 from django.db import models
 
 from apps.core.models import BaseModel, ManagedModel
@@ -26,7 +27,9 @@ class LoyaltyCard(ManagedModel):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="loyalty_card"
     )
     member_number = models.CharField(max_length=20, unique=True, default=member_number)
-    stamps = models.PositiveSmallIntegerField(default=0)
+    stamps = models.PositiveSmallIntegerField(
+        default=0, validators=[MaxValueValidator(STAMPS_PER_REWARD)]
+    )
     wallet_pass_added = models.BooleanField(default=False)
 
     class Meta(ManagedModel.Meta):

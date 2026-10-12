@@ -13,7 +13,7 @@ from apps.core.services import audit, snapshot
 from apps.notifications.models import EmailMessage
 from apps.notifications.services import enqueue_email
 
-from .models import CustomerProfile, User
+from .models import CustomerProfile, SavedAddress, User
 
 
 class EmailVerificationTokenGenerator(PasswordResetTokenGenerator):
@@ -89,6 +89,9 @@ def revoke_sessions(user):
 def anonymize(user):
     from apps.bookings.models import Booking
     from apps.enquiries.models import Enquiry
+    from apps.loyalty.models import GiftCardActivity
+    from apps.notifications.models import AppNotification
+    from apps.orders.models import Order, OrderLine
 
     user = User.objects.select_for_update().get(pk=user.pk)
     if user.role != "customer":
@@ -97,23 +100,35 @@ def anonymize(user):
     Booking.objects.filter(customer=user).update(
         name="Deleted customer", email="deleted@example.invalid", phone="", notes="", customer=None
     )
+    removed = {
+        "name": "Deleted customer",
+        "email": "deleted@example.invalid",
+        "phone": "",
+        "company": "",
+        "message": "[removed]",
+        "payload": {},
+        "internal_notes": "",
+    }
     # A verified email is evidence of ownership for guest submissions.
     if user.email_verified:
         Booking.objects.filter(email__iexact=previous_email).update(
             name="Deleted customer", email="deleted@example.invalid", phone="", notes=""
         )
-        Enquiry.objects.filter(email__iexact=previous_email).update(
-            name="Deleted customer",
-            email="deleted@example.invalid",
-            phone="",
-            company="",
-            message="[removed]",
-            payload={},
-            internal_notes="",
-        )
+        Enquiry.objects.filter(email__iexact=previous_email).update(**removed)
+    Enquiry.objects.filter(customer=user).update(**removed, customer=None)
+    # Mobile app data: orders stay for the books, without the personal details.
+    Order.objects.filter(customer=user).update(
+        contact_name="Deleted customer", contact_phone="", delivery_address=""
+    )
+    OrderLine.objects.filter(order__customer=user).update(note="")
+    GiftCardActivity.objects.filter(card__user=user).update(
+        recipient_name="", recipient_email="", message=""
+    )
+    SavedAddress.objects.filter(user=user).delete()
+    AppNotification.objects.filter(user=user).delete()
     EmailMessage.objects.filter(recipient=previous_email).delete()
     CustomerProfile.objects.filter(user=user).update(
-        birthday=None, preferred_location=None, notes=""
+        birthday=None, preferred_location=None, notes="", app_preferences=None, favourite_items=None
     )
     user.email = f"deleted-{user.pk}@example.invalid"
     user.first_name = user.last_name = user.phone = ""

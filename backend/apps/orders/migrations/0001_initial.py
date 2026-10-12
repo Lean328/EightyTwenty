@@ -69,7 +69,7 @@ class Migration(migrations.Migration):
                 ('qty', models.PositiveSmallIntegerField()),
                 ('unit_price_cents', models.PositiveIntegerField(help_text='Item plus selected options.')),
                 ('selections', models.JSONField(blank=True, default=dict)),
-                ('modifiers_label', models.CharField(blank=True, max_length=500)),
+                ('modifiers_label', models.TextField(blank=True)),
                 ('note', models.CharField(blank=True, max_length=500)),
                 ('position', models.PositiveSmallIntegerField(default=0)),
                 ('menu_item', models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL, related_name='+', to='menu.menuitem')),

@@ -192,7 +192,7 @@ class ReservationIn(serializers.Serializer):
     locationId = serializers.CharField(max_length=50)
     date = serializers.CharField(max_length=20, allow_blank=True, required=False, default="")
     time = serializers.CharField(max_length=10, allow_blank=True, required=False, default="")
-    guests = serializers.JSONField(required=False, default=None)
+    guests = serializers.JSONField(required=False, allow_null=True, default=None)
     seating = serializers.ChoiceField(choices=["indoor", "outdoor"], default="indoor")
     name = serializers.CharField(max_length=160, allow_blank=True, required=False, default="")
     phone = serializers.CharField(max_length=32, allow_blank=True, required=False, default="")
@@ -212,7 +212,7 @@ class CateringEnquiryIn(serializers.Serializer):
     occasion = serializers.CharField(max_length=200, allow_blank=True, default="")
     date = serializers.CharField(max_length=20, allow_null=True, allow_blank=True, default=None)
     time = serializers.CharField(max_length=10, allow_null=True, allow_blank=True, default=None)
-    guests = serializers.JSONField(required=False, default=None)
+    guests = serializers.JSONField(required=False, allow_null=True, default=None)
     location = serializers.CharField(max_length=300, allow_blank=True, default="")
     dietary = serializers.ListField(
         child=serializers.ChoiceField(choices=DIETARY_LABELS), max_length=4, default=list

@@ -674,3 +674,155 @@ def test_app_docs_page_only_documents_the_app_api(client, db):
     assert "Idempotency-Key" in schema["paths"]["/api/v1/app/orders"]["post"]["description"]
     assert client.get("/api/docs/app/").status_code == 200
     assert client.get("/api/docs/app/redoc/").status_code == 200
+
+
+# ---------------------------------------------------------------- robustness & query counts
+
+
+def count_queries(callable_):
+    from django.db import connection
+    from django.test.utils import CaptureQueriesContext
+
+    with CaptureQueriesContext(connection) as ctx:
+        response = callable_()
+    assert response.status_code == 200, response.content
+    return len(ctx.captured_queries)
+
+
+def test_lists_do_not_grow_queries_with_rows(app, customer, cafe, menu, settings):
+    settings.PAYMENT_PROVIDER = "demo"
+
+    def place():
+        assert app.post(f"{BASE}/orders", order_body(), format="json").status_code == 201
+
+    place()
+    AppNotification.objects.create(user=customer, kind="order", text="one")
+    app.get(f"{BASE}/me/notifications")  # first call creates the profile row
+    few = {
+        path: count_queries(lambda path=path: app.get(f"{BASE}{path}"))
+        for path in ["/me/orders", "/me/notifications", "/locations/braddon/menu", "/locations"]
+    }
+    for _ in range(6):
+        place()
+        AppNotification.objects.create(user=customer, kind="order", text="more")
+    extra = Category.objects.create(slug="cold", name="Cold Drinks")
+    for n in range(10):
+        item = MenuItem.objects.create(
+            slug=f"iced-{n}",
+            category=extra,
+            name=f"Iced {n}",
+            base_price_cents=600,
+            is_published=True,
+        )
+        MenuItemModifierGroup.objects.create(
+            menu_item=item, modifier_group=ModifierGroup.objects.get(code="var")
+        )
+    Location.objects.create(slug="civic", name="Civic", is_published=True)
+    many = {path: count_queries(lambda path=path: app.get(f"{BASE}{path}")) for path in few}
+    assert many == few
+
+
+def test_admin_order_and_card_lists_do_not_grow_queries(app, customer, cafe, menu, settings):
+    settings.PAYMENT_PROVIDER = "demo"
+    web = Client()
+    web.force_login(UserFactory(is_staff=True, is_superuser=True, role="owner"))
+    urls = [
+        reverse("admin:orders_order_changelist"),
+        reverse("admin:loyalty_loyaltycard_changelist"),
+    ]
+
+    def lists():
+        return [count_queries(lambda url=url: web.get(url)) for url in urls]
+
+    app.post(f"{BASE}/orders", order_body(), format="json")
+    before = lists()
+    for _ in range(5):
+        app.post(f"{BASE}/orders", order_body(), format="json")
+        LoyaltyCard.objects.create(user=UserFactory())
+    assert lists() == before
+
+
+def test_long_inputs_are_stored_without_crashing(app, customer, cafe, menu, settings):
+    settings.PAYMENT_PROVIDER = "demo"
+    extras = ModifierGroup.objects.create(code="many", name="Many", max_select=0)
+    names = [f"A very long modifier option name number {n:02d} " + "x" * 60 for n in range(30)]
+    for name in names:
+        ModifierOption.objects.create(group=extras, name=name)
+    MenuItemModifierGroup.objects.create(
+        menu_item=menu["burger"], modifier_group=extras, sort_order=5
+    )
+    lines = [
+        {"itemId": "bburger", "qty": 1, "selections": {"many": names}, "note": "n" * 500},
+    ]
+    quote = app.post(
+        f"{BASE}/orders/quote",
+        {
+            "locationId": "braddon",
+            "method": "pickup",
+            "lines": lines,
+            "payment": {"choice": "apple_pay"},
+        },
+        format="json",
+    ).json()
+    order = app.post(
+        f"{BASE}/orders",
+        order_body(lines=lines, contact={"name": "c" * 160, "phone": "0" * 32},
+                   expectedTotalCents=quote["totals"]["totalCents"]),
+        format="json",
+    )  # fmt: skip
+    assert order.status_code == 201, order.json()
+    assert len(order.json()["lines"][0]["modifiersLabel"]) > 500
+    CateringPackage.objects.create(slug="lunch", name="Lunch", price_cents=2750)
+    enquiry = {
+        "packageId": "lunch", "firstName": "f" * 80, "lastName": "l" * 80, "email": "sophie@example.com",
+        "phone": "0400 123 456", "company": "c" * 200, "occasion": "o" * 200, "date": None, "time": None,
+        "guests": None, "location": "x" * 300, "dietary": [], "notes": "n" * 5000,
+    }  # fmt: skip
+    sent = app.post(f"{BASE}/catering-enquiries", enquiry, format="json")
+    assert sent.status_code == 201, sent.json()
+    assert (
+        app.post(
+            f"{BASE}/me/addresses", {"label": "home", "line": "a" * 300}, format="json"
+        ).status_code
+        == 201
+    )
+    assert app.patch(f"{BASE}/me", {"name": "n " * 100}, format="json").status_code == 200
+    booking = booking_body(name="n" * 160, notes="x" * 3000, email=("e" * 240) + "@example.com")
+    assert app.post(f"{BASE}/reservations", booking, format="json").status_code == 201
+
+
+def test_anonymizing_a_customer_removes_app_personal_data(app, customer, cafe, menu, settings):
+    from apps.accounts.models import SavedAddress
+    from apps.accounts.services import anonymize
+    from apps.orders.models import OrderLine
+
+    settings.PAYMENT_PROVIDER = "demo"
+    app.post(f"{BASE}/orders", order_body(), format="json")
+    app.post(f"{BASE}/me/addresses", {"label": "home", "line": "1 Main St"}, format="json")
+    AppNotification.objects.create(user=customer, kind="order", text="ready")
+    anonymize(customer)
+    order = Order.objects.get(customer=customer)
+    assert order.contact_name == "Deleted customer" and order.contact_phone == ""
+    assert not OrderLine.objects.filter(order=order).exclude(note="").exists()
+    assert not SavedAddress.objects.filter(user=customer).exists()
+    assert not AppNotification.objects.filter(user=customer).exists()
+
+
+def test_admin_rejects_more_than_nine_stamps_with_a_form_error(customer):
+    card = LoyaltyCard.objects.create(user=customer, stamps=3)
+    web = Client()
+    web.force_login(UserFactory(is_staff=True, is_superuser=True, role="owner"))
+    url = reverse("admin:loyalty_loyaltycard_change", args=[card.pk])
+    inline = {"activity-TOTAL_FORMS": 0, "activity-INITIAL_FORMS": 0}
+    response = web.post(url, {"stamps": 12, **inline})
+    assert response.status_code == 200  # form redisplayed with an error, not a crash
+    card.refresh_from_db()
+    assert card.stamps == 3
+    assert "Ensure this value is less than or equal to 9" in response.content.decode()
+    assert web.post(url, {"stamps": 9, **inline}).status_code == 302
+    card.refresh_from_db()
+    assert card.stamps == 9
+    assert (
+        "free coffee is ready"
+        in AppNotification.objects.filter(user=customer).latest("created_at").text
+    )

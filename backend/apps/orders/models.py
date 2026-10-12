@@ -95,7 +95,7 @@ class OrderLine(BaseModel):
     qty = models.PositiveSmallIntegerField()
     unit_price_cents = models.PositiveIntegerField(help_text="Item plus selected options.")
     selections = models.JSONField(default=dict, blank=True)
-    modifiers_label = models.CharField(max_length=500, blank=True)
+    modifiers_label = models.TextField(blank=True)
     note = models.CharField(max_length=500, blank=True)
     position = models.PositiveSmallIntegerField(default=0)
 

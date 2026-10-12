@@ -36,6 +36,13 @@ def plural(count, word):
     return f"{count} {word}{'' if count == 1 else 's'}"
 
 
+def stamp_message(stamps):
+    to_go = STAMPS_PER_REWARD - stamps
+    if to_go <= 0:
+        return "Your free coffee is ready to redeem."
+    return f"Stamp added — {to_go} more until your free coffee."
+
+
 def card_for(user, lock=False):
     qs = LoyaltyCard.objects.select_for_update() if lock else LoyaltyCard.objects
     card = qs.filter(user=user).first()
@@ -71,14 +78,7 @@ def apply_order(card, gift, order):
             description=f"+{plural(order.stamps_earned, 'stamp')} · order {order.number}",
             location_name=order.location.name,
         )
-        to_go = STAMPS_PER_REWARD - card.stamps
-        notify(
-            order.customer,
-            "loyalty",
-            "Your free coffee is ready to redeem."
-            if to_go == 0
-            else f"Stamp added — {to_go} more until your free coffee.",
-        )
+        notify(order.customer, "loyalty", stamp_message(card.stamps))
     card.save(update_fields=["stamps", "updated_at"])
     if order.gift_card_cents:
         gift.balance_cents = max(0, gift.balance_cents - order.gift_card_cents)
@@ -134,11 +134,7 @@ def record_stamp_change(card, before, location_name="In store"):
             description=f"+{plural(card.stamps - before, 'stamp')} · in store",
             location_name=location_name,
         )
-        notify(
-            card.user,
-            "loyalty",
-            f"Stamp added — {STAMPS_PER_REWARD - card.stamps} more until your free coffee.",
-        )
+        notify(card.user, "loyalty", stamp_message(card.stamps))
     elif card.stamps < before:
         LoyaltyActivity.objects.create(
             card=card,

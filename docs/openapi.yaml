@@ -12503,7 +12503,8 @@ components:
           type: string
           nullable: true
           maxLength: 10
-        guests: {}
+        guests:
+          nullable: true
         location:
           type: string
           default: ''
@@ -16616,7 +16617,8 @@ components:
           type: string
           default: ''
           maxLength: 10
-        guests: {}
+        guests:
+          nullable: true
         seating:
           allOf:
           - $ref: '#/components/schemas/AppSeatingEnum'
