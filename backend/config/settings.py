@@ -23,9 +23,9 @@ SECRET_KEY = env("SECRET_KEY", default=PUBLIC_DEV_KEY)
 # a sign-in. Copy SECRET_KEY from backend/.env to the server instead.
 if not DEBUG and not TESTING and SECRET_KEY == PUBLIC_DEV_KEY:
     raise ImproperlyConfigured("SECRET_KEY is missing: copy it from backend/.env to the server.")
-ALLOWED_HOSTS = env.list("ALLOWED_HOSTS", default=["localhost", "127.0.0.1"])
-if render_host := env("RENDER_EXTERNAL_HOSTNAME", default=""):
-    ALLOWED_HOSTS.append(render_host)
+# Any host name and any browser origin (owner's choice, 16/10/2026): the till, app and website
+# developers call this API from localhost, LAN IPs and preview domains without asking first.
+ALLOWED_HOSTS = ["*"]
 INSTALLED_APPS = [
     "apps.core.admin_site.BOSAdminConfig",
     "django.contrib.auth",
@@ -118,9 +118,7 @@ STORAGES = {
 }
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 APPEND_SLASH = False
-CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
-if DEBUG:  # the static website preview on any local port may call the API
-    CORS_ALLOWED_ORIGIN_REGEXES = [r"^http://(localhost|127\.0\.0\.1)(:\d+)?$"]
+CORS_ALLOW_ALL_ORIGINS = True
 CORS_EXPOSE_HEADERS = ["ETag", "Retry-After"]
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 CSRF_FAILURE_VIEW = "apps.core.views.csrf_failure"

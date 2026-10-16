@@ -21,8 +21,8 @@ VITE_TERMINAL_ID=BRADDON-TILL-1
   slash. Local backend: `http://127.0.0.1:8000`.
 - Send `X-Terminal-Id` on every request (the till already does). It identifies the till's cash shift and is
   stored on every order, payment and record.
-- CORS: the till's production origin must be added to the server's `CORS_ALLOWED_ORIGINS` (ask the backend
-  team with the final URL). `http://localhost:*` works against a local backend.
+- CORS is open to every origin (`Access-Control-Allow-Origin: *`) and any host name is accepted, so the
+  till can call the API from `localhost`, a LAN IP or any preview domain without asking first.
 
 ### Two sign-ins: the device, then the person
 

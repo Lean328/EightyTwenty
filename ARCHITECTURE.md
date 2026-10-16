@@ -394,8 +394,6 @@ Chỉ sửa `web/eightytwenty-data.js` (+ các hàm submit trong `index.html`):
 ```
 SECRET_KEY=
 DEBUG=False
-ALLOWED_HOSTS=eightytwenty-api.onrender.com,api.eightytwentyfood.com.au
-CORS_ALLOWED_ORIGINS=https://eightytwenty3.vercel.app,https://<bos>.vercel.app,https://www.eightytwentyfood.com.au
 DATABASE_URL=postgresql://…pooler.supabase.com:6543/postgres?sslmode=require
 DATABASE_URL_MIGRATIONS=postgresql://…pooler.supabase.com:5432/postgres?sslmode=require
 SUPABASE_URL=
@@ -532,4 +530,5 @@ Website nằm ở `website/` (không phải `web/`), không đổi cấu hình V
 - Đăng nhập 2 lớp: **máy** = tài khoản nhóm quán (JWT `/api/v1/auth/login`), quyết định quán nào; **người** = PIN 4 số (`User.pos_pin`, HMAC theo SECRET_KEY + user id, duy nhất toàn chuỗi, rate limit `pin` 20/phút). Role POS: superuser/owner/admin → admin, manager → manager, staff → cashier (ma trận `pins.ROLES` = `DEFAULT_ROLES` của POS). Server chỉ kiểm quyền theo tài khoản máy; quyền từng người do UI POS áp (lệnh không mang token nhân viên) — giới hạn có chủ đích.
 - `Order` dùng chung cho app và quầy: thêm `channel` (app/pos), `customer` nullable, method `takeaway`, trạng thái `cancelled/refunded/failed`, field quầy (placed_at, tables, discounts, note, staff_name, terminal_id, history, `review_note`), `OrderLine.key/adjust/prep` (void = qty 0, không xóa dòng), `OrderPayment`, `OrderAdjustment`. Mã đơn POS = `number` (≤40, phải duy nhất toàn hệ thống; khuyến nghị tiền tố terminal). App vẫn chỉ thấy đơn `channel=app`, trạng thái mới hiện thành `declined`.
 - **Đơn quầy không bị từ chối vì giá**: quầy bán theo menu đã tải; server chỉ chặn khi tổng không khớp (Σ giá × SL − giảm + phí giao, lệch ≤1¢), còn lệch giá/món lạ/món hết → ghi `review_note` cho quản lý xem trong BOS.
+- Host và CORS mở hoàn toàn (`ALLOWED_HOSTS = ["*"]`, `CORS_ALLOW_ALL_ORIGINS = True`, 16/10/2026) theo định hướng "mì ăn liền" của chủ dự án: API dùng bearer token, không dùng cookie, nên không cần danh sách origin.
 - Chưa làm (giai đoạn 2+): khách hàng + tích dấu tại quầy, đặt bàn/catering từ POS, bật/tắt còn-hết + giá từ POS, nhân viên/role/settings từ POS, gift card Square, kho, khuyến mãi, bàn (cấu hình), hóa đơn điện tử, máy quẹt thẻ/máy in (ở thiết bị).

@@ -19,8 +19,6 @@ services:
         value: "False"
       - key: TRUSTED_PROXY_COUNT
         value: "1"
-      - key: CORS_ALLOWED_ORIGINS
-        value: https://eightytwenty3.vercel.app,https://www.eightytwentyfood.com.au
       - key: DATABASE_URL
         sync: false
       - key: DATABASE_URL_MIGRATIONS

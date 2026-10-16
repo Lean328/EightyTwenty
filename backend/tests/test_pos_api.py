@@ -536,3 +536,15 @@ def test_bos_pages_show_till_orders_shifts_and_transactions(till, cafe, menu):
         assert browser.get(reverse(f"admin:{name}_changelist")).status_code == 200
     shift = CashShift.objects.get()
     assert browser.get(reverse("admin:pos_cashshift_change", args=[shift.pk])).status_code == 200
+
+
+def test_any_origin_and_host_may_call_the_api(client, settings):
+    settings.ALLOWED_HOSTS = ["*"]
+    response = client.options(
+        f"{BASE}/locations",
+        HTTP_ORIGIN="http://192.168.1.20:5173",
+        HTTP_ACCESS_CONTROL_REQUEST_METHOD="GET",
+        HTTP_HOST="pos-preview.example.net",
+    )
+    assert response.status_code == 200
+    assert response["access-control-allow-origin"] == "*"

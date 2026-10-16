@@ -927,10 +927,7 @@ def system_view(site):
             facts=[
                 ("Menu version", settings_row.menu_version if settings_row else "—"),
                 ("Website", settings.CLIENT_BASE_URL),
-                (
-                    "Allowed origins",
-                    ", ".join(settings.CORS_ALLOWED_ORIGINS) or "Local development",
-                ),
+                ("Allowed origins", "Any (all browser origins may call the API)"),
                 ("Time zone", settings.TIME_ZONE),
                 ("Django", django.get_version()),
                 ("Python", platform.python_version()),
