@@ -14,6 +14,10 @@ SHIFT_STATUSES = ["open", "closed"]
 MOVE_TYPES = ["in", "out"]
 ADJUSTMENT_MODES = ["cancel", "void", "refund"]
 SPLIT_MODES = ["full", "equal", "items", "amount"]
+RESERVATION_STATUSES = ["pending", "confirmed", "completed", "cancelled"]
+CATERING_STATUSES = ["enquiry", "quoted", "confirmed", "delivered", "cancelled"]
+CHANNELS = ["pos", "web", "app"]
+ORDER_CHANNELS = ["pos", "app"]
 
 
 def text(max_length, **kwargs):
@@ -86,7 +90,7 @@ class PosPaymentIn(serializers.Serializer):
 
 class PosOrderIn(serializers.Serializer):
     id = serializers.CharField(max_length=40, help_text="Unique across every till and the app.")
-    channel = serializers.ChoiceField(choices=["pos", "web", "app"])
+    channel = serializers.ChoiceField(choices=CHANNELS)
     type = serializers.ChoiceField(choices=ORDER_TYPES)
     status = serializers.ChoiceField(choices=TILL_STATUSES, required=False, default="new")
     accepted = serializers.BooleanField(required=False)
@@ -221,6 +225,76 @@ class PosAuditIn(serializers.Serializer):
     cafe = serializers.CharField(max_length=50)
 
 
+class PosCustomerPatchIn(serializers.Serializer):
+    name = serializers.CharField(max_length=200, required=False, allow_blank=True)
+    phone = serializers.CharField(max_length=32, required=False, allow_blank=True)
+    email = serializers.EmailField(required=False, allow_blank=True)
+    homeCafe = serializers.CharField(max_length=50, required=False, allow_blank=True)
+    dietary = serializers.ListField(child=serializers.CharField(max_length=60), required=False)
+    notes = serializers.CharField(max_length=2000, required=False, allow_blank=True)
+
+
+class PosLoyaltyIn(serializers.Serializer):
+    stamps = serializers.IntegerField(min_value=0, max_value=99)
+    rewards = serializers.IntegerField(min_value=0, max_value=99)
+    reason = text(200)
+
+
+class PosSoldOutIn(serializers.Serializer):
+    soldOut = serializers.BooleanField()
+
+
+class PosAvailabilityIn(serializers.Serializer):
+    available = serializers.BooleanField()
+
+
+class PosReservationIn(serializers.Serializer):
+    id = serializers.CharField(max_length=20, help_text="Booking reference (the till's id).")
+    cafe = serializers.CharField(max_length=50)
+    date = serializers.DateField()
+    time = serializers.TimeField(format="%H:%M")
+    guests = serializers.IntegerField(min_value=1, max_value=200)
+    name = serializers.CharField(max_length=160)
+    phone = text(32)
+    email = serializers.EmailField(required=False, allow_blank=True, default="")
+    notes = text(2000)
+    status = serializers.ChoiceField(choices=RESERVATION_STATUSES)
+    customerId = serializers.CharField(
+        max_length=60, required=False, allow_null=True, allow_blank=True
+    )
+    seating = serializers.CharField(max_length=7, required=False, allow_blank=True)
+    table = serializers.CharField(max_length=20, required=False, allow_blank=True)
+    source = serializers.CharField(max_length=10, required=False, allow_blank=True)
+    extRef = serializers.CharField(max_length=40, required=False, allow_blank=True)
+
+
+class PosCateringIn(serializers.Serializer):
+    id = serializers.CharField(max_length=20, help_text="Enquiry reference (the till's id).")
+    packageId = text(120, help_text="Package name, as in the snapshot's cateringPackages.")
+    guests = serializers.IntegerField(min_value=0, max_value=10_000, required=False, default=0)
+    date = text(10, help_text="YYYY-MM-DD")
+    time = text(5)
+    fulfil = serializers.ChoiceField(choices=["delivery", "pickup"], required=False)
+    address = text(300)
+    cafe = text(50)
+    name = serializers.CharField(max_length=160)
+    contact = text(200)
+    email = serializers.EmailField(required=False, allow_blank=True, default="")
+    phone = text(32)
+    occasion = text(120)
+    dietary = serializers.ListField(
+        child=serializers.CharField(max_length=60), required=False, default=list
+    )
+    notes = text(4000)
+    quote = dollars(required=False, default=0)
+    status = serializers.ChoiceField(choices=CATERING_STATUSES)
+    customerId = serializers.CharField(
+        max_length=60, required=False, allow_null=True, allow_blank=True
+    )
+    source = serializers.CharField(max_length=10, required=False, allow_blank=True)
+    extRef = serializers.CharField(max_length=40, required=False, allow_blank=True)
+
+
 # ---------------------------------------------------------------- responses
 
 
@@ -332,7 +406,7 @@ class PosHistoryOut(serializers.Serializer):
 
 class PosOrderOut(serializers.Serializer):
     id = serializers.CharField(help_text="Order number, e.g. #8020-4471 (app) or PHL1-0042 (till).")
-    channel = serializers.ChoiceField(choices=["pos", "app"])
+    channel = serializers.ChoiceField(choices=ORDER_CHANNELS)
     type = serializers.ChoiceField(choices=ORDER_TYPES)
     status = serializers.ChoiceField(choices=TILL_STATUSES)
     accepted = serializers.BooleanField(help_text="false = app order waiting for the café.")
@@ -393,6 +467,63 @@ class PosShiftOut(serializers.Serializer):
     approvedBy = serializers.CharField(required=False)
 
 
+class PosCustomerOut(serializers.Serializer):
+    id = serializers.CharField()
+    name = serializers.CharField()
+    phone = serializers.CharField(allow_blank=True)
+    email = serializers.CharField()
+    stamps = serializers.IntegerField(help_text="0–8 towards the next free coffee.")
+    rewards = serializers.IntegerField(help_text="1 when a free coffee is ready (9 stamps).")
+    homeCafe = serializers.CharField(allow_blank=True)
+    dietary = serializers.ListField(child=serializers.CharField())
+    notes = serializers.CharField(allow_blank=True)
+    since = serializers.CharField(help_text="Month joined, e.g. Mar 2024.")
+    wallet = serializers.BooleanField()
+    visits = serializers.IntegerField()
+    spend = serializers.FloatField(help_text="Lifetime order totals, AUD.")
+    lastDays = serializers.IntegerField(help_text="Days since the last order (999 = never).")
+
+
+class PosReservationOut(serializers.Serializer):
+    id = serializers.CharField()
+    cafe = serializers.CharField()
+    date = serializers.CharField()
+    time = serializers.CharField()
+    guests = serializers.IntegerField()
+    name = serializers.CharField()
+    phone = serializers.CharField(allow_blank=True)
+    email = serializers.CharField(allow_blank=True)
+    notes = serializers.CharField(allow_blank=True)
+    status = serializers.ChoiceField(choices=RESERVATION_STATUSES)
+    source = serializers.ChoiceField(choices=CHANNELS)
+    customerId = serializers.CharField(required=False)
+    seating = serializers.CharField(required=False)
+    extRef = serializers.CharField(required=False)
+
+
+class PosCateringOut(serializers.Serializer):
+    id = serializers.CharField()
+    packageId = serializers.CharField(allow_blank=True)
+    guests = serializers.IntegerField()
+    date = serializers.CharField(allow_blank=True)
+    time = serializers.CharField(allow_blank=True)
+    fulfil = serializers.ChoiceField(choices=["delivery", "pickup"])
+    address = serializers.CharField(allow_blank=True)
+    cafe = serializers.CharField(allow_blank=True)
+    name = serializers.CharField()
+    contact = serializers.CharField(allow_blank=True)
+    email = serializers.CharField(allow_blank=True)
+    phone = serializers.CharField(allow_blank=True)
+    occasion = serializers.CharField(allow_blank=True)
+    dietary = serializers.ListField(child=serializers.CharField())
+    notes = serializers.CharField(allow_blank=True)
+    quote = serializers.FloatField()
+    status = serializers.ChoiceField(choices=CATERING_STATUSES)
+    source = serializers.ChoiceField(choices=CHANNELS)
+    customerId = serializers.CharField(required=False)
+    extRef = serializers.CharField(required=False)
+
+
 class PosOkOut(serializers.Serializer):
     ok = serializers.BooleanField()
 
@@ -414,10 +545,10 @@ class PosSnapshotOut(serializers.Serializer):
     stock = serializers.ListField(child=serializers.DictField(), help_text="Not yet: [].")
     stockLog = serializers.ListField(child=serializers.DictField(), help_text="Not yet: [].")
     orders = PosOrderOut(many=True)
-    customers = serializers.ListField(child=serializers.DictField(), help_text="Phase 2: [].")
-    giftCards = serializers.ListField(child=serializers.DictField(), help_text="Phase 2: [].")
-    reservations = serializers.ListField(child=serializers.DictField(), help_text="Phase 2: [].")
-    catering = serializers.ListField(child=serializers.DictField(), help_text="Phase 2: [].")
+    customers = PosCustomerOut(many=True)
+    giftCards = serializers.ListField(child=serializers.DictField(), help_text="Not yet: [].")
+    reservations = PosReservationOut(many=True)
+    catering = PosCateringOut(many=True)
     staff = PosStaffOut(many=True)
     roles = serializers.DictField()
     settings = serializers.DictField()

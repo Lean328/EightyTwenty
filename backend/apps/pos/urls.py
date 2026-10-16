@@ -25,4 +25,12 @@ urlpatterns = [
     path("shifts/<str:shift_id>/moves", v.ShiftMovesView.as_view()),
     path("transactions", v.TransactionsView.as_view()),
     path("audit", v.AuditView.as_view()),
+    path("customers/<str:customer_id>", v.CustomerView.as_view()),
+    path("customers/<str:customer_id>/loyalty", v.CustomerLoyaltyView.as_view()),
+    path("items/<str:item_id>/sold-out", v.SoldOutView.as_view()),
+    path(
+        "locations/<slug:slug>/items/<str:item_id>/availability", v.CafeAvailabilityView.as_view()
+    ),
+    path("reservations/<str:reservation_id>", v.ReservationView.as_view()),
+    path("catering/<str:enquiry_id>", v.CateringView.as_view()),
 ]

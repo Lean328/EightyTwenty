@@ -313,3 +313,43 @@ SNAPSHOT = [
         },
     )
 ]
+
+LOYALTY = [
+    request(
+        "Stamp at the counter", {"stamps": 4, "rewards": 0, "reason": "Order BRADDON-TILL-1-0042"}
+    ),
+    request("Free coffee ready", {"stamps": 0, "rewards": 1, "reason": "Manual stamp"}),
+]
+
+RESERVATION = [
+    request(
+        "Walk-in booking made at the till",
+        {
+            "id": "rK2M9QZ1A",
+            "cafe": "braddon",
+            "date": "2026-10-18",
+            "time": "09:30",
+            "guests": 4,
+            "name": "Hannah Lee",
+            "phone": "0412 345 678",
+            "notes": "High chair",
+            "status": "confirmed",
+        },
+    ),
+    response(
+        "Stored",
+        {
+            "id": "rK2M9QZ1A",
+            "cafe": "braddon",
+            "date": "2026-10-18",
+            "time": "09:30",
+            "guests": 4,
+            "name": "Hannah Lee",
+            "phone": "0412 345 678",
+            "email": "",
+            "notes": "High chair",
+            "status": "confirmed",
+            "source": "pos",
+        },
+    ),
+]

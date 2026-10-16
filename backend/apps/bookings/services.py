@@ -122,12 +122,13 @@ def update_booking(booking, changes, request):
     booking.save()
     audit(request, booking, before)
     if changed_status:
-        enqueue_email(
-            booking.email,
-            f"Booking {booking.reference}: {new_status}",
-            f"Your booking at {booking.location.name} on {booking.date} at {booking.time} is now {new_status}.",
-            f"booking-{booking.pk}-{new_status}",
-        )
+        if booking.email:  # bookings taken at the till may have no email
+            enqueue_email(
+                booking.email,
+                f"Booking {booking.reference}: {new_status}",
+                f"Your booking at {booking.location.name} on {booking.date} at {booking.time} is now {new_status}.",
+                f"booking-{booking.pk}-{new_status}",
+            )
         if text := app_message(booking):
             notify(booking.customer, "booking", text)
     return booking

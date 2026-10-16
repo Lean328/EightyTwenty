@@ -4,24 +4,35 @@ prices are AUD dollars (numbers); payments, refunds and cash are integer cents. 
 ids are the website slugs ("braddon", "mighty").
 """
 
+from collections import defaultdict
 from datetime import timedelta
 
-from django.db.models import Count, F, Q, Sum
+from django.db.models import Count, F, Max, Q, Sum
 from django.db.models.functions import Coalesce, TruncDate
 from django.utils import timezone
 
+from apps.bookings.models import Booking
 from apps.core.models import AuditLog, SiteSettings
 from apps.core.public_services import categories_data, locations_data
 from apps.enquiries.models import CateringPackage
 from apps.loyalty import services as loyalty
 from apps.loyalty.models import STAMPS_PER_REWARD
 from apps.menu.catalog import menu_items
+from apps.menu.models import LocationMenuItem
 from apps.orders import services as order_services
 from apps.orders.models import Order, OrderLine, OrderPayment
 
 from . import pins
 from .models import CashShift
-from .services import AUDIT_TYPE, LIVE, TO_TILL, till_locations
+from .services import (
+    AUDIT_TYPE,
+    LIVE,
+    TO_TILL,
+    catering_scope,
+    customers,
+    till_balance,
+    till_locations,
+)
 
 TILL_TYPE = {
     "dine_in": "dinein",
@@ -158,6 +169,154 @@ def team(location):
         .order_by("first_name", "email")
     )
     return [staff_member(user, location.slug) for user in people]
+
+
+# ---------------------------------------------------------------- customers, bookings, catering
+
+
+def related(obj, name):
+    """A reverse one-to-one that may not exist yet (profile, coffee card)."""
+    try:
+        return getattr(obj, name)
+    except AttributeError:  # RelatedObjectDoesNotExist is an AttributeError
+        return None
+
+
+def customer(user, stats=None):
+    profile, card = related(user, "profile"), related(user, "loyalty_card")
+    stamps, rewards = till_balance(card)
+    stats = stats or {}
+    last = stats.get("last")
+    home = profile.preferred_location if profile else None
+    return {
+        "id": str(user.pk),
+        "name": person(user),
+        "phone": user.phone,
+        "email": user.email,
+        "stamps": stamps,
+        "rewards": rewards,
+        "homeCafe": home.slug if home else "",
+        "dietary": list(((profile.app_preferences or {}) if profile else {}).get("dietary", [])),
+        "notes": profile.notes if profile else "",
+        "since": local(user.date_joined).strftime("%b %Y"),
+        "wallet": bool(card and card.wallet_pass_added),
+        "visits": stats.get("visits", 0),
+        "spend": dollars(stats.get("spend") or 0),
+        "lastDays": (timezone.localdate() - local(last).date()).days if last else 999,
+    }
+
+
+def customer_list(limit=2000):
+    standing = Order.objects.filter(customer__isnull=False).exclude(
+        status__in=[*order_services.CLOSED, "received"]
+    )
+    stats = {
+        row["customer_id"]: row
+        for row in standing.values("customer_id").annotate(
+            visits=Count("id"), spend=Sum("total_cents"), last=Max("created_at")
+        )
+    }
+    people = (
+        customers()
+        .select_related("profile__preferred_location", "loyalty_card")
+        .order_by("-date_joined")[:limit]
+    )
+    return [customer(user, stats.get(user.pk)) for user in people]
+
+
+BOOKING_TO_TILL = {
+    "requested": "pending",
+    "confirmed": "confirmed",
+    "seated": "completed",
+    "declined": "cancelled",
+    "cancelled": "cancelled",
+    "no_show": "cancelled",
+}
+SOURCE_TO_TILL = {"web": "web", "app": "app", "staff": "pos"}
+
+
+def reservation(row):
+    data = {
+        "id": row.reference,
+        "cafe": row.location.slug,
+        "date": row.date.isoformat(),
+        "time": row.time.strftime("%H:%M"),
+        "guests": row.party_size,
+        "name": row.name,
+        "phone": row.phone,
+        "email": row.email,
+        "notes": row.notes,
+        "status": BOOKING_TO_TILL[row.status],
+        "source": SOURCE_TO_TILL.get(row.source, "web"),
+    }
+    if row.customer_id:
+        data["customerId"] = str(row.customer_id)
+    if row.seating:
+        data["seating"] = row.seating
+    if row.source != "staff":
+        data["extRef"] = row.reference
+    return data
+
+
+ENQUIRY_TO_TILL = {
+    "new": "enquiry",
+    "in_progress": "enquiry",
+    "quoted": "quoted",
+    "won": "confirmed",
+    "closed": "delivered",
+    "lost": "cancelled",
+}
+
+
+def catering_enquiry(row):
+    extra = row.payload or {}
+    package = row.package
+    quote = extra.get("quote") or (
+        dollars(package.price_cents * (row.headcount or 0)) if package else 0
+    )
+    source = "pos" if extra.get("source") == "pos" else "app" if row.customer_id else "web"
+    data = {
+        "id": row.reference,
+        "packageId": package.name if package else "",
+        "guests": row.headcount or 0,
+        "date": row.event_date.isoformat() if row.event_date else "",
+        "time": extra.get("time", ""),
+        "fulfil": extra.get("fulfil") or "pickup",
+        "address": extra.get("address", ""),
+        "cafe": row.location.slug if row.location else "",
+        "name": row.name,
+        "contact": extra.get("contact") or row.phone,
+        "email": row.email,
+        "phone": row.phone,
+        "occasion": extra.get("occasion", ""),
+        "dietary": extra.get("dietary") or [],
+        "notes": row.message,
+        "quote": quote,
+        "status": ENQUIRY_TO_TILL[row.status],
+        "source": source,
+    }
+    if row.customer_id:
+        data["customerId"] = str(row.customer_id)
+    if source != "pos":
+        data["extRef"] = row.reference
+    return data
+
+
+def availability(user, location, unavailable_here):
+    """Sold out at every café of this account → soldOut; only here → branchOff."""
+    cafes = list(till_locations(user).exclude(status="tbc").values_list("pk", flat=True))
+    off = defaultdict(set)
+    rows = LocationMenuItem.objects.filter(location_id__in=cafes, is_available=False)
+    for cafe, slug in rows.values_list("location_id", "menu_item__slug"):
+        off[cafe].add(slug)
+    everywhere = set.intersection(*(off[cafe] for cafe in cafes)) if cafes else set()
+    return {
+        "soldOut": [slug for slug in unavailable_here if slug in everywhere],
+        "branchOff": {location.slug: [slug for slug in unavailable_here if slug not in everywhere]},
+        "unavailableMods": [],
+        "prices": {},
+        "lastPushedAt": local(SiteSettings.load().updated_at).isoformat(),
+    }
 
 
 # ---------------------------------------------------------------- orders
@@ -463,6 +622,24 @@ def snapshot(user, location, terminal):
         if terminal
         else None
     )
+    today_date = timezone.localdate()
+    bookings = (
+        Booking.objects.filter(
+            location=location,
+            date__range=(today_date - timedelta(days=2), today_date + timedelta(days=30)),
+        )
+        .select_related("location")
+        .order_by("date", "time")
+    )
+    enquiries = (
+        catering_scope(user)
+        .filter(
+            Q(created_at__date__gte=today_date - timedelta(days=90))
+            | Q(event_date__gte=today_date - timedelta(days=7))
+        )
+        .select_related("location", "package")
+        .order_by("-created_at")[:200]
+    )
     audit_rows = AuditLog.objects.filter(
         entity_type=AUDIT_TYPE, after__cafe=location.slug
     ).order_by("-created_at")[:100]
@@ -473,20 +650,14 @@ def snapshot(user, location, terminal):
         "cateringPackages": catering(),
         "tables": [],
         "promotions": [],
-        "availability": {
-            "soldOut": [],
-            "branchOff": {location.slug: unavailable},
-            "unavailableMods": [],
-            "prices": {},
-            "lastPushedAt": local(SiteSettings.load().updated_at).isoformat(),
-        },
+        "availability": availability(user, location, unavailable),
         "stock": [],
         "stockLog": [],
         "orders": [order(row) for row in orders],
-        "customers": [],
+        "customers": customer_list(),
         "giftCards": [],
-        "reservations": [],
-        "catering": [],
+        "reservations": [reservation(row) for row in bookings],
+        "catering": [catering_enquiry(row) for row in enquiries],
         "staff": team(location),
         "roles": pins.ROLES,
         "settings": settings_data(),

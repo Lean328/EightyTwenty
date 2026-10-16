@@ -24,6 +24,10 @@ TAGS = [
     },
     {"name": "POS · Payments & refunds", "description": "Tenders, refunds, voids, cancellations."},
     {"name": "POS · Cash & records", "description": "Cash shifts, transaction records, audit."},
+    {
+        "name": "POS · Customers & bookings",
+        "description": "Customers, coffee cards, sold out, reservations, catering.",
+    },
 ]
 
 schema = SpectacularAPIView.as_view(

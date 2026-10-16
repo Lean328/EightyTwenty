@@ -27,12 +27,13 @@ from . import presenters as p
 from . import serializers as s
 from .models import CommandReceipt
 
-DEVICE, START, ORDERS, MONEY, CASH = (
+DEVICE, START, ORDERS, MONEY, CASH, GUESTS = (
     "POS · Device & staff",
     "POS · Start-up & catalogue",
     "POS · Orders & kitchen",
     "POS · Payments & refunds",
     "POS · Cash & records",
+    "POS · Customers & bookings",
 )
 IDEMPOTENCY = OpenApiParameter(
     "Idempotency-Key",
@@ -216,15 +217,19 @@ class SnapshotView(PosView):
         - `menu`: **this café's** menu at its prices, website shape (`price` and option prices in
           AUD). `img` is the website path (`img/menu-original/…webp`, which the till maps to its
           own `img-pos/…jpg`), or an absolute URL for photos added later in BOS.
-        - `availability.branchOff[cafe]`: items marked sold out at this café.
         - `orders`: this café's orders from today plus every order still live (app orders
           included, `channel: "app"`).
         - `staff`: people with a till PIN who work here (and chain-wide accounts).
         - `currentShift`: the open cash shift of this till (`X-Terminal-Id`), else `null`.
         - `reports`: last 7 days / 4 weeks from real orders (gross totals).
+        - `customers`: the app's customers (newest 2,000) with their coffee card as stamps/rewards.
+        - `reservations`: this café's bookings from 2 days ago to 30 days ahead (all sources).
+        - `catering`: catering enquiries for this account's cafés (or with no café) from the last
+          90 days or still to come.
+        - `availability.soldOut`: sold out at every café of this account; `branchOff[cafe]`: here.
 
         Not connected yet and therefore empty: `tables`, `promotions`, `stock`, `stockLog`,
-        `customers`, `giftCards`, `reservations`, `catering`.
+        `giftCards`.
         """
         cafe = request.query_params.get("cafe")
         location = (
@@ -503,3 +508,127 @@ class AuditView(PosView):
         """
         services.append_audit(request, self.valid(s.PosAuditIn))
         return Response({"ok": True})
+
+
+# ---------------------------------------------------------------- customers & bookings
+
+
+class CustomerView(PosView):
+    @doc(GUESTS, "Edit a customer", s.PosCustomerPatchIn, {200: s.PosCustomerOut}, (404, 409), True)
+    @idempotent
+    def put(self, request, customer_id):
+        """
+        `CustomersService.update` with the fields the till edits: `name`, `phone`, `email`,
+        `homeCafe`, `dietary`, `notes` (any subset). Customers are the app's customer accounts,
+        shared across cafés; an email another customer uses → `409 CONFLICT`.
+        """
+        data = self.valid(s.PosCustomerPatchIn)
+        customer = services.customer_for(customer_id)
+        services.update_customer(request, customer, data)
+        return Response(s.PosCustomerOut(p.customer(customer)).data)
+
+
+class CustomerLoyaltyView(PosView):
+    @doc(
+        GUESTS,
+        "Set a customer's coffee card",
+        s.PosLoyaltyIn,
+        {200: s.PosCustomerOut},
+        (404,),
+        True,
+        examples=X.LOYALTY,
+    )
+    @idempotent
+    def put(self, request, customer_id):
+        """
+        `LoyaltyService.setBalance`: the card after a stamp at the counter, a free coffee redeemed
+        or a refund. This is the **same card as the app** (9 stamps → the 10th coffee is free):
+        `rewards ≥ 1` = a full card (free coffee ready), otherwise `stamps` (0–8). A card holds one
+        free coffee at a time, so the till never sees `rewards` above 1. The customer sees the
+        change in the app's card history and feed.
+        """
+        data = self.valid(s.PosLoyaltyIn)
+        customer = services.customer_for(customer_id)
+        services.set_card_balance(request, customer, data["stamps"], data["rewards"])
+        return Response(s.PosCustomerOut(p.customer(customer)).data)
+
+
+class SoldOutView(PosView):
+    @doc(GUESTS, "Sold out at every café", s.PosSoldOutIn, {200: s.PosOkOut}, (404,), True)
+    @idempotent
+    def put(self, request, item_id):
+        """
+        `CatalogService.setSoldOut`: marks an item sold out (or back on sale) at **every café
+        this till account works at** — for a café team account, that is its own café. Website,
+        app and BOS Availability board show it at once.
+        """
+        data = self.valid(s.PosSoldOutIn)
+        services.set_sold_out(request, item_id, data["soldOut"])
+        return Response({"ok": True})
+
+
+class CafeAvailabilityView(PosView):
+    @doc(
+        GUESTS,
+        "On / off the menu at one café",
+        s.PosAvailabilityIn,
+        {200: s.PosOkOut},
+        (404,),
+        True,
+    )
+    @idempotent
+    def put(self, request, slug, item_id):
+        """`CatalogService.setBranchAvailability` for one café (`available: false` = sold out there)."""
+        data = self.valid(s.PosAvailabilityIn)
+        services.set_cafe_availability(request, slug, item_id, data["available"])
+        return Response({"ok": True})
+
+
+class ReservationView(PosView):
+    @doc(
+        GUESTS,
+        "Create or update a reservation",
+        s.PosReservationIn,
+        {200: s.PosReservationOut},
+        (404, 409, 422),
+        True,
+        examples=X.RESERVATION,
+    )
+    @idempotent
+    def put(self, request, reservation_id):
+        """
+        `ReservationsService.upsert`: the same bookings the website and app create (BOS →
+        Bookings). An unknown `id` creates a booking made by the café (no booking rules applied,
+        no email); a known one is updated.
+
+        Status: `pending` (requested) → `confirmed` → `completed` (seated), or `cancelled`. The
+        guest is emailed (when there is an email) and app customers get a feed line on each
+        change, as in BOS. A finished booking (seated, cancelled, declined, no-show) can't move
+        again → `409`. `table` is not stored yet.
+        """
+        data = self.valid(s.PosReservationIn)
+        booking = services.upsert_reservation(request, reservation_id, data)
+        return Response(s.PosReservationOut(p.reservation(booking)).data)
+
+
+class CateringView(PosView):
+    @doc(
+        GUESTS,
+        "Create or update a catering enquiry",
+        s.PosCateringIn,
+        {200: s.PosCateringOut},
+        (404, 409, 422),
+        True,
+    )
+    @idempotent
+    def put(self, request, enquiry_id):
+        """
+        `CateringService.upsert`: the same catering enquiries the website and app send (BOS →
+        Enquiries). Unknown `id` → created; known → updated. Status `enquiry` ↔ new / in
+        progress, `quoted`, `confirmed` (won), `delivered` (closed), `cancelled` (lost).
+        `packageId` is the package name; time, fulfilment, address, contact, dietary, occasion and
+        quote are kept with the enquiry.
+        """
+        data = self.valid(s.PosCateringIn)
+        enquiry = services.upsert_catering(request, enquiry_id, data)
+        return Response(s.PosCateringOut(p.catering_enquiry(enquiry)).data)

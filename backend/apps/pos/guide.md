@@ -64,15 +64,20 @@ token, so the server records who did what from the names in the payload (`by`, `
 | `records.appendAudit(entry)` | `POST /api/v1/pos/audit` | ✅ |
 | `staffAuth.verifyPin(pin)` | `POST /api/v1/pos/staff/verify-pin` | ✅ `204` = not recognised → `null` |
 | `#backend-check`: locations, categories, menu | `GET /api/v1/pos/locations`, `…/locations/{slug}/categories`, `…/locations/{slug}/menu` | ✅ same shapes as `posCatalog.ts` / `posMapping.ts` |
-| `catalog.*` (sold out, price, modifiers, category order, stock) | — | ⏳ phase 2: `404` today. Sold out is set in BOS → Availability board meanwhile |
-| `customers.update`, `loyalty.setBalance`, `loyalty.updateSettings` | — | ⏳ phase 2 (`404`) |
-| `reservations.upsert`, `catering.upsert` | — | ⏳ phase 2 (`404`); handled in BOS meanwhile |
+| `customers.update(id, patch)` | `PUT /api/v1/pos/customers/{id}` | ✅ app customer accounts |
+| `loyalty.setBalance(id, balance, reason)` | `PUT /api/v1/pos/customers/{id}/loyalty` | ✅ same card as the app (section 5) |
+| `catalog.setSoldOut(itemId, soldOut)` | `PUT /api/v1/pos/items/{itemId}/sold-out` | ✅ every café of this account |
+| `catalog.setBranchAvailability(cafe, itemId, available)` | `PUT /api/v1/pos/locations/{cafe}/items/{itemId}/availability` | ✅ |
+| `reservations.upsert(r)` | `PUT /api/v1/pos/reservations/{id}` | ✅ same bookings as website/app/BOS |
+| `catering.upsert(e)` | `PUT /api/v1/pos/catering/{id}` | ✅ same enquiries as website/app/BOS |
+| `catalog.setPrice`, `setModifierAvailability`, `setCategoryOrder`, `adjustStock` | — | ⏳ `404`: prices, options and order are edited in BOS; no stock yet |
+| `loyalty.updateSettings` | — | ⏳ `404`: the card rule (9 stamps, 10th free) is fixed, shared with the app |
 | `giftCards.issue`, `giftCards.adjustBalance` | — | ⏳ needs the gift card provider (Square) — `404` |
-| `staffAuth.createStaff`, `setRole`, `setRoleMatrix`, `settings.update` | — | ⏳ phase 2 (`404`); people and PINs are managed in BOS |
+| `staffAuth.createStaff`, `setRole`, `setRoleMatrix`, `settings.update` | — | ⏳ `404`: people, PINs and settings are managed in BOS |
 | `records.requestTaxInvoice` | — | ❌ no invoicing service yet (`404`) |
 
-A command without a route answers `404 NOT_FOUND`, which the outbox moves to `rejected`. Until phase 2, the
-adapter should **not send** the ⏳ commands (resolve them locally) so the rejected list stays meaningful.
+A command without a route answers `404 NOT_FOUND`, which the outbox moves to `rejected`. The adapter should
+**not send** the ⏳ commands (resolve them locally) so the rejected list stays meaningful.
 
 ## 3. Conventions
 
@@ -126,8 +131,16 @@ staff and can be shown as is. The HTTP status drives the till's `ApiError.kind`:
   are confirmed or waiting, then `preparing`, `ready`, `completed`, `cancelled`, `refunded`, `failed`.
 - **Finished orders** (completed, cancelled, refunded) accept no more status or kitchen changes (`409`); a
   completed order can still be refunded.
-- **Not linked yet:** customers and stamps at the counter (phase 2). `customerId` is kept when it is an app
-  customer's id; stamps for till orders are not added on the server yet.
+- **Customers** are the app's customer accounts (one list for the chain, `customers` in the snapshot, newest
+  2,000). `customerId` on an order, reservation or enquiry links it when it is a customer's id. The till cannot
+  create customers; people sign up in the app.
+- **Coffee card = the app's card.** One stamp per coffee, 9 stamps → the 10th coffee is free, one free coffee
+  waiting at a time. The till sees it as `stamps` 0–8 and `rewards` 0/1 (`rewards: 1` = the card is full).
+  `PUT /customers/{id}/loyalty` with the till's new balance sets the card: `rewards ≥ 1` → full card, else
+  `stamps` (capped at 8). Stamps are not added by the server for till orders: the till's own
+  `loyalty.balance` command after payment does it (as `awardLoyalty` already sends).
+- **Sold out:** the snapshot's `availability.soldOut` lists items sold out at every café of this account,
+  `branchOff[cafe]` those sold out only here. Changes reach the website, the app and BOS at once.
 
 ## 6. Cash shifts and records
 
@@ -142,7 +155,7 @@ staff and can be shown as is. The HTTP status drives the till's `ApiError.kind`:
 
 Card terminal, printers and cash drawer stay on the device (`DeviceHub`); the server never moves money. Gift
 cards (Square), promotions, tables set-up, stock, Apple Wallet and tax invoices are not built; the snapshot
-returns empty lists for them.
+returns empty lists for them (`giftCards`, `promotions`, `tables`, `stock`, `stockLog`).
 
 With `unconnectedDevices` the till refuses card and wallet tenders. Until a terminal SDK is integrated, a café
 using a standalone EFTPOS machine needs a "card taken on the EFTPOS machine" tender in the till that records

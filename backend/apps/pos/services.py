@@ -1,6 +1,7 @@
 """
 Till rules: orders rung up at the counter, tenders, refunds/voids/cancellations, kitchen progress,
-tables, cash shifts and till records. The till works offline and sends each change later as a
+tables, cash shifts and till records; customers, coffee cards, sold-out switches, reservations and
+catering enquiries edited at the till (the same records the website, the app and BOS use). The till works offline and sends each change later as a
 command (POS src/services/commands.ts), so a sale that already happened is recorded even when
 its prices no longer match the menu; the differences are noted on the order for a manager.
 """
@@ -9,16 +10,25 @@ import ipaddress
 from datetime import timedelta
 from decimal import ROUND_HALF_UP, Decimal
 
-from django.db.models import Sum
+from django.core.exceptions import ValidationError
+from django.db.models import Q, Sum
 from django.utils import timezone
-from django.utils.dateparse import parse_datetime
+from django.utils.dateparse import parse_date, parse_datetime
 from rest_framework.throttling import BaseThrottle
 
-from apps.accounts.models import User
+from apps.accounts.models import CustomerProfile, User
+from apps.bookings.models import Booking
+from apps.bookings.services import update_booking
 from apps.core.models import AuditLog
 from apps.core.permissions import scoped_locations
 from apps.core.services import audit, snapshot
+from apps.enquiries.models import CateringPackage, Enquiry
+from apps.locations.models import Location
+from apps.loyalty import services as loyalty
+from apps.loyalty.models import STAMPS_PER_REWARD
 from apps.menu.catalog import menu_items
+from apps.menu.models import MenuItem
+from apps.menu.services import set_availability
 from apps.mobile.errors import AppError, invalid, not_found
 from apps.orders import services as order_services
 from apps.orders.models import Order, OrderAdjustment, OrderLine, OrderPayment
@@ -170,7 +180,7 @@ def customer_of(customer_id):
         return None
     try:
         return User.objects.filter(pk=customer_id, role="customer", is_active=True).first()
-    except (ValueError, TypeError):
+    except (ValueError, TypeError, ValidationError):
         return None
 
 
@@ -571,3 +581,227 @@ def append_audit(request, entry):
         after={**entry, "terminal": terminal_of(request)},
         ip=client_ip(request),
     )
+
+
+# ---------------------------------------------------------------- customers & coffee cards
+
+
+def customers():
+    return User.objects.filter(role="customer", is_active=True)
+
+
+def customer_for(customer_id):
+    customer = customer_of(customer_id)
+    if customer is None:
+        raise not_found("That customer was not found.")
+    return customer
+
+
+def till_balance(card):
+    """The app's card (9 stamps = free coffee ready) as the till's stamps + rewards."""
+    if card is None:
+        return 0, 0
+    return (0, 1) if card.stamps >= STAMPS_PER_REWARD else (card.stamps, 0)
+
+
+def card_stamps(stamps, rewards):
+    """The till's stamps + rewards on the app's card: a reward waiting = a full card."""
+    return STAMPS_PER_REWARD if rewards > 0 else min(stamps, STAMPS_PER_REWARD - 1)
+
+
+def update_customer(request, customer, patch):
+    before = snapshot(customer)
+    profile = CustomerProfile.objects.select_for_update().filter(
+        user=customer
+    ).first() or CustomerProfile.objects.create(user=customer)
+    if "name" in patch:
+        first, _, last = patch["name"].strip().partition(" ")
+        customer.first_name, customer.last_name = first[:100], last.strip()[:100]
+    if "phone" in patch:
+        customer.phone = patch["phone"].strip()
+    if patch.get("email") and patch["email"].strip().lower() != customer.email:
+        email = patch["email"].strip().lower()
+        if User.objects.filter(email__iexact=email).exclude(pk=customer.pk).exists():
+            raise AppError("CONFLICT", "Another customer already uses that email.", 409)
+        customer.email = email
+    customer.save()
+    if "homeCafe" in patch:
+        profile.preferred_location = (
+            Location.objects.filter(slug=patch["homeCafe"], is_published=True).first()
+            if patch["homeCafe"]
+            else None
+        )
+    if "dietary" in patch:
+        profile.app_preferences = {**(profile.app_preferences or {}), "dietary": patch["dietary"]}
+    if "notes" in patch:
+        profile.notes = patch["notes"]
+    profile.save()
+    audit(request, customer, before, "pos_customer_update")
+    return customer
+
+
+def set_card_balance(request, customer, stamps, rewards):
+    """The till set a customer's card (stamp at the counter, reward redeemed, order refunded)."""
+    card = loyalty.card_for(customer, lock=True)
+    before = card.stamps
+    card.stamps = card_stamps(stamps, rewards)
+    if card.stamps != before:
+        card.updated_by = request.user
+        card.save(update_fields=["stamps", "updated_by", "updated_at"])
+        where = default_location(request.user).name
+        loyalty.record_stamp_change(card, before, location_name=where)
+    return customer
+
+
+# ---------------------------------------------------------------- sold out
+
+
+def item_for(slug):
+    item = MenuItem.objects.filter(slug=slug).first()
+    if item is None:
+        raise not_found("That menu item was not found.")
+    return item
+
+
+def set_sold_out(request, item_slug, sold_out):
+    """Sold out "at every café" = at every café this till account works at."""
+    item = item_for(item_slug)
+    for location in till_locations(request.user):
+        set_availability(request, location.slug, [item.slug], {"is_available": not sold_out})
+
+
+def set_cafe_availability(request, cafe, item_slug, available):
+    location = location_for(request.user, cafe)
+    set_availability(
+        request, location.slug, [item_for(item_slug).slug], {"is_available": available}
+    )
+
+
+# ---------------------------------------------------------------- reservations
+
+FROM_TILL_BOOKING = {
+    "pending": "requested",
+    "confirmed": "confirmed",
+    "completed": "seated",
+    "cancelled": "cancelled",
+}
+
+
+def upsert_reservation(request, reference, data):
+    if data["id"] != reference:
+        raise invalid("The reservation id does not match the address.", id="invalid")
+    location = location_for(request.user, data["cafe"])
+    fields = {
+        "location": location,
+        "date": data["date"],
+        "time": data["time"],
+        "party_size": data["guests"],
+        "name": data["name"],
+        "phone": data.get("phone") or "",
+        "email": data.get("email") or "",
+        "notes": data.get("notes") or "",
+    }
+    if data.get("seating") in ("indoor", "outdoor"):
+        fields["seating"] = data["seating"]
+    target = FROM_TILL_BOOKING[data["status"]]
+    booking = (
+        Booking.objects.select_for_update()
+        .filter(reference=reference, location__in=till_locations(request.user))
+        .first()
+    )
+    if booking is None:
+        if Booking.objects.filter(reference=reference).exists():
+            raise AppError("CONFLICT", f"Reservation {reference} belongs to another café.", 409)
+        booking = Booking.objects.create(
+            reference=reference,
+            source="staff",
+            status=target,
+            customer=customer_of(data.get("customerId")),
+            handled_by=request.user,
+            handled_at=timezone.now(),
+            created_by=request.user,
+            updated_by=request.user,
+            **fields,
+        )
+        audit(request, booking, None, "pos_create")
+        return booking
+    changes = {key: value for key, value in fields.items() if getattr(booking, key) != value}
+    if target == booking.status:
+        return update_booking(booking, changes, request) if changes else booking
+    # The till seats a guest straight from a request; BOS keeps request → confirmed → seated.
+    steps = (
+        ["confirmed", target] if booking.status == "requested" and target == "seated" else [target]
+    )
+    for status in steps:
+        booking = update_booking(booking, {**changes, "status": status}, request)
+        changes = {}
+    return booking
+
+
+# ---------------------------------------------------------------- catering
+
+FROM_TILL_ENQUIRY = {
+    "quoted": "quoted",
+    "confirmed": "won",
+    "delivered": "closed",
+    "cancelled": "lost",
+}
+
+
+def catering_scope(user):
+    return Enquiry.objects.filter(kind="catering").filter(
+        Q(location__in=till_locations(user)) | Q(location__isnull=True)
+    )
+
+
+def upsert_catering(request, reference, data):
+    if data["id"] != reference:
+        raise invalid("The enquiry id does not match the address.", id="invalid")
+    location = location_for(request.user, data["cafe"]) if data.get("cafe") else None
+    enquiry = catering_scope(request.user).select_for_update().filter(reference=reference).first()
+    if enquiry is None and Enquiry.objects.filter(reference=reference).exists():
+        raise AppError("CONFLICT", f"Enquiry {reference} belongs to another café.", 409)
+    status = FROM_TILL_ENQUIRY.get(data["status"])
+    if status is None:  # "enquiry": keep "in progress" if the team already started on it
+        status = enquiry.status if enquiry and enquiry.status in ("new", "in_progress") else "new"
+    package = CateringPackage.objects.filter(name=data.get("packageId") or "").first()
+    payload = {
+        **(enquiry.payload if enquiry else {}),
+        "time": data.get("time") or "",
+        "fulfil": data.get("fulfil") or "pickup",
+        "address": data.get("address") or "",
+        "contact": data.get("contact") or "",
+        "dietary": data.get("dietary") or [],
+        "occasion": data.get("occasion") or "",
+        "quote": data.get("quote") or 0,
+        **({} if enquiry else {"source": "pos"}),
+    }
+    fields = {
+        "name": data["name"],
+        "email": data.get("email") or "",
+        "phone": data.get("phone") or "",
+        "location": location,
+        "event_date": parse_date(data.get("date") or ""),
+        "headcount": data.get("guests") or None,
+        "package": package,
+        "message": data.get("notes") or "",
+        "payload": payload,
+        "status": status,
+    }
+    before = snapshot(enquiry)
+    if enquiry is None:
+        enquiry = Enquiry.objects.create(
+            kind="catering",
+            reference=reference,
+            customer=customer_of(data.get("customerId")),
+            created_by=request.user,
+            updated_by=request.user,
+            **fields,
+        )
+    else:
+        for key, value in fields.items():
+            setattr(enquiry, key, value)
+        enquiry.updated_by = request.user
+        enquiry.save()
+    audit(request, enquiry, before, "pos_create" if before is None else "pos_update")
+    return enquiry
