@@ -2,8 +2,8 @@
 
 Every view is wrapped by BOSAdminSite.admin_view, so only signed-in superusers
 reach them, and every write goes through the same audit path as the admin
-forms. Figures are computed from real records only: there is no order or
-payment data yet, so there is deliberately no revenue figure anywhere.
+forms. Figures are computed from real records only: sales come from app and
+till orders as recorded, nothing is estimated.
 """
 
 import csv
@@ -19,8 +19,9 @@ from django.contrib import messages
 from django.core.exceptions import PermissionDenied
 from django.db import connection, transaction
 from django.db.migrations.executor import MigrationExecutor
-from django.db.models import Avg, Count, Max, Min, Q, Sum
+from django.db.models import Avg, Count, F, Max, Min, Q, Sum
 from django.db.models import Q as _Q
+from django.db.models.functions import Coalesce, TruncDate
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
@@ -36,6 +37,9 @@ from apps.locations.models import Location
 from apps.media.models import MediaAsset
 from apps.menu.models import Category, LocationMenuItem, MenuItem
 from apps.notifications.models import EmailMessage
+from apps.orders.models import Order, OrderAdjustment, OrderLine, OrderPayment
+from apps.orders.services import CLOSED
+from apps.pos.models import CashShift
 
 from .bos_access import bos_location_ids, bos_locations, in_scope
 from .charts import column_chart, delta, pct, share_rows
@@ -128,9 +132,11 @@ def parse_period(request):
 # Reports
 
 
-def trend_points(rows, period):
-    """Bookings per day, week or month depending on how long the period is."""
-    counts = Counter(row["date"] for row in rows)
+def trend_points(rows, period, weight=None):
+    """Bookings (or `weight(row)`, e.g. sales) per day, week or month, by the period's length."""
+    counts = Counter()
+    for row in rows:
+        counts[row["date"]] += weight(row) if weight else 1
     start, end, length = period["start"], period["end"], period["length"]
     today = timezone.localdate()
     if length <= 62:
@@ -159,7 +165,9 @@ def trend_points(rows, period):
             )
             first += timedelta(days=7)
         return "week", weeks
-    months = Counter((row["date"].year, row["date"].month) for row in rows)
+    months = Counter()
+    for row in rows:
+        months[(row["date"].year, row["date"].month)] += weight(row) if weight else 1
     cursor, points = start.replace(day=1), []
     while cursor <= end:
         key = (cursor.year, cursor.month)
@@ -191,6 +199,192 @@ LEAD_BUCKETS = (
     (14, "1–2 weeks"),
     (10**6, "2+ weeks"),
 )
+
+
+# Orders that count as sales: accepted, not declined/cancelled/refunded/failed.
+NOT_SOLD = [*CLOSED, "received"]
+TENDERS = dict(OrderPayment._meta.get_field("method").choices)
+
+
+def sold_orders(start, end, scope):
+    return (
+        Order.objects.filter(**scope)
+        .exclude(status__in=NOT_SOLD)
+        .annotate(at=Coalesce("placed_at", "created_at"))
+        .filter(at__date__range=(start, end))
+    )
+
+
+def sale_cents(row):
+    """What the order sold for: app orders count their gift card share, never the card fee."""
+    if row["channel"] == "app":
+        return row["total"] + row["gift"] - row["surcharge"]
+    return row["total"]
+
+
+def sales_totals(qs, *fields):
+    return [
+        {**row, "value": sale_cents(row)}
+        for row in qs.values(*fields, "channel").annotate(
+            n=Count("id"),
+            total=Sum("total_cents"),
+            gift=Sum("gift_card_cents"),
+            surcharge=Sum("surcharge_cents"),
+        )
+    ]
+
+
+def money_rows(rows):
+    """share_rows() over cents, shown as dollars."""
+    rows = [{**row, "display": f"${row['value'] / 100:,.0f}"} for row in rows]
+    return share_rows(rows)
+
+
+def sales_report(period, scope, cafe_ids):
+    """Sales from app and till orders, by the day the order was placed (café time)."""
+    orders = sold_orders(period["start"], period["end"], scope)
+    previous = sold_orders(period["previous_start"], period["previous_end"], scope)
+    days = sales_totals(orders.annotate(date=TruncDate("at")), "date")
+    total = sum(row["value"] for row in days)
+    count = sum(row["n"] for row in days)
+    before = sum(row["value"] for row in sales_totals(previous))
+    before_count = sum(row["n"] for row in sales_totals(previous))
+    order_scope = {f"order__{key}": value for key, value in scope.items()}
+    since, until = day_bounds(period["start"], period["end"])
+    returned = (
+        OrderAdjustment.objects.filter(
+            created_at__gte=since, created_at__lt=until, **order_scope
+        ).aggregate(total=Sum("amount_cents"))["total"]
+        or 0
+    )
+    unit, points = trend_points(days, period, weight=lambda row: round(row["value"] / 100))
+
+    names = dict(Location.objects.values_list("id", "name"))
+    per_location = defaultdict(lambda: {"value": 0, "orders": 0})
+    for row in sales_totals(orders, "location_id"):
+        per_location[row["location_id"]]["value"] += row["value"]
+        per_location[row["location_id"]]["orders"] += row["n"]
+    locations = [
+        {
+            "name": names.get(loc_id, "—"),
+            "value": per_location[loc_id]["value"],
+            "orders": per_location[loc_id]["orders"],
+            "avg": per_location[loc_id]["value"] // per_location[loc_id]["orders"]
+            if per_location[loc_id]["orders"]
+            else None,
+            "url": changelist(Order, location__id__exact=loc_id),
+        }
+        for loc_id in dict.fromkeys([*cafe_ids, *per_location])
+    ]
+    locations.sort(key=lambda row: -row["value"])
+
+    items = (
+        OrderLine.objects.filter(order__in=orders.values("pk"), qty__gt=0)
+        .values("item_slug")
+        .annotate(units=Sum("qty"), revenue=Sum(F("qty") * F("unit_price_cents")), name=Max("name"))
+        .order_by("-units")[:8]
+    )
+    menu_names = dict(
+        MenuItem.objects.filter(slug__in=[row["item_slug"] for row in items]).values_list(
+            "slug", "name"
+        )
+    )
+    tenders = Counter()
+    for row in (
+        OrderPayment.objects.filter(order__in=orders.values("pk"))
+        .values("method")
+        .annotate(amount=Sum("amount_cents"))
+    ):
+        tenders[row["method"]] += row["amount"]
+    for row in (
+        orders.filter(channel="app")
+        .values("payment_choice")
+        .annotate(paid=Sum("total_cents"), fee=Sum("surcharge_cents"), gift=Sum("gift_card_cents"))
+    ):
+        tenders["wallet" if row["payment_choice"] == "apple_pay" else "card"] += (
+            row["paid"] - row["fee"]
+        )
+        tenders["gift"] += row["gift"]
+    channels = Counter()
+    for row in sales_totals(orders):
+        channels[row["channel"]] += row["value"]
+    shifts = CashShift.objects.filter(
+        status="closed", closed_at__gte=since, closed_at__lt=until, **scope
+    )
+    variance = shifts.aggregate(total=Sum("variance_cents"), n=Count("id"))
+    return {
+        "total": total,
+        "total_delta": delta(total, before),
+        "orders": count,
+        "orders_delta": delta(count, before_count),
+        "avg": total // count if count else None,
+        "returned": returned,
+        "shifts": variance["n"],
+        "variance": variance["total"] or 0,
+        "unit": unit,
+        "chart": column_chart(points, money=True),
+        "locations": share_rows(locations),
+        "items": share_rows(
+            [
+                {
+                    "label": menu_names.get(row["item_slug"], row["name"]),
+                    "value": row["units"],
+                    "display": f"{row['units']} · ${row['revenue'] / 100:,.0f}",
+                }
+                for row in items
+            ]
+        ),
+        "tenders": money_rows(
+            [
+                {"label": TENDERS[key], "value": value}
+                for key, value in tenders.most_common()
+                if value
+            ]
+        ),
+        "channels": money_rows(
+            [
+                {"label": "Till" if key == "pos" else "App", "value": value}
+                for key, value in channels.most_common()
+                if value
+            ]
+        ),
+    }
+
+
+def export_orders(period, scope):
+    rows = (
+        sold_orders(period["start"], period["end"], scope).select_related("location").order_by("at")
+    )
+    response = HttpResponse(content_type="text/csv; charset=utf-8")
+    response["Content-Disposition"] = (
+        f'attachment; filename="orders-{period["start"]}-to-{period["end"]}.csv"'
+    )
+    writer = csv.writer(response)
+    writer.writerow(
+        ["Number", "Placed", "Location", "Channel", "Type", "Status", "Sale (AUD)", "Staff"]
+    )
+    for order in rows:
+        value = sale_cents(
+            {
+                "channel": order.channel,
+                "total": order.total_cents,
+                "gift": order.gift_card_cents,
+                "surcharge": order.surcharge_cents,
+            }
+        )
+        writer.writerow(
+            [
+                order.number,
+                timezone.localtime(order.at).strftime("%Y-%m-%d %H:%M"),
+                order.location.name,
+                order.get_channel_display(),
+                order.get_method_display(),
+                order.status,
+                f"{value / 100:.2f}",
+                order.staff_name,
+            ]
+        )
+    return response
 
 
 def booking_report(period, scope, cafe_ids):
@@ -419,6 +613,8 @@ def reports_view(site):
         cafe_ids = [location.pk] if location else [c.pk for c in locations if c.is_published]
         if request.GET.get("export") == "bookings":
             return export_bookings(period, scope)
+        if request.GET.get("export") == "orders":
+            return export_orders(period, scope)
         query = request.GET.copy()
         query.pop("export", None)
         return render(
@@ -430,10 +626,12 @@ def reports_view(site):
             period_options=PERIODS,
             locations=locations,
             selected_location=location,
+            sales=sales_report(period, scope, cafe_ids),
             bookings=booking_report(period, scope, cafe_ids),
             enquiries=enquiry_report(period, scope),
             menu=menu_report(scope),
             export_query=urlencode({**query.dict(), "export": "bookings"}),
+            export_orders_query=urlencode({**query.dict(), "export": "orders"}),
         )
 
     return view

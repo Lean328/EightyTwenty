@@ -16,7 +16,7 @@
         </div>
       {% endfor %}
     </div>
-    {% if chart.is_empty %}<p class="bos-chart-empty">No bookings in this period yet.</p>{% endif %}
+    {% if chart.is_empty %}<p class="bos-chart-empty">{{ empty|default:"No bookings in this period yet." }}</p>{% endif %}
   </div>
   <div class="bos-chart-labels" aria-hidden="true">
     {% for bar in chart.bars %}<span>{{ bar.label }}</span>{% endfor %}

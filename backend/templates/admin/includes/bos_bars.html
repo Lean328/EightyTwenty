@@ -4,7 +4,7 @@
     <li>
       <span class="bos-bars-name">{{ row.label }}</span>
       <span class="bos-bars-track"><span class="{% if toned %}bos-fill-{{ row.tone }}{% elif row.kind %}bos-bars-{{ row.kind }}{% endif %}" style="width: {{ row.pct }}%"></span></span>
-      <strong>{{ row.value }}<small>{{ row.share }}%</small></strong>
+      <strong>{{ row.display|default:row.value }}<small>{{ row.share }}%</small></strong>
     </li>
   {% endfor %}
 </ul>

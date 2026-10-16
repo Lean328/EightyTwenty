@@ -19,13 +19,13 @@ def pct(value, total):
     return f"{min(100.0, value * 100 / total):.2f}" if total else "0.00"
 
 
-def column_chart(points, unit="booking"):
+def column_chart(points, unit="booking", money=False):
     """
     Bars against a clean ceiling with three ticks.
 
     `points` are dicts with `label` (axis), `tip` (tooltip prefix), `value` and
     optional `highlight`. Labels thin out from the newest bar backwards so the
-    latest point is always named.
+    latest point is always named. `money`: values are whole dollars.
     """
     top = nice_ceiling(max((p["value"] for p in points), default=0))
     every = 1 if len(points) <= 10 else 2 if len(points) <= 16 else 5 if len(points) <= 40 else 7
@@ -36,12 +36,15 @@ def column_chart(points, unit="booking"):
             {
                 "pct": pct(value, top),
                 "label": point["label"] if (len(points) - 1 - index) % every == 0 else "",
-                "tip": f"{point['tip']}: {value:,} {unit}{'' if value == 1 else 's'}",
+                "tip": f"{point['tip']}: ${value:,}"
+                if money
+                else f"{point['tip']}: {value:,} {unit}{'' if value == 1 else 's'}",
                 "empty": not value,
                 "today": point.get("highlight", False),
             }
         )
-    ticks = [{"pct": p, "text": f"{top * p // 100:,}"} for p in (100, 50, 0)]
+    sign = "$" if money else ""
+    ticks = [{"pct": p, "text": f"{sign}{top * p // 100:,}"} for p in (100, 50, 0)]
     return {"bars": bars, "ticks": ticks, "is_empty": not any(p["value"] for p in points)}
 
 

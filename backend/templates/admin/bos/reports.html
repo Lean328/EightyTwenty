@@ -6,7 +6,7 @@
 {% block content_title %}{% endblock %}
 
 {% block content %}
-{% with b=bookings e=enquiries %}
+{% with b=bookings e=enquiries m=sales %}
 <div class="bos-page">
   <header class="bos-page-head">
     <div>
@@ -15,6 +15,7 @@
       <p class="bos-lead">{{ period.start|date:"j M Y" }} – {{ period.end|date:"j M Y" }} · {{ period.length }} day{{ period.length|pluralize }}{% if selected_location %} · {{ selected_location.name }}{% elif bos_can.chain %} · all locations{% else %} · all your cafés{% endif %}. Compared with the {{ period.length }} days before.</p>
     </div>
     <div class="bos-page-tools">
+      <a class="bos-btn bos-btn-ghost" href="?{{ export_orders_query }}">{% icon 'download' %} Export orders CSV</a>
       <a class="bos-btn bos-btn-ghost" href="?{{ export_query }}">{% icon 'download' %} Export bookings CSV</a>
       <button type="button" class="bos-btn bos-btn-ghost" onclick="window.print()">{% icon 'file-text' %} Print</button>
     </div>
@@ -41,7 +42,76 @@
     </form>
   </div>
 
-  <section class="bos-kpis" aria-label="Key figures">
+  <section class="bos-kpis" aria-label="Sales figures">
+    <article class="bos-kpi">
+      <span class="bos-kpi-icon bos-tint-green">{% icon 'wallet' %}</span>
+      <p class="bos-kpi-label">Sales</p>
+      <p class="bos-kpi-value">{{ m.total|aud }}{% include "admin/includes/bos_delta.html" with value=m.total_delta %}</p>
+      <p class="bos-kpi-note">App and till orders, GST incl.</p>
+    </article>
+    <article class="bos-kpi">
+      <span class="bos-kpi-icon bos-tint-orange">{% icon 'bowl' %}</span>
+      <p class="bos-kpi-label">Orders</p>
+      <p class="bos-kpi-value">{{ m.orders }}{% include "admin/includes/bos_delta.html" with value=m.orders_delta %}</p>
+      <p class="bos-kpi-note">{% if m.avg %}{{ m.avg|aud }} per order{% else %}Accepted orders only{% endif %}</p>
+    </article>
+    <article class="bos-kpi">
+      <span class="bos-kpi-icon bos-tint-berry">{% icon 'history' %}</span>
+      <p class="bos-kpi-label">Refunded</p>
+      <p class="bos-kpi-value">{{ m.returned|aud }}</p>
+      <p class="bos-kpi-note">Refunds, voids and cancellations at the tills</p>
+    </article>
+    <article class="bos-kpi">
+      <span class="bos-kpi-icon bos-tint-violet">{% icon 'list' %}</span>
+      <p class="bos-kpi-label">Cash variance</p>
+      <p class="bos-kpi-value">{{ m.variance|aud }}</p>
+      <p class="bos-kpi-note">{{ m.shifts }} till shift{{ m.shifts|pluralize }} closed · counted − expected</p>
+    </article>
+  </section>
+
+  <div class="bos-report-grid">
+    <section class="bos-card bos-span-2">
+      <header class="bos-card-head"><div><h2>Sales over time</h2><p class="bos-card-sub">By the day the order was placed, per {{ m.unit }} · whole dollars</p></div></header>
+      {% include "admin/includes/bos_columns.html" with chart=m.chart label="Sales per period" empty="No sales in this period yet." %}
+    </section>
+
+    <section class="bos-card">
+      <header class="bos-card-head"><div><h2>How customers paid</h2><p class="bos-card-sub">Till tenders and app payments</p></div></header>
+      {% include "admin/includes/bos_bars.html" with rows=m.tenders %}
+      <h3 class="bos-subhead">Channel</h3>
+      {% include "admin/includes/bos_bars.html" with rows=m.channels %}
+    </section>
+
+    <section class="bos-card bos-span-2 bos-card-flush">
+      <header class="bos-card-head"><div><h2>Sales by location</h2><p class="bos-card-sub">Share of sales in this period</p></div></header>
+      <div class="bos-table-wrap">
+        <table class="bos-table">
+          <thead><tr><th>Location</th><th class="bos-num">Sales</th><th class="bos-share-col">Share</th><th class="bos-num">Orders</th><th class="bos-num">Avg order</th></tr></thead>
+          <tbody>
+            {% for row in m.locations %}
+              <tr>
+                <td><a href="{{ row.url }}"><strong>{{ row.name }}</strong></a></td>
+                <td class="bos-num">{{ row.value|aud }}</td>
+                <td class="bos-share-col"><span class="bos-share"><span style="width: {{ row.pct }}%"></span></span><small>{{ row.share }}%</small></td>
+                <td class="bos-num">{{ row.orders }}</td>
+                <td class="bos-num">{{ row.avg|aud }}</td>
+              </tr>
+            {% empty %}
+              <tr><td colspan="5"><div class="bos-empty bos-empty-sm"><p>No locations yet.</p></div></td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="bos-card">
+      <header class="bos-card-head"><div><h2>Best sellers</h2><p class="bos-card-sub">Units sold · sales</p></div></header>
+      {% include "admin/includes/bos_bars.html" with rows=m.items %}
+      {% if not m.items %}<div class="bos-empty bos-empty-sm"><p>No items sold in this period.</p></div>{% endif %}
+    </section>
+  </div>
+
+  <section class="bos-kpis" aria-label="Booking figures">
     <article class="bos-kpi">
       <span class="bos-kpi-icon bos-tint-green">{% icon 'calendar' %}</span>
       <p class="bos-kpi-label">Bookings</p>
@@ -187,7 +257,7 @@
     </section>
   </div>
 
-  <p class="bos-footnote">{% icon 'info' %} Sales and revenue reports will appear once ordering / POS data is connected — nothing here is estimated.</p>
+  <p class="bos-footnote">{% icon 'info' %} Sales are app and till orders as recorded (accepted, not cancelled or fully refunded), by café time; partial refunds are shown separately. Nothing here is estimated.</p>
 </div>
 {% endwith %}
 {% endblock %}
