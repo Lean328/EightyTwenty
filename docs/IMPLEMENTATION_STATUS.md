@@ -29,7 +29,8 @@ Số test chính xác xem lần chạy CI/pytest gần nhất; các test Postgre
 - Chưa chốt chi nhánh nhận booking, sức chứa, các câu hỏi mục 14. Booking rule default disabled.
 - API app điện thoại (12/10/2026): đã so khớp với dữ liệu app dùng (DB SQLite tạm seed từ `mock-data.js`: 10 quán gồm giờ/cờ/area/headline, 12 danh mục, 84 món gồm giá/modifier/thứ tự, 3 gói catering, FAQ, offer — 0 lệch) và chạy luồng order mẫu §9.1 của app (2930 + 86 − 1000 = 2016¢). Chưa chạy với app thật, chưa migrate lên Supabase (Render tự migrate khi push).
 - API máy POS `/api/v1/pos` (16/10/2026, giai đoạn 1): 25 test `tests/test_pos_api.py` (trang BOS, PIN, phạm vi quán, snapshot, tạo đơn + idempotency + trùng số, lệch giá, thanh toán, bếp, hoàn/void/hủy, bàn, đơn app trên quầy, feed theo cursor, số truy vấn cố định, ca két, sổ giao dịch, nhật ký, trang docs). Chưa chạy với frontend POS thật (dev khác nối). Server không kiểm quyền từng nhân viên (chỉ tài khoản máy); máy quẹt thẻ chưa nối nên bản production của POS chưa nhận thẻ.
-- Chưa có cổng thanh toán (order có tiền phải trả → 501; `PAYMENT_PROVIDER=demo` để test), thẻ lưu, gửi eGift thật, Apple Wallet, push notification, sales reports, inventory.
+- POS giai đoạn 2, doanh thu BOS, push Expo (16/10/2026): 8 test thêm trong `tests/test_pos_api.py` (khách hàng, thẻ cà phê, còn-hết, đặt bàn POS + website, catering, báo cáo Sales + CSV) và 6 test `tests/test_push.py` (đăng ký/xóa token, đẩy feed, theo toggle, DeviceNotRegistered, lỗi mạng không làm hỏng request, ẩn danh hóa). Push chưa thử với Expo thật (mock trong test).
+- Chưa có cổng thanh toán (order có tiền phải trả → 501; `PAYMENT_PROVIDER=demo` để test), thẻ lưu, gửi eGift thật, Apple Wallet, inventory.
 
 ## Các giới hạn có chủ đích
 

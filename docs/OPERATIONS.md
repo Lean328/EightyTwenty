@@ -6,6 +6,8 @@
 
 Host và CORS mở cho mọi nơi (xem trên). Nếu dùng Django Admin trên domain custom, thêm origin HTTPS vào `CSRF_TRUSTED_ORIGINS`.
 
+Push cho app: `PUSH_ENABLED` (mặc định `True`) bật gửi qua Expo Push API — không cần key; `EXPO_ACCESS_TOKEN` chỉ cần khi bật "enhanced push security" trong tài khoản Expo của app. Máy đăng ký xem ở BOS → System → Push devices.
+
 `PAYMENT_PROVIDER` (app điện thoại): để trống (mặc định, production) → đơn có tiền phải trả và gửi eGift trả `501 NOT_IMPLEMENTED` vì chưa chọn cổng thanh toán; đơn được gift card trả hết vẫn chạy. `PAYMENT_PROVIDER=demo` chỉ dùng trên server test: nhận token `demo_…` của app, **không thu tiền** — đừng bật ở nơi khách thật đặt đơn (quán sẽ nhận đơn chưa trả tiền). Chi tiết: trang `/api/docs/app/`, mục 3.8.
 
 `TRUSTED_PROXY_COUNT=0` mặc định lấy REMOTE_ADDR (dùng cho local). `render.yaml` đặt sẵn `TRUSTED_PROXY_COUNT=1` vì sau proxy Render, REMOTE_ADDR là IP proxy — để 0 thì mọi khách dùng chung một bucket rate limit (cả site chỉ 10 form/giờ). Sau lần deploy đầu, gửi thử vài form từ hai mạng khác nhau để xác nhận rate limit tính riêng từng IP. Không lấy tùy ý phần tử đầu X-Forwarded-For vì header có thể giả mạo. Throttle lưu DB, chia sẻ giữa worker, fixed window; đây không phải lớp chống DDoS ở edge.
