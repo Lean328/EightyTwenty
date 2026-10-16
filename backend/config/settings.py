@@ -50,6 +50,7 @@ INSTALLED_APPS = [
     "apps.loyalty",
     "apps.orders",
     "apps.mobile",
+    "apps.pos",
 ]
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -144,6 +145,7 @@ REST_FRAMEWORK = {
         "auth": "10/min",
         "forms": "10/hour",
         "jobs": "30/hour",
+        "pin": "20/min",
     },
     "NUM_PROXIES": env.int("TRUSTED_PROXY_COUNT", default=0),
 }
@@ -173,6 +175,16 @@ SPECTACULAR_SETTINGS = {
         "securitySchemes": {"JobToken": {"type": "apiKey", "in": "header", "name": "X-Job-Token"}}
     },
     "ENUM_NAME_OVERRIDES": {
+        "RoleEnum": [(r, r.title()) for r in ["owner", "admin", "manager", "staff", "customer"]],
+        # Till API (apps/pos/serializers.py).
+        "PosOrderStatus": "apps.pos.serializers.TILL_STATUSES",
+        "PosOrderType": "apps.pos.serializers.ORDER_TYPES",
+        "PosRole": "apps.pos.serializers.ROLES",
+        "PosShiftStatus": "apps.pos.serializers.SHIFT_STATUSES",
+        "PosCashMoveType": "apps.pos.serializers.MOVE_TYPES",
+        "PosTenderMethod": "apps.pos.serializers.METHODS",
+        "PosAdjustmentMode": "apps.pos.serializers.ADJUSTMENT_MODES",
+        "PosSplitMode": "apps.pos.serializers.SPLIT_MODES",
         "BookingStatus": [
             (v, v.replace("_", " ").title())
             for v in ["requested", "confirmed", "declined", "cancelled", "seated", "no_show"]

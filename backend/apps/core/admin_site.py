@@ -16,7 +16,9 @@ NAVIGATION = (
         "Daily operations",
         (
             ("view:bos_schedule", "Schedule", "clipboard"),
-            ("orders.order", "App orders", "bowl"),
+            ("orders.order", "Orders", "bowl"),
+            ("pos.cashshift", "Till shifts", "wallet"),
+            ("pos.tilltransaction", "Till transactions", "list"),
             ("bookings.booking", "Bookings", "calendar"),
             ("enquiries.enquiry", "Enquiries", "inbox"),
             ("bookings.bookingrule", "Booking rules", "settings"),

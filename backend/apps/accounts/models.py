@@ -41,6 +41,8 @@ class User(AbstractBaseUser, PermissionsMixin, BaseModel):
     email_verified = models.BooleanField(default=False)
     marketing_opt_in = models.BooleanField(default=False)
     date_joined = models.DateTimeField(default=timezone.now)
+    # 4-digit till PIN, stored as a keyed hash (apps.pos.pins); empty = cannot sign in at a till.
+    pos_pin = models.CharField(max_length=64, blank=True, editable=False)
     objects = UserManager()
     USERNAME_FIELD = "email"
     REQUIRED_FIELDS = []

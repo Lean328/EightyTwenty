@@ -162,6 +162,10 @@ def totals(values):
     }
 
 
+# The app knows six statuses; a till cancelling or refunding an app order reads as declined.
+APP_STATUS = {"cancelled": "declined", "refunded": "declined", "failed": "declined"}
+
+
 def order(row):
     return {
         "id": str(row.pk),
@@ -169,7 +173,7 @@ def order(row):
         "locationId": row.location.slug,
         "locationName": row.location.name,
         "method": row.method,
-        "status": row.status,
+        "status": APP_STATUS.get(row.status, row.status),
         "createdAt": iso(row.created_at),
         "timing": {"type": "scheduled", "time": row.scheduled_time.strftime("%H:%M")}
         if row.scheduled_time
@@ -187,6 +191,7 @@ def order(row):
                 "note": line.note,
             }
             for line in row.lines.all()
+            if line.qty
         ],
         "totals": {
             "subtotalCents": row.subtotal_cents,

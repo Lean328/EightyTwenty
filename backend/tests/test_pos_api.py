@@ -1,0 +1,538 @@
+"""Till API (/api/v1/pos): device + PIN sign-in, snapshot, orders, payments, kitchen, cash."""
+
+from datetime import timedelta
+from urllib.parse import quote
+
+import pytest
+from django.db import connection
+from django.test.utils import CaptureQueriesContext
+from django.urls import reverse
+from django.utils import timezone
+from rest_framework.test import APIClient
+
+from apps.accounts.models import StaffAssignment
+from apps.core.models import AuditLog
+from apps.locations.models import Location
+from apps.loyalty.models import LoyaltyCard
+from apps.menu.models import (
+    Category,
+    LocationMenuItem,
+    MenuItem,
+    MenuItemModifierGroup,
+    ModifierGroup,
+    ModifierOption,
+)
+from apps.notifications.models import AppNotification
+from apps.orders.models import Order, OrderLine
+from apps.pos import pins
+from apps.pos.models import CashShift, CommandReceipt, TillTransaction
+
+from .factories import UserFactory
+
+BASE = "/api/v1/pos"
+TERMINAL = "BRADDON-TILL-1"
+
+
+@pytest.fixture
+def cafe(db):
+    return Location.objects.create(
+        slug="braddon",
+        name="Braddon",
+        is_published=True,
+        status="open",
+        fulfilment_methods=["pickup", "dine_in"],
+        email="braddon@example.com",
+    )
+
+
+@pytest.fixture
+def elsewhere(db):
+    return Location.objects.create(slug="civic", name="Civic", is_published=True, status="open")
+
+
+@pytest.fixture
+def menu(db):
+    coffee = Category.objects.create(slug="coffee", name="Coffee & Hot Drinks")
+    food = Category.objects.create(slug="allday", name="All Day Meals", sort_order=1)
+    flat = MenuItem.objects.create(
+        slug="hotcoffee", category=coffee, name="Milk Based Coffee", base_price_cents=500,
+        is_published=True,
+    )  # fmt: skip
+    drink = ModifierGroup.objects.create(
+        code="drink", name="Choose your drink", is_required=True, max_select=1
+    )
+    ModifierOption.objects.create(group=drink, name="Flat White", price_delta_cents=50)
+    variation = ModifierGroup.objects.create(code="var", name="Drink variation", max_select=0)
+    ModifierOption.objects.create(group=variation, name="OAT ADC", price_delta_cents=80)
+    MenuItemModifierGroup.objects.create(menu_item=flat, modifier_group=drink, sort_order=0)
+    MenuItemModifierGroup.objects.create(menu_item=flat, modifier_group=variation, sort_order=1)
+    burger = MenuItem.objects.create(
+        slug="bburger", category=food, name="Breakfast Burger", base_price_cents=2300,
+        is_published=True,
+    )  # fmt: skip
+    return {"coffee": flat, "burger": burger}
+
+
+@pytest.fixture
+def cashier(cafe):
+    user = UserFactory(role="staff", first_name="Mia", last_name="Tran", is_staff=True)
+    StaffAssignment.objects.create(user=user, location=cafe)
+    pins.set_pin(user, "4821")
+    user.save()
+    return user
+
+
+@pytest.fixture
+def till(cashier):
+    client = APIClient()
+    client.force_authenticate(cashier)
+    client.credentials(HTTP_X_TERMINAL_ID=TERMINAL)
+    return client
+
+
+def line(key="L1", item="hotcoffee", price=6.3, qty=1, **extra):
+    sel = {"drink": ["Flat White"], "var": ["OAT ADC"]} if item == "hotcoffee" else {}
+    return {"key": key, "itemId": item, "name": item, "price": price, "qty": qty, "sel": sel,
+            "adjust": [], "note": "", **extra}  # fmt: skip
+
+
+def order_body(number="BRADDON-TILL-1-0001", **overrides):
+    body = {
+        "id": number,
+        "channel": "pos",
+        "type": "takeaway",
+        "status": "new",
+        "accepted": True,
+        "cafe": "braddon",
+        "time": "09:41",
+        "placedAt": timezone.now().isoformat(),
+        "tables": [],
+        "lines": [line(qty=2), line("L2", "bburger", 23)],
+        "total": 35.6,
+        "paid": False,
+        "methods": [],
+        "payments": [],
+        "note": "",
+        "discounts": [],
+        "rewardUsed": False,
+        "staff": "Mia Tran",
+        "history": [{"at": "16 Oct, 9:41 am", "what": "Created on till by Mia Tran"}],
+    }
+    body.update(overrides)
+    return body
+
+
+def post(client, path, body, key=None, method="post"):
+    headers = {"HTTP_IDEMPOTENCY_KEY": key} if key else {}
+    return getattr(client, method)(f"{BASE}{path}", body, format="json", **headers)
+
+
+def create(till, **overrides):
+    response = post(till, "/orders", order_body(**overrides), key=f"CMD-{overrides}")
+    assert response.status_code == 201, response.json()
+    return response.json()
+
+
+def pay(till, number, amount, ref="P1", **extra):
+    body = {"method": "cash", "amount": amount, "tip": 0, "surcharge": 0, "ref": ref,
+            "by": "Mia Tran", **extra}  # fmt: skip
+    return post(till, f"/orders/{quote(number)}/payments", body)
+
+
+# ---------------------------------------------------------------- device & staff
+
+
+def test_customers_and_unassigned_staff_cannot_use_the_till(cafe):
+    client = APIClient()
+    client.force_authenticate(UserFactory())
+    assert client.get(f"{BASE}/locations").status_code == 403
+    client.force_authenticate(UserFactory(role="staff"))
+    response = client.get(f"{BASE}/locations")
+    assert response.status_code == 403
+    assert response.json()["error"]["code"] == "FORBIDDEN"
+    assert APIClient().get(f"{BASE}/snapshot").status_code == 401
+
+
+def test_locations_are_the_cafes_of_the_account(till, cafe, elsewhere):
+    assert till.get(f"{BASE}/locations").json() == {
+        "results": [{"id": "braddon", "slug": "braddon", "name": "Braddon"}]
+    }
+    assert till.get(f"{BASE}/snapshot?cafe=civic").status_code == 404
+    owner = APIClient()
+    owner.force_authenticate(UserFactory(role="owner"))
+    assert len(owner.get(f"{BASE}/locations").json()["results"]) == 2
+
+
+def test_verify_pin_returns_staff_and_permissions(till, cashier, cafe):
+    response = post(till, "/staff/verify-pin", {"pin": "4821"})
+    assert response.status_code == 200
+    assert response.json()["staff"] == {
+        "id": str(cashier.pk), "name": "Mia Tran", "initials": "MT", "role": "cashier",
+        "cafe": "braddon", "shift": "",
+    }  # fmt: skip
+    assert "orders.refund" not in response.json()["permissions"]
+    assert post(till, "/staff/verify-pin", {"pin": "0000"}).status_code == 204
+    assert post(till, "/staff/verify-pin", {"pin": "48"}).status_code == 204
+
+
+def test_pins_are_unique_and_scoped_to_the_cafes(cafe, elsewhere, cashier):
+    other = UserFactory(role="staff")
+    StaffAssignment.objects.create(user=other, location=elsewhere)
+    with pytest.raises(ValueError, match="already uses"):
+        pins.set_pin(other, "4821")
+    pins.set_pin(other, "1357")
+    other.save()
+    assert pins.find_by_pin("1357", [cafe.pk]) is None
+    assert pins.find_by_pin("1357", [elsewhere.pk]) == other
+    manager = UserFactory(role="manager")
+    StaffAssignment.objects.create(user=manager, location=cafe)
+    assert pins.permissions(manager) == pins.ROLES["manager"]["perms"]
+    assert pins.till_role(UserFactory(role="owner")) == "admin"
+
+
+def test_till_pin_is_set_in_the_bos_workspace(client, cashier):
+    owner = UserFactory(role="owner", is_superuser=True, is_staff=True)
+    browser = __import__("django.test", fromlist=["Client"]).Client()
+    browser.force_login(owner)
+    url = reverse("admin:accounts_user_change", args=[cashier.pk])
+    page = browser.get(url)
+    assert b"Till PIN" in page.content and b"A PIN is set" in page.content
+    form = {
+        "email": cashier.email, "first_name": "Mia", "last_name": "Tran", "phone": "",
+        "role": "staff", "is_active": "on", "till_pin": "2468",
+        "assignments-TOTAL_FORMS": "0", "assignments-INITIAL_FORMS": "0",
+    }  # fmt: skip
+    response = browser.post(url, form)
+    assert response.status_code == 302, response.content[:2000]
+    cashier.refresh_from_db()
+    assert cashier.pos_pin == pins.pin_hash(cashier, "2468")
+
+
+# ---------------------------------------------------------------- snapshot & catalogue
+
+
+def test_snapshot_shape_menu_and_staff(till, cafe, menu, cashier):
+    LocationMenuItem.objects.create(location=cafe, menu_item=menu["burger"], is_available=False)
+    response = till.get(f"{BASE}/snapshot?cafe=braddon")
+    assert response.status_code == 200
+    snap = response.json()
+    assert set(snap) == {
+        "locations", "categories", "menu", "cateringPackages", "tables", "promotions",
+        "availability", "stock", "stockLog", "orders", "customers", "giftCards",
+        "reservations", "catering", "staff", "roles", "settings", "currentShift",
+        "closedShifts", "audit", "reports",
+    }  # fmt: skip
+    coffee = next(item for item in snap["menu"] if item["id"] == "hotcoffee")
+    assert coffee["id"] == "hotcoffee" and coffee["price"] == 5
+    assert coffee["mods"][0] == {
+        "id": "drink", "name": "Choose your drink", "required": True, "max": 1,
+        "options": [["Flat White", 0.5]],
+    }  # fmt: skip
+    assert snap["availability"]["branchOff"] == {"braddon": ["bburger"]}
+    assert [s["name"] for s in snap["staff"]] == ["Mia Tran"]
+    assert snap["roles"]["cashier"]["perms"][0] == "pos"
+    assert snap["settings"]["rules"]["surcharge"] == "2.95"
+    assert len(snap["reports"]["days"]) == 7 and snap["currentShift"] is None
+    assert till.get(f"{BASE}/snapshot").json()["locations"][0]["id"] == "braddon"
+
+
+def test_backend_check_catalogue_endpoints(till, cafe, menu):
+    assert till.get(f"{BASE}/locations/braddon/categories").json()[0]["id"] == "coffee"
+    items = till.get(f"{BASE}/locations/braddon/menu").json()
+    item = next(row for row in items if row["id"] == "hotcoffee")
+    assert item["priceCents"] == 500 and item["available"] is True
+    assert item["modifierGroups"][0]["options"] == [{"name": "Flat White", "priceCents": 50}]
+
+
+# ---------------------------------------------------------------- orders
+
+
+def test_create_order_records_lines_and_checks_prices(till, cafe, menu):
+    data = create(till)
+    assert data["id"] == "BRADDON-TILL-1-0001" and data["status"] == "new"
+    assert data["accepted"] and not data["paid"] and data["total"] == 35.6
+    assert [ln["key"] for ln in data["lines"]] == ["L1", "L2"]
+    order = Order.objects.get(number="BRADDON-TILL-1-0001")
+    assert order.channel == "pos" and order.method == "takeaway" and order.customer is None
+    assert order.total_cents == 3560 and order.terminal_id == TERMINAL
+    assert order.review_note == ""
+
+
+def test_price_differences_are_recorded_not_rejected(till, cafe, menu):
+    body = order_body(lines=[line(price=5.8), line("L2", "unknown-item", 4)], total=9.8)
+    response = post(till, "/orders", body)
+    assert response.status_code == 201
+    note = Order.objects.get().review_note
+    assert "rung up at $5.80 (menu $6.30)" in note and "not on the Braddon menu" in note
+
+
+def test_totals_must_add_up(till, cafe, menu):
+    response = post(till, "/orders", order_body(total=30))
+    assert response.status_code == 422
+    assert response.json()["error"]["fields"] == {"total": "invalid"}
+    discounted = order_body(discounts=[{"label": "Staff 50%", "amount": 17.8}], total=17.8)
+    assert post(till, "/orders", discounted).status_code == 201
+    delivery = order_body("D-1", type="delivery", total=39.16)
+    assert post(till, "/orders", delivery).status_code == 201
+
+
+def test_order_numbers_are_unique_and_retries_replay(till, cafe, menu):
+    body = order_body()
+    first = post(till, "/orders", body, key="CMD-1")
+    again = post(till, "/orders", body, key="CMD-1")
+    assert first.status_code == again.status_code == 201
+    assert again.json() == first.json() and Order.objects.count() == 1
+    clash = post(till, "/orders", body, key="CMD-2")
+    assert clash.status_code == 409 and clash.json()["error"]["code"] == "CONFLICT"
+    reused = post(till, "/orders", order_body("OTHER-1"), key="CMD-1")
+    assert reused.status_code == 409
+    assert CommandReceipt.objects.filter(key="CMD-1", status_code=201).count() == 1
+
+
+def test_create_with_a_gift_card_payment(till, cafe, menu):
+    gift = {"method": "gift", "amount": 1000, "tip": 0, "surcharge": 0, "ref": "G1",
+            "giftLast4": "4471"}  # fmt: skip
+    data = create(till, payments=[gift])
+    assert data["payments"][0]["giftLast4"] == "4471" and data["methods"] == ["gift"]
+
+
+def test_payments_are_idempotent_and_capped(till, cafe, menu):
+    create(till)
+    number = "BRADDON-TILL-1-0001"
+    first = pay(till, number, 2000, method="card", surcharge=59)
+    assert first.status_code == 200 and not first.json()["paid"]
+    assert pay(till, number, 2000, method="card", surcharge=59).status_code == 200
+    over = pay(till, number, 2000, ref="P2")
+    assert over.status_code == 422 and "more than the $15.60 due" in over.json()["error"]["message"]
+    done = pay(till, number, 1560, ref="P3", cashPaid=2000, change=440)
+    assert done.json()["paid"] and done.json()["methods"] == ["card", "cash"]
+    order = Order.objects.get()
+    assert order.payments.count() == 2 and order.surcharge_cents == 59
+
+
+def test_kitchen_progress_and_status(till, cafe, menu):
+    create(till)
+    path = f"/orders/{quote('BRADDON-TILL-1-0001')}"
+    prep = post(till, f"{path}/preparation",
+                {"lines": [{"key": "L1", "prep": "ready"}, {"key": "L2", "prep": "preparing"}],
+                 "status": "preparing", "note": "Drinks ready"}, method="put")  # fmt: skip
+    assert prep.status_code == 200
+    assert [ln.get("prep") for ln in prep.json()["lines"]] == ["ready", "preparing"]
+    assert prep.json()["status"] == "preparing"
+    assert prep.json()["history"][-1]["what"] == "Drinks ready"
+    bad = post(till, f"{path}/preparation", {"lines": [{"key": "X", "prep": "ready"}],
+                                             "status": "ready"}, method="put")  # fmt: skip
+    assert bad.status_code == 422
+    assert post(till, f"{path}/status", {"status": "completed"}).json()["status"] == "completed"
+    late = post(till, f"{path}/preparation", {"lines": [], "status": "ready"}, method="put")
+    assert late.status_code == 409 and "completed" in late.json()["error"]["message"]
+    assert post(till, f"{path}/status", {"status": "ready"}).status_code == 409
+    assert post(till, f"{path}/status", {"status": "cancelled"}).status_code == 422
+
+
+def test_refund_void_and_cancel(till, cafe, menu):
+    create(till)
+    number = "BRADDON-TILL-1-0001"
+    path = f"/orders/{quote(number)}/adjustments"
+    pay(till, number, 3560)
+    void = {
+        "adjustment": {"key": "R1", "mode": "void", "amount": 630, "reason": "Entered by mistake",
+                       "by": "Mia Tran", "items": {"L1": 1}},
+        "lines": [{"key": "L1", "qty": 1}, {"key": "L2", "qty": 1}],
+        "total": 29.3,
+        "status": "new",
+    }  # fmt: skip
+    data = post(till, path, void).json()
+    assert (
+        data["total"] == 29.3
+        and data["lines"][0]["qty"] == 1
+        and data["refunds"][0]["amount"] == 630
+    )
+    assert post(till, path, void).status_code == 200  # same key: ignored
+    too_much = {**void, "adjustment": {**void["adjustment"], "key": "R2", "mode": "refund",
+                                       "amount": 5000}}  # fmt: skip
+    assert post(till, path, too_much).status_code == 422
+    raise_qty = {**void, "adjustment": {**void["adjustment"], "key": "R3"},
+                 "lines": [{"key": "L1", "qty": 5}]}  # fmt: skip
+    assert post(till, path, raise_qty).status_code == 422
+    cancel = {"adjustment": {"key": "R4", "mode": "cancel", "amount": 2930, "reason": "Customer cancelled"},
+              "lines": [], "total": 0, "status": "cancelled"}  # fmt: skip
+    data = post(till, path, cancel).json()
+    assert data["status"] == "cancelled" and data["lines"] == []
+    assert OrderLine.objects.filter(order__number=number).count() == 2  # voided lines are kept
+    assert AuditLog.objects.filter(action="pos_cancel").exists()
+    assert pay(till, number, 100, ref="P9").status_code == 409
+
+
+def test_tables(till, cafe, menu):
+    create(till, type="dinein", table="T4", tables=["T4"])
+    path = f"/orders/{quote('BRADDON-TILL-1-0001')}/tables"
+    data = post(till, path, {"table": "T6", "tables": ["T6", "T7"], "cleared": False}, method="put")
+    assert data.json()["table"] == "T6" and data.json()["tables"] == ["T6", "T7"]
+    assert Order.objects.get().method == "dine_in"
+
+
+# ---------------------------------------------------------------- app orders on the till
+
+
+@pytest.fixture
+def app_order(cafe, menu):
+    customer = UserFactory(first_name="Sophie")
+    LoyaltyCard.objects.create(user=customer, stamps=3)
+    order = Order.objects.create(
+        number="#8020-4471", customer=customer, location=cafe, method="pickup", status="received",
+        contact_name="Sophie", contact_phone="0400 123 456", payment_choice="apple_pay",
+        payment_label="Apple Pay", payment_reference="demo:1", subtotal_cents=1130,
+        total_cents=1130, stamps_earned=2,
+    )  # fmt: skip
+    OrderLine.objects.create(
+        order=order, menu_item=menu["coffee"], item_slug="hotcoffee", name="Milk Based Coffee",
+        qty=2, unit_price_cents=565,
+    )  # fmt: skip
+    return order
+
+
+def test_app_orders_appear_in_the_feed_and_are_accepted(till, app_order):
+    feed = till.get(f"{BASE}/orders?cafe=braddon").json()
+    data = feed["orders"][0]
+    assert data["id"] == "#8020-4471" and data["channel"] == "app"
+    assert data["status"] == "new" and data["accepted"] is False and data["paid"] is True
+    assert data["payments"][0]["method"] == "wallet" and data["total"] == 11.3
+    assert data["type"] == "pickup" and data["extRef"] == str(app_order.pk)
+    path = f"/orders/{quote('#8020-4471')}"
+    blocked = post(till, f"{path}/preparation", {"lines": [], "status": "preparing"}, method="put")
+    assert (
+        blocked.status_code == 409
+        and "waiting to be accepted" in blocked.json()["error"]["message"]
+    )
+    accepted = post(till, f"{path}/accept", {}).json()
+    assert accepted["status"] == "preparing" and accepted["accepted"]
+    assert AppNotification.objects.filter(user=app_order.customer).exists()
+    later = till.get(f"{BASE}/orders?cafe=braddon&since={quote(feed['cursor'])}").json()
+    assert [o["id"] for o in later["orders"]] == ["#8020-4471"]
+
+
+def test_cancelling_an_app_order_returns_stamps(till, app_order):
+    cancel = {"adjustment": {"key": "R1", "mode": "cancel", "amount": 0, "reason": "Café too busy"},
+              "lines": [], "total": 0, "status": "cancelled"}  # fmt: skip
+    response = post(till, f"/orders/{quote('#8020-4471')}/adjustments", cancel)
+    assert response.status_code == 200 and response.json()["status"] == "cancelled"
+    app_order.refresh_from_db()
+    assert app_order.status == "declined"
+    assert LoyaltyCard.objects.get(user=app_order.customer).stamps == 1
+    app = APIClient()
+    app.force_authenticate(app_order.customer)
+    mine = app.get("/api/v1/app/me/orders").json()["items"]
+    assert mine[0]["status"] == "declined"
+
+
+def test_till_orders_do_not_show_in_the_customer_app(till, cafe, menu, app_order):
+    create(till, customerId=str(app_order.customer_id))
+    assert Order.objects.get(number="BRADDON-TILL-1-0001").customer == app_order.customer
+    app = APIClient()
+    app.force_authenticate(app_order.customer)
+    assert [o["number"] for o in app.get("/api/v1/app/me/orders").json()["items"]] == ["#8020-4471"]
+
+
+def test_feed_cursor_only_returns_changes(till, cafe, menu):
+    create(till)
+    first = till.get(f"{BASE}/orders?cafe=braddon").json()
+    Order.objects.update(updated_at=timezone.now() - timedelta(minutes=5))
+    quiet = till.get(f"{BASE}/orders?cafe=braddon&since={quote(first['cursor'])}").json()
+    assert quiet["orders"] == []
+    assert till.get(f"{BASE}/orders?cafe=braddon&since=yesterday").status_code == 422
+
+
+def test_reads_do_not_grow_queries_with_rows(till, cafe, menu):
+    def count(path):
+        with CaptureQueriesContext(connection) as ctx:
+            assert till.get(path).status_code == 200
+        return len(ctx)
+
+    create(till)
+    feed, snap = count(f"{BASE}/orders?cafe=braddon"), count(f"{BASE}/snapshot?cafe=braddon")
+    for n in range(2, 6):
+        number = f"BRADDON-TILL-1-000{n}"
+        create(till, id=number)
+        pay(till, number, 1000, ref=f"P{n}")
+    assert count(f"{BASE}/orders?cafe=braddon") == feed
+    assert count(f"{BASE}/snapshot?cafe=braddon") == snap
+
+
+# ---------------------------------------------------------------- cash & records
+
+
+def shift_body(**overrides):
+    body = {"id": "SH1", "cafe": "braddon", "staffId": "x", "staffName": "Mia Tran",
+            "openedAt": "16 Oct, 6:02 am", "float": 20000, "cashSales": 0, "cashRefunds": 0,
+            "moves": [], "status": "open"}  # fmt: skip
+    body.update(overrides)
+    return body
+
+
+def test_cash_shift_open_move_close(till, cafe):
+    assert post(till, "/shifts", shift_body()).status_code == 201
+    assert post(till, "/shifts", shift_body(id="SH2")).status_code == 409
+    move = {"id": "M1", "type": "out", "amount": 4500, "reason": "Banking drop", "by": "Mia"}
+    assert len(post(till, "/shifts/SH1/moves", move).json()["moves"]) == 1
+    assert len(post(till, "/shifts/SH1/moves", move).json()["moves"]) == 1
+    assert till.get(f"{BASE}/snapshot?cafe=braddon").json()["currentShift"]["id"] == "SH1"
+    close = shift_body(status="closed", cashSales=48650, cashRefunds=630, moves=[move],
+                       closedAt="3:08 pm", closedBy="Mia", counted=63500, expected=63520,
+                       variance=-20)  # fmt: skip
+    wrong = {**close, "expected": 60000, "variance": 3500}
+    assert post(till, "/shifts/SH1", wrong, method="put").status_code == 422
+    closed = post(till, "/shifts/SH1", close, method="put").json()
+    assert closed["status"] == "closed" and closed["variance"] == -20
+    assert CashShift.objects.get().expected_cents == 63520
+    snap = till.get(f"{BASE}/snapshot?cafe=braddon").json()
+    assert snap["currentShift"] is None and snap["closedShifts"][0]["id"] == "SH1"
+
+
+def test_transactions_and_audit_are_kept_once(till, cafe):
+    record = {"kind": "payment", "orderId": "BRADDON-TILL-1-0001", "cafeId": "braddon",
+              "terminalId": TERMINAL, "amountC": 3560, "gstC": 324,
+              "at": timezone.now().isoformat(), "staff": "Mia", "reference": "P1"}  # fmt: skip
+    assert post(till, "/transactions", record).json() == {"ok": True}
+    assert post(till, "/transactions", record).status_code == 200
+    assert TillTransaction.objects.count() == 1
+    entry = {"id": "A1", "at": "9:41 am", "ts": 1, "staff": "Mia", "role": "Cashier",
+             "action": "Discount applied", "detail": "Staff 50%", "reason": "", "approver": "",
+             "amount": -1780, "area": "Till", "cafe": "braddon"}  # fmt: skip
+    post(till, "/audit", entry)
+    post(till, "/audit", entry)
+    assert AuditLog.objects.filter(entity_type="pos.audit").count() == 1
+    assert (
+        till.get(f"{BASE}/snapshot?cafe=braddon").json()["audit"][0]["action"] == "Discount applied"
+    )
+    other = {**entry, "id": "A2", "cafe": "civic"}
+    assert post(till, "/audit", other).status_code == 404
+
+
+def test_pos_docs_page_is_published(client):
+    assert client.get("/api/docs/pos/").status_code == 200
+    schema = client.get("/api/docs/pos/schema/").content.decode()
+    assert "/api/v1/pos/orders" in schema and "/api/v1/auth/login" in schema
+    assert "/api/v1/app/" not in schema
+
+
+def test_bos_pages_show_till_orders_shifts_and_transactions(till, cafe, menu):
+    from django.test import Client
+
+    create(till, lines=[line(price=5.8)], total=5.8)
+    post(till, "/shifts", shift_body())
+    record = {"kind": "payment", "cafeId": "braddon", "amountC": 580, "gstC": 53,
+              "at": timezone.now().isoformat(), "reference": "P1"}  # fmt: skip
+    post(till, "/transactions", record)
+    manager = UserFactory(role="manager", is_staff=True)
+    StaffAssignment.objects.create(user=manager, location=cafe)
+    browser = Client()
+    browser.force_login(manager)
+    order = Order.objects.get()
+    page = browser.get(reverse("admin:orders_order_change", args=[order.pk]))
+    assert page.status_code == 200 and b"Check prices" in page.content
+    assert b"rung up at $5.80" in page.content
+    for name in ["orders_order", "pos_cashshift", "pos_tilltransaction"]:
+        assert browser.get(reverse(f"admin:{name}_changelist")).status_code == 200
+    shift = CashShift.objects.get()
+    assert browser.get(reverse("admin:pos_cashshift_change", args=[shift.pk])).status_code == 200

@@ -11,7 +11,10 @@ def order_number():
 
 
 class Order(ManagedModel):
-    """An app order. Priced by the server (services.price_order), never by the client."""
+    """
+    An order from the mobile app (priced by the server, never by the client) or from a till
+    (rung up by staff; checked against the menu, differences noted in `review_note`).
+    """
 
     class Status(models.TextChoices):
         RECEIVED = "received"
@@ -20,18 +23,35 @@ class Order(ManagedModel):
         READY = "ready"
         COMPLETED = "completed"
         DECLINED = "declined"
+        CANCELLED = "cancelled"
+        REFUNDED = "refunded"
+        FAILED = "failed"
+
+    class Channel(models.TextChoices):
+        APP = "app", "App"
+        POS = "pos", "Till"
 
     def __str__(self):
         return self.number
 
-    number = models.CharField(max_length=20, unique=True, default=order_number, editable=False)
+    number = models.CharField(max_length=40, unique=True, default=order_number, editable=False)
+    channel = models.CharField(max_length=3, choices=Channel.choices, default=Channel.APP)
     customer = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="orders"
+        settings.AUTH_USER_MODEL,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="orders",
     )
     location = models.ForeignKey("locations.Location", on_delete=models.PROTECT)
     method = models.CharField(
         max_length=8,
-        choices=[("pickup", "Pickup"), ("delivery", "Delivery"), ("dine_in", "Dine in")],
+        choices=[
+            ("pickup", "Pickup"),
+            ("delivery", "Delivery"),
+            ("dine_in", "Dine in"),
+            ("takeaway", "Takeaway"),
+        ],
     )
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.RECEIVED)
     scheduled_time = models.TimeField(
@@ -39,13 +59,14 @@ class Order(ManagedModel):
     )
     delivery_address = models.CharField(max_length=300, blank=True)
     table_number = models.CharField(max_length=20, blank=True)
-    contact_name = models.CharField(max_length=160)
-    contact_phone = models.CharField(max_length=32)
+    contact_name = models.CharField(max_length=160, blank=True)
+    contact_phone = models.CharField(max_length=32, blank=True)
     payment_choice = models.CharField(
         max_length=10,
+        blank=True,
         choices=[("apple_pay", "Apple Pay"), ("saved_card", "Saved card"), ("new_card", "Card")],
     )
-    payment_label = models.CharField(max_length=60)
+    payment_label = models.CharField(max_length=60, blank=True)
     payment_reference = models.CharField(max_length=120, blank=True)
     subtotal_cents = models.PositiveIntegerField()
     delivery_cents = models.PositiveIntegerField(default=0)
@@ -55,7 +76,7 @@ class Order(ManagedModel):
     total_cents = models.PositiveIntegerField()
     stamps_earned = models.PositiveSmallIntegerField(default=0)
     reward_redeemed = models.BooleanField(default=False)
-    estimated_wait = models.CharField(max_length=40)
+    estimated_wait = models.CharField(max_length=40, blank=True)
     idempotency_key = models.CharField(max_length=100, blank=True, editable=False)
     request_hash = models.CharField(max_length=64, blank=True, editable=False)
     handled_by = models.ForeignKey(
@@ -66,12 +87,27 @@ class Order(ManagedModel):
         related_name="handled_orders",
     )
     handled_at = models.DateTimeField(null=True, blank=True)
+    # Till orders (channel "pos"); app orders leave these empty.
+    placed_at = models.DateTimeField(null=True, blank=True)
+    tables = models.JSONField(default=list, blank=True)
+    table_cleared = models.BooleanField(default=False)
+    discount_cents = models.PositiveIntegerField(default=0)
+    discounts = models.JSONField(default=list, blank=True)
+    note = models.TextField(blank=True)
+    staff_name = models.CharField(max_length=120, blank=True)
+    terminal_id = models.CharField(max_length=60, blank=True)
+    history = models.JSONField(default=list, blank=True)
+    review_note = models.TextField(
+        blank=True,
+        help_text="Where the till's prices differ from the menu, for a manager to check.",
+    )
 
     class Meta(ManagedModel.Meta):
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["location", "status", "created_at"]),
             models.Index(fields=["customer", "created_at"]),
+            models.Index(fields=["location", "updated_at"]),
         ]
         constraints = [
             models.UniqueConstraint(
@@ -98,6 +134,81 @@ class OrderLine(BaseModel):
     modifiers_label = models.TextField(blank=True)
     note = models.CharField(max_length=500, blank=True)
     position = models.PositiveSmallIntegerField(default=0)
+    # Till lines: the till's line key, kitchen adjustments ("No dairy") and kitchen progress.
+    # A void lowers qty (0 = voided); lines are never deleted.
+    key = models.CharField(max_length=40, blank=True)
+    adjust = models.JSONField(default=list, blank=True)
+    prep = models.CharField(
+        max_length=10,
+        blank=True,
+        choices=[("new", "Not started"), ("preparing", "Preparing"), ("ready", "Ready")],
+    )
 
     class Meta(BaseModel.Meta):
         ordering = ["position"]
+
+
+class OrderPayment(BaseModel):
+    """One tender taken at a till (cash, card, wallet, gift card, reward). Idempotent on reference."""
+
+    def __str__(self):
+        return f"{self.get_method_display()} ${self.amount_cents / 100:.2f}"
+
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="payments")
+    method = models.CharField(
+        max_length=6,
+        choices=[
+            ("cash", "Cash"),
+            ("card", "Card"),
+            ("wallet", "Wallet"),
+            ("gift", "Gift card"),
+            ("reward", "Reward"),
+        ],
+    )
+    amount_cents = models.PositiveIntegerField(help_text="Applied to the order (no tip/surcharge).")
+    tip_cents = models.PositiveIntegerField(default=0)
+    surcharge_cents = models.PositiveIntegerField(default=0)
+    reference = models.CharField(max_length=80)
+    gift_last4 = models.CharField(max_length=4, blank=True)
+    split_mode = models.CharField(max_length=10, blank=True)
+    items = models.JSONField(default=dict, blank=True)
+    cash_paid_cents = models.PositiveIntegerField(null=True, blank=True)
+    rounding_cents = models.IntegerField(default=0)
+    change_cents = models.PositiveIntegerField(null=True, blank=True)
+    staff_name = models.CharField(max_length=120, blank=True)
+    taken_at = models.CharField(max_length=40, blank=True, help_text="As shown on the till.")
+    terminal_id = models.CharField(max_length=60, blank=True)
+
+    class Meta(BaseModel.Meta):
+        verbose_name = "payment"
+        constraints = [
+            models.UniqueConstraint(fields=["order", "reference"], name="unique_payment_reference")
+        ]
+
+
+class OrderAdjustment(BaseModel):
+    """A refund, void or cancellation made at a till. Idempotent on key."""
+
+    def __str__(self):
+        return f"{self.get_mode_display()} ${self.amount_cents / 100:.2f}"
+
+    order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="adjustments")
+    key = models.CharField(max_length=60)
+    mode = models.CharField(
+        max_length=6, choices=[("cancel", "Cancel"), ("void", "Void"), ("refund", "Refund")]
+    )
+    amount_cents = models.PositiveIntegerField(help_text="Returned to the customer.")
+    allocation = models.JSONField(default=list, blank=True)
+    items = models.JSONField(default=dict, blank=True)
+    reason = models.CharField(max_length=200, blank=True)
+    staff_name = models.CharField(max_length=120, blank=True)
+    approver_name = models.CharField(max_length=120, blank=True)
+    made_at = models.CharField(max_length=40, blank=True, help_text="As shown on the till.")
+    terminal_id = models.CharField(max_length=60, blank=True)
+
+    class Meta(BaseModel.Meta):
+        verbose_name = "refund or void"
+        verbose_name_plural = "refunds and voids"
+        constraints = [
+            models.UniqueConstraint(fields=["order", "key"], name="unique_adjustment_key")
+        ]

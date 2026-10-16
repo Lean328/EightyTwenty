@@ -632,7 +632,11 @@ class MenuItemView(PublicView):
 
 
 def my_orders(user):
-    return Order.objects.filter(customer=user).select_related("location").prefetch_related("lines")
+    return (
+        Order.objects.filter(customer=user, channel="app")
+        .select_related("location")
+        .prefetch_related("lines")
+    )
 
 
 class OrdersView(AppView):

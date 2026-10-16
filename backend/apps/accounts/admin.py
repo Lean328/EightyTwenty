@@ -9,6 +9,7 @@ from apps.core.admin_widgets import BOS_FORMFIELD_OVERRIDES
 from apps.core.bos_access import CHAIN, MANAGER, OWNERS, bos_location_ids, bos_locations, bos_role
 from apps.core.services import audit, snapshot
 from apps.locations.models import Location
+from apps.pos import pins
 
 from .models import CustomerProfile, StaffAssignment, User
 
@@ -23,7 +24,41 @@ CHAIN_ROLE_CHOICES = [
 API_ROLE_LABELS = {"owner": "Chain owner (API)", "admin": "Head office (API)"}
 
 
-class CreateUserForm(AdminUserCreationForm):
+class TillPinMixin(forms.Form):
+    """A write-only 4-digit PIN for the tills (stored hashed, see apps.pos.pins)."""
+
+    till_pin = forms.CharField(
+        label="Till PIN",
+        required=False,
+        max_length=4,
+        widget=forms.PasswordInput(render_value=False, attrs={"inputmode": "numeric"}),
+        help_text="4 digits to sign in at the tills, different for everyone. Leave empty to keep it.",
+    )
+    clear_till_pin = forms.BooleanField(label="Remove till PIN", required=False)
+
+    def init_till_pin(self):
+        if self.instance.pk and self.instance.pos_pin:
+            self.fields[
+                "till_pin"
+            ].help_text = "A PIN is set. Type 4 new digits to change it, or tick Remove till PIN."
+
+    def clean_till_pin(self):
+        pin = self.cleaned_data.get("till_pin", "").strip()
+        if pin:
+            try:
+                pins.set_pin(self.instance, pin)
+            except ValueError as exc:
+                raise forms.ValidationError(str(exc)) from exc
+        return pin
+
+    def apply_till_pin(self, user):
+        if self.cleaned_data.get("clear_till_pin") or user.role == "customer":
+            user.pos_pin = ""
+        elif self.cleaned_data.get("till_pin"):
+            pins.set_pin(user, self.cleaned_data["till_pin"])
+
+
+class CreateUserForm(TillPinMixin, AdminUserCreationForm):
     locations = forms.ModelMultipleChoiceField(
         queryset=Location.objects.none(),
         required=False,
@@ -62,7 +97,7 @@ class PasswordSummaryWidget(forms.Widget):
         return None
 
 
-class ChangeUserForm(UserChangeForm):
+class ChangeUserForm(TillPinMixin, UserChangeForm):
     password = forms.Field(
         label="Password", required=False, disabled=True, widget=PasswordSummaryWidget
     )
@@ -74,6 +109,7 @@ class ChangeUserForm(UserChangeForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["password"].help_text = ""
+        self.init_till_pin()
 
 
 class AssignmentInline(OperationsInline):
@@ -152,17 +188,20 @@ class UserAdmin(DjangoUserAdmin):
         if obj is None:
             fields = ["email", "first_name", "last_name", "phone", "password1", "password2"]
             fields += ["role", "locations"] if chain else ["locations"]
-            return [("Create a person", {"fields": fields})]
+            return [("Create a person", {"fields": [*fields, "till_pin"]})]
         profile = ["first_name", "last_name", "phone"]
         access = ["is_active"]
         if chain:
             profile += ["marketing_opt_in", "email_verified"]
             access = ["role", "is_active", "is_superuser"]
-        return [
+        sets = [
             ("Sign-in", {"fields": ["email", "password"]}),
             ("Profile", {"fields": profile}),
             ("Access", {"fields": access}),
         ]
+        if obj.role != "customer" or obj.is_superuser:
+            sets.append(("Till", {"fields": ["till_pin", "clear_till_pin"]}))
+        return sets
 
     def get_readonly_fields(self, request, obj=None):
         fields = list(super().get_readonly_fields(request, obj))
@@ -219,6 +258,7 @@ class UserAdmin(DjangoUserAdmin):
         # Workspace access follows the role; is_staff is never set by hand.
         obj.is_staff = obj.is_superuser or obj.role in TEAM_ROLES
         before = snapshot(User.objects.get(pk=obj.pk)) if change else None
+        form.apply_till_pin(obj)
         super().save_model(request, obj, form, change)
         audit(request, obj, before, "admin_update" if change else "admin_create")
         if not change:

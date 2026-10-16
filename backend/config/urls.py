@@ -89,6 +89,8 @@ urlpatterns = [
     path("api/v1/bos/", include(router.urls)),
     # Customer mobile app (EightyTwentyMobile): its own contract, see docs/APP_API.md.
     path("api/v1/app/", include("apps.mobile.urls")),
+    # Till (POS + kitchen display): its own contract, see apps/pos/guide.md.
+    path("api/v1/pos/", include("apps.pos.urls")),
     path("account/reset-password", account_pages.reset_password, name="account_reset_password"),
     path("api/v1/jobs/retry-emails", operations.RetryEmailsView.as_view()),
     path("api/v1/jobs/cleanup", operations.CleanupView.as_view()),
@@ -96,6 +98,7 @@ urlpatterns = [
 ]
 if settings.DOCS_ENABLED:
     from apps.mobile import docs as app_docs
+    from apps.pos import docs as pos_docs
 
     urlpatterns += [
         path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema"), name="swagger-ui"),
@@ -103,6 +106,10 @@ if settings.DOCS_ENABLED:
         path("api/docs/app/", app_docs.swagger, name="app-docs"),
         path("api/docs/app/redoc/", app_docs.redoc, name="app-docs-redoc"),
         path("api/docs/app/schema/", app_docs.schema, name="app-schema"),
+        # The till developer's page: /api/v1/pos plus login/refresh, with the guide on top.
+        path("api/docs/pos/", pos_docs.swagger, name="pos-docs"),
+        path("api/docs/pos/redoc/", pos_docs.redoc, name="pos-docs-redoc"),
+        path("api/docs/pos/schema/", pos_docs.schema, name="pos-schema"),
     ]
 urlpatterns += [
     # Unknown API paths answer in JSON; everything else is the BOS workspace at the root.

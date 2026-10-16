@@ -45,8 +45,8 @@ def add_error_responses(result, generator, request, public):
         if not path.startswith("/api/v1/"):
             continue
         segments = path.strip("/").split("/")
-        # The mobile app API keeps its own tags and error codes (apps/mobile/errors.py).
-        app = segments[2] == "app"
+        # The mobile app and till APIs keep their own tags and error codes (apps/mobile/errors.py).
+        app = segments[2] in ("app", "pos")
         envelope = "ErrorOut" if app else "APIError"
         for method, operation in operations.items():
             if method not in {"get", "post", "put", "patch", "delete"}:

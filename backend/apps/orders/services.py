@@ -32,7 +32,12 @@ TRANSITIONS = {
     "ready": ["completed"],
     "completed": [],
     "declined": [],
+    "cancelled": [],
+    "refunded": [],
+    "failed": [],
 }
+# Statuses that end an order without the sale standing (refunds money, stamps and gift card).
+CLOSED = {"declined", "cancelled", "refunded", "failed"}
 
 
 def basis_points(rate):
@@ -305,12 +310,28 @@ def status_message(order):
         if order.method == "dine_in":
             return f"Order {order.number} is ready — we’ll bring it to table {order.table_number}."
         return f"Order {order.number} is ready at the {where} counter."
-    if order.status == "declined":
+    if order.status in ("declined", "cancelled", "failed"):
         return (
             f"{where} couldn’t take order {order.number}. Any payment, gift card balance "
             "and stamps used have been returned."
         )
+    if order.status == "refunded":
+        return (
+            f"Order {order.number} has been refunded. Any gift card balance and stamps used "
+            "have been returned."
+        )
     return ""
+
+
+def after_status_change(order, previous):
+    """Side effects of an app order moving on (BOS or till): refunds and the customer's feed."""
+    if order.channel != "app" or order.status == previous:
+        return
+    if order.status in CLOSED and previous not in CLOSED:
+        loyalty.reverse_order(order)
+        payments.refund(order.payment_reference, order.total_cents)
+    if text := status_message(order):
+        notify(order.customer, "order", text)
 
 
 @transaction.atomic
@@ -327,9 +348,5 @@ def transition_order(order, status, request):
     order.updated_by = request.user
     order.save()
     audit(request, order, before)
-    if status == "declined":
-        loyalty.reverse_order(order)
-        payments.refund(order.payment_reference, order.total_cents)
-    if text := status_message(order):
-        notify(order.customer, "order", text)
+    after_status_change(order, before["status"])
     return order

@@ -11,7 +11,7 @@ from apps.core.bos_access import ALL
 from apps.core.exceptions import DomainError
 from apps.core.templatetags.bos_admin import status_badge
 
-from .models import Order, OrderLine
+from .models import Order, OrderAdjustment, OrderLine, OrderPayment
 from .services import TRANSITIONS, transition_order
 
 ACTION_LABELS = {
@@ -27,16 +27,12 @@ def aud(cents):
     return f"${cents / 100:,.2f}"
 
 
-class OrderLineInline(admin.TabularInline):
-    model = OrderLine
+class ReadOnlyInline(admin.TabularInline):
     extra = 0
     can_delete = False
-    fields = ("qty", "name", "modifiers_label", "note", "unit_price")
-    readonly_fields = fields
 
-    @admin.display(description="Unit price")
-    def unit_price(self, obj):
-        return aud(obj.unit_price_cents)
+    def get_readonly_fields(self, request, obj=None):
+        return self.fields
 
     def has_add_permission(self, request, obj=None):
         return False
@@ -48,6 +44,42 @@ class OrderLineInline(admin.TabularInline):
         return True
 
 
+class OrderLineInline(ReadOnlyInline):
+    model = OrderLine
+    fields = ("qty", "name", "modifiers_label", "note", "unit_price")
+
+    @admin.display(description="Unit price")
+    def unit_price(self, obj):
+        return aud(obj.unit_price_cents)
+
+
+class PaymentInline(ReadOnlyInline):
+    model = OrderPayment
+    fields = ("method", "paid", "tip", "surcharge", "staff_name", "taken_at", "reference")
+    verbose_name_plural = "Payments taken at the till"
+
+    @admin.display(description="Amount")
+    def paid(self, obj):
+        return aud(obj.amount_cents)
+
+    @admin.display(description="Tip")
+    def tip(self, obj):
+        return aud(obj.tip_cents)
+
+    @admin.display(description="Surcharge")
+    def surcharge(self, obj):
+        return aud(obj.surcharge_cents)
+
+
+class AdjustmentInline(ReadOnlyInline):
+    model = OrderAdjustment
+    fields = ("mode", "returned", "reason", "staff_name", "approver_name", "made_at")
+
+    @admin.display(description="Returned")
+    def returned(self, obj):
+        return aud(obj.amount_cents)
+
+
 @admin.register(Order)
 class OrderAdmin(ReadOnlyAdmin):
     # Café owners and staff work their own cafés' orders; the order itself stays read-only.
@@ -55,6 +87,7 @@ class OrderAdmin(ReadOnlyAdmin):
     location_lookup = "location"
     list_display = (
         "number",
+        "channel",
         "contact_name",
         "location",
         "method",
@@ -63,28 +96,36 @@ class OrderAdmin(ReadOnlyAdmin):
         "order_status",
         "created_at",
     )
-    list_filter = ("status", "location", "method", "created_at")
-    search_fields = ("number", "contact_name", "contact_phone", "customer__email")
+    list_filter = ("status", "channel", "location", "method", "created_at")
+    search_fields = ("number", "contact_name", "contact_phone", "customer__email", "staff_name")
     date_hierarchy = "created_at"
     ordering = ("-created_at",)
-    inlines = (OrderLineInline,)
+    inlines = (OrderLineInline, PaymentInline, AdjustmentInline)
     change_form_template = "admin/bos_order_form.html"
-    description = "Orders placed in the mobile app. Move each one along as you work; the customer sees every step in the app."
+    description = (
+        "Orders from the mobile app and the tills. Move app orders along as you work; the "
+        "customer sees every step in the app. Till orders show where their prices differed "
+        "from the menu."
+    )
     fieldsets = [
         (
             "Order",
             {
                 "fields": (
                     "number",
+                    "channel",
                     "order_status",
                     "location",
                     "method",
                     "when",
                     "delivery_address",
                     "table_number",
+                    "note",
                 )
             },
         ),
+        ("Check prices", {"fields": ("review_note",)}),
+        ("Till", {"fields": ("terminal_id", "staff_name", "placed_at")}),
         ("Customer", {"fields": ("contact_name", "contact_phone", "customer")}),
         (
             "Payment",
@@ -107,6 +148,14 @@ class OrderAdmin(ReadOnlyAdmin):
     def get_readonly_fields(self, request, obj=None):
         return (*super().get_readonly_fields(request, obj), "order_status", "when", "money")
 
+    def get_fieldsets(self, request, obj=None):
+        sets = super().get_fieldsets(request, obj)
+        if obj and obj.channel == "app":
+            return [row for row in sets if row[0] not in ("Check prices", "Till")]
+        if obj and not obj.review_note:
+            return [row for row in sets if row[0] != "Check prices"]
+        return sets
+
     @admin.display(description="Status", ordering="status")
     def order_status(self, obj):
         return status_badge(obj.status)
@@ -123,6 +172,7 @@ class OrderAdmin(ReadOnlyAdmin):
     def money(self, obj):
         parts = [f"Subtotal {aud(obj.subtotal_cents)}"]
         for label, cents, sign in [
+            ("Discounts", obj.discount_cents, "−"),
             ("Delivery", obj.delivery_cents, "+"),
             ("Free coffee", obj.reward_cents, "−"),
             ("Card surcharge", obj.surcharge_cents, "+"),

@@ -73,6 +73,12 @@ class CleanupView(RetryEmailsView):
         count, _ = RateLimitBucket.objects.filter(
             expires_at__lt=timezone.now() - timedelta(days=1)
         ).delete()
+        # Till command receipts only need to outlive the till's retries.
+        from apps.pos.models import CommandReceipt
+
+        count += CommandReceipt.objects.filter(
+            created_at__lt=timezone.now() - timedelta(days=30)
+        ).delete()[0]
         # Account emails contain short-lived reset/verification links; purge their body.
         count += (
             EmailMessage.objects.filter(sent_at__lt=timezone.now() - timedelta(days=7))

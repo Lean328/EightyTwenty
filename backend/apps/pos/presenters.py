@@ -1,0 +1,497 @@
+"""
+Till shapes (POS src/domain/types.ts and src/services/contracts.ts). Orders, lines and catering
+prices are AUD dollars (numbers); payments, refunds and cash are integer cents. Café and menu
+ids are the website slugs ("braddon", "mighty").
+"""
+
+from datetime import timedelta
+
+from django.db.models import Count, F, Q, Sum
+from django.db.models.functions import Coalesce, TruncDate
+from django.utils import timezone
+
+from apps.core.models import AuditLog, SiteSettings
+from apps.core.public_services import categories_data, locations_data
+from apps.enquiries.models import CateringPackage
+from apps.loyalty import services as loyalty
+from apps.loyalty.models import STAMPS_PER_REWARD
+from apps.menu.catalog import menu_items
+from apps.orders import services as order_services
+from apps.orders.models import Order, OrderLine, OrderPayment
+
+from . import pins
+from .models import CashShift
+from .services import AUDIT_TYPE, LIVE, TO_TILL, till_locations
+
+TILL_TYPE = {
+    "dine_in": "dinein",
+    "pickup": "pickup",
+    "takeaway": "takeaway",
+    "delivery": "delivery",
+}
+TOGGLES = {"kitchen": True, "receipt": False, "tips": False, "openDrawer": True, "autoStamp": True}
+
+
+def dollars(cents):
+    return cents / 100
+
+
+def local(value):
+    return timezone.localtime(value)
+
+
+def person(user):
+    if user is None:
+        return ""
+    return f"{user.first_name} {user.last_name}".strip() or user.email.split("@")[0]
+
+
+def initials(name):
+    return "".join(part[0] for part in name.split() if part)[:2].upper()
+
+
+# ---------------------------------------------------------------- catalogue
+
+
+def photo(asset):
+    """The till ships its own copies of the website photos (img/... → img-pos/...jpg)."""
+    if not asset:
+        return ""
+    if asset.legacy_path.startswith("img/"):
+        return asset.legacy_path
+    return asset.variants.get("md", "")
+
+
+def menu(location):
+    """This café's menu (chain-wide items plus its own, at its prices) and its sold-out ids."""
+    entries = menu_items(location)
+    return [
+        {
+            "id": entry.item.slug,
+            "cat": entry.category_slug,
+            "name": entry.item.name,
+            "price": dollars(entry.price_cents),
+            "diet": [link.tag.code for link in entry.item.dietary_links.all()],
+            "img": photo(entry.item.image),
+            "desc": entry.item.description,
+            "mods": [
+                {
+                    "id": group.code,
+                    "name": group.name,
+                    "required": group.required,
+                    "max": group.max_select,
+                    "options": [[name, dollars(price)] for name, price in group.options],
+                }
+                for group in entry.groups
+            ],
+            **({"featured": True} if entry.item.is_featured else {}),
+        }
+        for entry in entries
+    ], [entry.item.slug for entry in entries if not entry.available]
+
+
+def menu_dto(entry):
+    """GET /pos/locations/{slug}/menu (the till's PosMenuItemDto, src/services/http/posMapping.ts)."""
+    image = entry.item.image
+    return {
+        "id": entry.item.slug,
+        "categoryId": entry.category_slug,
+        "name": entry.item.name,
+        "description": entry.item.description,
+        "priceCents": entry.price_cents,
+        "dietary": [link.tag.code for link in entry.item.dietary_links.all()],
+        "imageUrl": (image.variants.get("md") or None) if image else None,
+        "featured": entry.item.is_featured,
+        "available": entry.available,
+        "modifierGroups": [
+            {
+                "id": group.code,
+                "name": group.name,
+                "required": group.required,
+                "maxSelections": group.max_select,
+                "options": [{"name": name, "priceCents": price} for name, price in group.options],
+            }
+            for group in entry.groups
+        ],
+    }
+
+
+def catering():
+    return [
+        {
+            "id": row.name,
+            "pricePerPerson": dollars(row.price_cents),
+            "unit": row.unit,
+            "blurb": row.blurb,
+            "items": row.items,
+        }
+        for row in CateringPackage.objects.filter(is_active=True)
+    ]
+
+
+# ---------------------------------------------------------------- people
+
+
+def staff_member(user, cafe):
+    name = person(user)
+    return {
+        "id": str(user.pk),
+        "name": name,
+        "initials": initials(name),
+        "role": pins.till_role(user),
+        "cafe": cafe,
+        "shift": "",
+    }
+
+
+def team(location):
+    """Who can sign in at this café's tills (a PIN is set)."""
+    people = (
+        pins.team()
+        .exclude(pos_pin="")
+        .filter(
+            Q(is_superuser=True)
+            | Q(role__in=["owner", "admin"])
+            | Q(assignments__is_active=True, assignments__location=location)
+        )
+        .distinct()
+        .order_by("first_name", "email")
+    )
+    return [staff_member(user, location.slug) for user in people]
+
+
+# ---------------------------------------------------------------- orders
+
+
+def with_details(qs):
+    return qs.select_related("location", "handled_by").prefetch_related(
+        "lines", "payments", "adjustments"
+    )
+
+
+def line(row):
+    data = {
+        "key": row.key or str(row.pk),
+        "itemId": row.item_slug,
+        "name": row.name,
+        "price": dollars(row.unit_price_cents),
+        "qty": row.qty,
+        "sel": row.selections or {},
+        "adjust": row.adjust or [],
+        "note": row.note,
+    }
+    if row.prep:
+        data["prep"] = row.prep
+    return data
+
+
+def payment(row):
+    data = {
+        "method": row.method,
+        "amount": row.amount_cents,
+        "tip": row.tip_cents,
+        "surcharge": row.surcharge_cents,
+        "ref": row.reference,
+        "giftLast4": row.gift_last4 or None,
+        "at": row.taken_at,
+        "by": row.staff_name,
+    }
+    for key, value in [
+        ("mode", row.split_mode),
+        ("items", row.items),
+        ("cashPaid", row.cash_paid_cents),
+        ("change", row.change_cents),
+    ]:
+        if value not in ("", None, {}):
+            data[key] = value
+    if row.rounding_cents:
+        data["rounding"] = row.rounding_cents
+    return data
+
+
+def app_payments(row):
+    """App orders were paid in the app: card/Apple Pay for the rest, gift card for its share."""
+    rows = []
+    charged = row.total_cents - row.surcharge_cents
+    if charged > 0:
+        rows.append(
+            {
+                "method": "wallet" if row.payment_choice == "apple_pay" else "card",
+                "amount": charged,
+                "tip": 0,
+                "surcharge": row.surcharge_cents,
+                "ref": f"app-{row.pk}",
+                "giftLast4": None,
+                "at": "",
+                "by": "App",
+            }
+        )
+    if row.gift_card_cents:
+        rows.append(
+            {
+                "method": "gift",
+                "amount": row.gift_card_cents,
+                "tip": 0,
+                "surcharge": 0,
+                "ref": f"app-gift-{row.pk}",
+                "giftLast4": None,
+                "at": "",
+                "by": "App",
+            }
+        )
+    return rows
+
+
+def adjustment(row):
+    return {
+        "key": row.key,
+        "mode": row.mode,
+        "amount": row.amount_cents,
+        "alloc": row.allocation,
+        "reason": row.reason,
+        "by": row.staff_name,
+        "approver": row.approver_name,
+        "at": row.made_at,
+        "items": row.items,
+    }
+
+
+def order(row):
+    placed = local(row.placed_at or row.created_at)
+    lines = [line(item) for item in row.lines.all() if item.qty]
+    if row.channel == "app":
+        payments = app_payments(row)
+        total = row.total_cents + row.gift_card_cents - row.surcharge_cents
+        discounts = (
+            [{"label": "Free coffee", "amount": dollars(row.reward_cents)}]
+            if row.reward_cents
+            else []
+        )
+        extra = ", ".join(
+            part for part in [row.contact_name, row.contact_phone, row.delivery_address] if part
+        )
+        note = f"App order · {extra}" if extra else "App order"
+    else:
+        payments = [payment(p) for p in row.payments.all()]
+        total, discounts, note = row.total_cents, row.discounts, row.note
+    paid = sum(p["amount"] for p in payments)
+    data = {
+        "id": row.number,
+        "channel": row.channel,
+        "type": TILL_TYPE[row.method],
+        "status": TO_TILL[row.status],
+        "accepted": row.status != "received",
+        "cafe": row.location.slug,
+        "time": (row.scheduled_time or placed).strftime("%H:%M"),
+        "placedAt": placed.isoformat(),
+        "tables": row.tables or ([row.table_number] if row.table_number else []),
+        "lines": lines,
+        "total": dollars(total),
+        "paid": paid >= total,
+        "methods": list(dict.fromkeys(p["method"] for p in payments)),
+        "payments": payments,
+        "note": note,
+        "discounts": discounts,
+        "rewardUsed": row.reward_redeemed,
+        "staff": row.staff_name or person(row.handled_by),
+        "history": row.history,
+        "refunds": [adjustment(a) for a in row.adjustments.all()],
+        "stamped": paid >= total,
+        "cleared": row.table_cleared,
+    }
+    if row.table_number:
+        data["table"] = row.table_number
+    if row.customer_id:
+        data["customerId"] = str(row.customer_id)
+    if row.channel == "app":
+        data["extRef"] = str(row.pk)
+    return data
+
+
+# ---------------------------------------------------------------- cash & records
+
+
+def shift(row):
+    data = {
+        "id": row.reference,
+        "cafe": row.location.slug,
+        "staffId": row.staff_ref,
+        "staffName": row.staff_name,
+        "openedAt": row.opened_label,
+        "float": row.float_cents,
+        "cashSales": row.cash_sales_cents,
+        "cashRefunds": row.cash_refunds_cents,
+        "moves": row.moves,
+        "status": row.status,
+    }
+    if row.status == "closed":
+        data.update(
+            closedAt=row.closed_label,
+            closedBy=row.closed_by,
+            counted=row.counted_cents,
+            expected=row.expected_cents,
+            variance=row.variance_cents,
+            note=row.note,
+            approvedBy=row.approved_by,
+        )
+    return data
+
+
+def audit_entry(row):
+    entry = dict(row.after or {})
+    entry.pop("terminal", None)
+    return entry
+
+
+# ---------------------------------------------------------------- reports
+
+
+def reports(location):
+    """Read-only figures for the till dashboard, from this café's orders (gross order totals)."""
+    today = timezone.localdate()
+    start = today - timedelta(days=27)
+    sold = Order.objects.filter(location=location).exclude(status__in=order_services.CLOSED)
+    sold = sold.exclude(status="received")
+    sold = sold.annotate(at=Coalesce("placed_at", "created_at"))
+    by_day = {
+        row["day"]: row
+        for row in sold.filter(at__date__gte=start)
+        .annotate(day=TruncDate("at"))
+        .values("day")
+        .annotate(sales=Sum("total_cents"), orders=Count("id"))
+    }
+    days = []
+    for offset in range(6, -1, -1):
+        day = today - timedelta(days=offset)
+        row = by_day.get(day, {})
+        days.append(
+            {
+                "d": day.strftime("%a"),
+                "sales": dollars(row.get("sales") or 0),
+                "orders": row.get("orders") or 0,
+                **({"partial": True} if offset == 0 else {}),
+            }
+        )
+    weeks = []
+    for week in range(3, -1, -1):
+        first = today - timedelta(days=week * 7 + 6)
+        total = sum((by_day.get(first + timedelta(days=n), {}).get("sales") or 0) for n in range(7))
+        weeks.append({"w": first.strftime("%d %b"), "sales": dollars(total)})
+    week_start = today - timedelta(days=6)
+    week_orders = sold.filter(at__date__gte=week_start)
+    best = (
+        OrderLine.objects.filter(order__in=week_orders, qty__gt=0)
+        .values("item_slug")
+        .annotate(units=Sum("qty"), rev=Sum(F("qty") * F("unit_price_cents")))
+        .order_by("-units")[:5]
+    )
+    tenders = (
+        OrderPayment.objects.filter(order__in=week_orders)
+        .values("method")
+        .annotate(amount=Sum("amount_cents"))
+    )
+    tender_total = sum(row["amount"] for row in tenders) or 1
+    channels = week_orders.values("channel").annotate(n=Count("id"))
+    channel_total = sum(row["n"] for row in channels) or 1
+    labels = dict(OrderPayment._meta.get_field("method").choices)
+    return {
+        "days": days,
+        "weeks": weeks,
+        "best": [
+            {"itemId": row["item_slug"], "qty": row["units"], "rev": dollars(row["rev"])}
+            for row in best
+        ],
+        "payments": [
+            {
+                "m": labels.get(row["method"], row["method"]),
+                "pct": round(row["amount"] * 100 / tender_total),
+                "amt": dollars(row["amount"]),
+            }
+            for row in tenders
+        ],
+        "channels": [
+            {
+                "c": "POS" if row["channel"] == "pos" else "App",
+                "pct": round(row["n"] * 100 / channel_total),
+            }
+            for row in channels
+        ],
+        "loyalty": {"stamps": 0, "rewards": 0, "newMembers": 0, "walletPasses": 0},
+        "reservations": {"week": 0, "covers": 0, "noShow": 0, "avgParty": 0},
+        "catering": {"enquiries": 0, "confirmed": 0, "revenue": 0},
+        "salesTodayComparison": "",
+        "weekComparison": "",
+        "loyaltyActivity": [],
+    }
+
+
+# ---------------------------------------------------------------- start-up snapshot
+
+
+def percent(rate):
+    return f"{float(rate) * 100:g}"
+
+
+def settings_data():
+    rules = SiteSettings.load().order_rules or {}
+    return {
+        "loyalty": {"per": STAMPS_PER_REWARD, "wallet": True, "online": True},
+        "loyaltyCopy": {"reward": loyalty.REWARD, "eligible": loyalty.ELIGIBILITY},
+        "rules": {
+            "gst": "10",
+            "surcharge": percent(rules.get("cardSurcharge", 0.0295)),
+            "delivery": percent(rules.get("deliveryRate", 0.1)),
+        },
+        "toggles": dict(TOGGLES),
+        "cafeFields": {},
+        "categoryOrder": [],
+    }
+
+
+def snapshot(user, location, terminal):
+    slugs = set(till_locations(user).values_list("slug", flat=True))
+    items, unavailable = menu(location)
+    today = timezone.localtime().replace(hour=0, minute=0, second=0, microsecond=0)
+    orders = with_details(
+        Order.objects.filter(location=location).filter(
+            Q(created_at__gte=today) | Q(placed_at__gte=today) | Q(status__in=LIVE)
+        )
+    ).order_by("-created_at")
+    shifts = CashShift.objects.filter(location=location).select_related("location")
+    current = (
+        shifts.filter(status="open", terminal_id=terminal).order_by("-created_at").first()
+        if terminal
+        else None
+    )
+    audit_rows = AuditLog.objects.filter(
+        entity_type=AUDIT_TYPE, after__cafe=location.slug
+    ).order_by("-created_at")[:100]
+    return {
+        "locations": [row for row in locations_data() if row["id"] in slugs],
+        "categories": categories_data(),
+        "menu": items,
+        "cateringPackages": catering(),
+        "tables": [],
+        "promotions": [],
+        "availability": {
+            "soldOut": [],
+            "branchOff": {location.slug: unavailable},
+            "unavailableMods": [],
+            "prices": {},
+            "lastPushedAt": local(SiteSettings.load().updated_at).isoformat(),
+        },
+        "stock": [],
+        "stockLog": [],
+        "orders": [order(row) for row in orders],
+        "customers": [],
+        "giftCards": [],
+        "reservations": [],
+        "catering": [],
+        "staff": team(location),
+        "roles": pins.ROLES,
+        "settings": settings_data(),
+        "currentShift": shift(current) if current else None,
+        "closedShifts": [shift(row) for row in shifts.filter(status="closed")[:20]],
+        "audit": [audit_entry(row) for row in audit_rows],
+        "reports": reports(location),
+    }

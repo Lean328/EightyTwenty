@@ -11170,6 +11170,1903 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/APIError'
+  /api/v1/pos/audit:
+    post:
+      operationId: v1_pos_audit_create
+      description: |-
+        `TransactionRecordsService.appendAudit`: the till's `AuditEntry` (who, what, approver).
+        Shown in the BOS activity log as "pos: …" and returned in the snapshot's `audit`.
+        Idempotent on `id`.
+      summary: Add to the activity log
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+        description: One per command, reused on every retry (the till's outbox entry
+          id).
+      - in: header
+        name: X-Terminal-Id
+        schema:
+          type: string
+        description: This till, e.g. PHILLIP-TILL-1.
+      tags:
+      - POS · Cash & records
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PosAuditInRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PosOkOut'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/pos/locations:
+    get:
+      operationId: v1_pos_locations_retrieve
+      description: |-
+        The cafés the signed-in account may run a till for (chain-wide accounts: every
+        published café). `id` and `slug` are both the café slug the till uses as `cafe`.
+      summary: Cafés this till account works at
+      parameters:
+      - in: header
+        name: X-Terminal-Id
+        schema:
+          type: string
+        description: This till, e.g. PHILLIP-TILL-1.
+      tags:
+      - POS · Device & staff
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PosLocationListOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/pos/locations/{slug}/categories:
+    get:
+      operationId: v1_pos_locations_categories_list
+      description: 'Active categories in menu order: `{id, name, note}`.'
+      summary: A café's menu categories
+      parameters:
+      - in: header
+        name: X-Terminal-Id
+        schema:
+          type: string
+        description: This till, e.g. PHILLIP-TILL-1.
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - POS · Start-up & catalogue
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PosCategoryOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/pos/locations/{slug}/menu:
+    get:
+      operationId: v1_pos_locations_menu_list
+      description: |-
+        The till's `PosMenuItemDto` list (src/services/http/posMapping.ts): prices in cents,
+        `available: false` = sold out at this café. Same items as the snapshot's `menu`.
+      summary: A café's menu (cents)
+      parameters:
+      - in: header
+        name: X-Terminal-Id
+        schema:
+          type: string
+        description: This till, e.g. PHILLIP-TILL-1.
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - POS · Start-up & catalogue
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PosMenuItemDtoOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/pos/orders:
+    get:
+      operationId: v1_pos_orders_retrieve
+      description: |-
+        `OrdersService.listChanged`. Poll every 15 s at the counter, 5 s on a kitchen display.
+        Without `since`: today's orders plus every live one. With `since`: every order at the café
+        that changed since (new app orders, payments, kitchen progress and status from other
+        devices), oldest first, at most 500 — poll again at once when 500 come back. Changes
+        overlap the cursor by a few seconds; merge by `id`.
+      summary: Orders changed since a cursor (website/app orders and other tills)
+      parameters:
+      - in: header
+        name: X-Terminal-Id
+        schema:
+          type: string
+        description: This till, e.g. PHILLIP-TILL-1.
+      - in: query
+        name: cafe
+        schema:
+          type: string
+        required: true
+      - in: query
+        name: since
+        schema:
+          type: string
+        description: '`cursor` from the previous response'
+      tags:
+      - POS · Orders & kitchen
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PosOrderFeedOut'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+    post:
+      operationId: v1_pos_orders_create
+      description: |-
+        `OrdersService.create` — the till's `Order` as it is (status `new`, usually unpaid; a gift
+        card applied in the cart arrives as the first entry of `payments`).
+
+        **Checks** (first failure returned): café on this account (`404`) · `channel` is `pos`
+        (`422`) · `id` not used before (`409 CONFLICT` — every till must number its orders
+        uniquely, e.g. `<VITE_TERMINAL_ID>-<n>`; a retry with the same Idempotency-Key replays
+        instead) · `total` = Σ(price × qty) − discounts + delivery (10 %) to the cent (`422`).
+
+        **Prices are not rejected**: the sale already happened at the counter. Lines whose price
+        differs from the café's current menu (or items/options not on it, or sold-out items) are
+        recorded and listed on the order for a manager in BOS (Orders → "Check prices").
+      summary: Record an order rung up at the till
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+        description: One per command, reused on every retry (the till's outbox entry
+          id).
+      - in: header
+        name: X-Terminal-Id
+        schema:
+          type: string
+        description: This till, e.g. PHILLIP-TILL-1.
+      tags:
+      - POS · Orders & kitchen
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PosOrderInRequest'
+            examples:
+              Dine-inOrder:
+                value:
+                  id: BRADDON-TILL-1-0042
+                  channel: pos
+                  type: dinein
+                  status: new
+                  accepted: true
+                  cafe: braddon
+                  time: 09:41
+                  placedAt: '2026-10-16T09:41:12+11:00'
+                  table: T4
+                  tables:
+                  - T4
+                  lines:
+                  - key: L7K2Q9XMA
+                    itemId: hotcoffee
+                    name: Milk Based Coffee
+                    price: 6.3
+                    qty: 2
+                    sel:
+                      drink:
+                      - Flat White
+                      var:
+                      - OAT ADC
+                    adjust:
+                    - Extra hot
+                    note: ''
+                  - key: LQ2M7ZP0C
+                    itemId: mighty
+                    name: Mighty Breakfast
+                    price: 35
+                    qty: 1
+                    sel: {}
+                    adjust: []
+                    note: Eggs poached
+                  total: 47.6
+                  paid: false
+                  methods: []
+                  payments: []
+                  note: ''
+                  discounts: []
+                  rewardUsed: false
+                  staff: Mia Tran
+                  history:
+                  - at: 16 Oct, 9:41 am
+                    what: Created on till by Mia Tran
+                summary: Dine-in order
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PosOrderOut'
+              examples:
+                Recorded:
+                  value:
+                    id: BRADDON-TILL-1-0042
+                    channel: pos
+                    type: dinein
+                    status: new
+                    accepted: true
+                    cafe: braddon
+                    time: 09:41
+                    placedAt: '2026-10-16T09:41:12+11:00'
+                    table: T4
+                    tables:
+                    - T4
+                    lines:
+                    - key: L7K2Q9XMA
+                      itemId: hotcoffee
+                      name: Milk Based Coffee
+                      price: 6.3
+                      qty: 2
+                      sel:
+                        drink:
+                        - Flat White
+                        var:
+                        - OAT ADC
+                      adjust:
+                      - Extra hot
+                      note: ''
+                    - key: LQ2M7ZP0C
+                      itemId: mighty
+                      name: Mighty Breakfast
+                      price: 35
+                      qty: 1
+                      sel: {}
+                      adjust: []
+                      note: Eggs poached
+                    total: 47.6
+                    paid: false
+                    methods: []
+                    payments: []
+                    note: ''
+                    discounts: []
+                    rewardUsed: false
+                    staff: Mia Tran
+                    history:
+                    - at: 16 Oct, 9:41 am
+                      what: Created on till by Mia Tran
+                    refunds: []
+                    stamped: false
+                    cleared: false
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+              examples:
+                NumberAlreadyUsed:
+                  value:
+                    error:
+                      code: CONFLICT
+                      message: Order BRADDON-TILL-1-0042 already exists. Each till
+                        must number its orders uniquely.
+                      fields: {}
+                  summary: Number already used
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+              examples:
+                TotalDoesNotAddUp:
+                  value:
+                    error:
+                      code: VALIDATION
+                      message: 'The order total $40.00 does not add up: lines $47.60
+                        − discounts $0.00 + delivery $0.00 = $47.60.'
+                      fields:
+                        total: invalid
+                  summary: Total does not add up
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/pos/orders/{order_id}/accept:
+    post:
+      operationId: v1_pos_orders_accept_create
+      description: |-
+        `OrdersService.accept`: an app order waiting for the café becomes `preparing`
+        (`accepted: true`) and the customer is told. Already accepted → no-op.
+      summary: Accept a website/app order
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+        description: One per command, reused on every retry (the till's outbox entry
+          id).
+      - in: header
+        name: X-Terminal-Id
+        schema:
+          type: string
+        description: This till, e.g. PHILLIP-TILL-1.
+      - in: path
+        name: order_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - POS · Orders & kitchen
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PosOrderOut'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/pos/orders/{order_id}/adjustments:
+    post:
+      operationId: v1_pos_orders_adjustments_create
+      description: |-
+        `OrdersService.adjust`. Idempotent on `adjustment.key`.
+
+        Checks: `adjustment.amount` ≤ paid − already returned · `lines` (key + qty after the
+        change) only lower quantities (voided lines are kept with qty 0 and drop out of `lines`)
+        · `total` not above the current total · the order is not already cancelled or refunded.
+        Cancelling an app order returns its stamps and gift card spend and tells the customer.
+      summary: Refund, void or cancel
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+        description: One per command, reused on every retry (the till's outbox entry
+          id).
+      - in: header
+        name: X-Terminal-Id
+        schema:
+          type: string
+        description: This till, e.g. PHILLIP-TILL-1.
+      - in: path
+        name: order_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - POS · Payments & refunds
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PosAdjustInRequest'
+            examples:
+              RefundOneCoffee:
+                value:
+                  adjustment:
+                    key: R5TQ1ZK8M
+                    mode: refund
+                    amount: 630
+                    alloc:
+                    - method: card
+                      amount: 630
+                      ref: P8XK2M4QA
+                      giftLast4: null
+                    reason: Wrong item made
+                    by: Mia Tran
+                    approver: Sam Lee
+                    at: 16 Oct, 10:15 am
+                    items:
+                      L7K2Q9XMA: 1
+                  lines:
+                  - key: L7K2Q9XMA
+                    qty: 2
+                  - key: LQ2M7ZP0C
+                    qty: 1
+                  total: 47.6
+                  status: completed
+                summary: Refund one coffee
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PosOrderOut'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/pos/orders/{order_id}/payments:
+    post:
+      operationId: v1_pos_orders_payments_create
+      description: |-
+        `PaymentsService.record`: cash counted, a card approved on the terminal, a gift card or a
+        reward. Idempotent on `ref` (a repeated `ref` is ignored). `amount` (cents, without tip and
+        surcharge) may not exceed what is still due → `422`. A cancelled or refunded order →
+        `409`. No money moves here: the card terminal is not connected to the server.
+      summary: Record a tender already taken
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+        description: One per command, reused on every retry (the till's outbox entry
+          id).
+      - in: header
+        name: X-Terminal-Id
+        schema:
+          type: string
+        description: This till, e.g. PHILLIP-TILL-1.
+      - in: path
+        name: order_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - POS · Payments & refunds
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PosPaymentInRequest'
+            examples:
+              CardOnTheTerminal:
+                value:
+                  method: card
+                  amount: 4760
+                  tip: 0
+                  surcharge: 140
+                  ref: P8XK2M4QA
+                  giftLast4: null
+                  at: 16 Oct, 10:02 am
+                  by: Mia Tran
+                  mode: full
+                summary: Card on the terminal
+              CashWithChange:
+                value:
+                  method: cash
+                  amount: 4760
+                  tip: 0
+                  surcharge: 0
+                  ref: P3MZQ8W1D
+                  at: 16 Oct, 10:02 am
+                  by: Mia Tran
+                  cashPaid: 5000
+                  rounding: 0
+                  change: 240
+                summary: Cash with change
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PosOrderOut'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+              examples:
+                MoreThanIsDue:
+                  value:
+                    error:
+                      code: VALIDATION
+                      message: $50.00 is more than the $47.60 due on BRADDON-TILL-1-0042.
+                      fields:
+                        amount: invalid
+                  summary: More than is due
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/pos/orders/{order_id}/preparation:
+    put:
+      operationId: v1_pos_orders_preparation_update
+      description: |-
+        `OrdersService.setPrep`: each line's `prep` (`new` → `preparing` → `ready`, by line `key`)
+        and the order status they imply (`ready` only when every line is ready). An order that is
+        not live — completed, cancelled, refunded, or an app order not accepted yet — →
+        `409 CONFLICT` "Order … is completed; no change made."
+      summary: Kitchen display progress
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+        description: One per command, reused on every retry (the till's outbox entry
+          id).
+      - in: header
+        name: X-Terminal-Id
+        schema:
+          type: string
+        description: This till, e.g. PHILLIP-TILL-1.
+      - in: path
+        name: order_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - POS · Orders & kitchen
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PosPrepInRequest'
+            examples:
+              DrinksReady,FoodCooking:
+                value:
+                  lines:
+                  - key: L7K2Q9XMA
+                    prep: ready
+                  - key: LQ2M7ZP0C
+                    prep: preparing
+                  status: preparing
+                  note: Drinks ready · Leo
+                summary: Drinks ready, food cooking
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PosOrderOut'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+              examples:
+                NoLongerLive:
+                  value:
+                    error:
+                      code: CONFLICT
+                      message: Order BRADDON-TILL-1-0042 is completed; no change made.
+                      fields: {}
+                  summary: No longer live
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/pos/orders/{order_id}/status:
+    post:
+      operationId: v1_pos_orders_status_create
+      description: |-
+        `OrdersService.setStatus` with `new`, `preparing`, `ready` or `completed` (cancel and
+        refund go through `/adjustments`). Repeating the current status is a no-op. A finished
+        order (completed, cancelled, refunded) → `409 CONFLICT`. App customers are notified.
+      summary: Move an order along
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+        description: One per command, reused on every retry (the till's outbox entry
+          id).
+      - in: header
+        name: X-Terminal-Id
+        schema:
+          type: string
+        description: This till, e.g. PHILLIP-TILL-1.
+      - in: path
+        name: order_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - POS · Orders & kitchen
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PosStatusInRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PosOrderOut'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/pos/orders/{order_id}/tables:
+    put:
+      operationId: v1_pos_orders_tables_update
+      description: '`OrdersService.setTables`: `table` (main), `tables` (all seats),
+        `cleared`.'
+      summary: Move, join, separate or clear tables
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+        description: One per command, reused on every retry (the till's outbox entry
+          id).
+      - in: header
+        name: X-Terminal-Id
+        schema:
+          type: string
+        description: This till, e.g. PHILLIP-TILL-1.
+      - in: path
+        name: order_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - POS · Orders & kitchen
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PosTablesInRequest'
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PosOrderOut'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/pos/shifts:
+    post:
+      operationId: v1_pos_shifts_create
+      description: |-
+        `TransactionRecordsService.openShift` with the till's `CashShift` (float in cents). One
+        open shift per till (`X-Terminal-Id`); a second → `409`.
+      summary: Open a cash shift
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+        description: One per command, reused on every retry (the till's outbox entry
+          id).
+      - in: header
+        name: X-Terminal-Id
+        schema:
+          type: string
+        description: This till, e.g. PHILLIP-TILL-1.
+      tags:
+      - POS · Cash & records
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PosShiftInRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PosShiftOut'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/pos/shifts/{shift_id}:
+    put:
+      operationId: v1_pos_shifts_update
+      description: |-
+        `TransactionRecordsService.closeShift` with the till's `ClosedShift`. The server checks
+        `expected` = float + cashSales − cashRefunds + cash in − cash out and `variance` =
+        counted − expected (`422` when they do not add up). Closing again with the same count is
+        a no-op.
+      summary: Close a cash shift
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+        description: One per command, reused on every retry (the till's outbox entry
+          id).
+      - in: header
+        name: X-Terminal-Id
+        schema:
+          type: string
+        description: This till, e.g. PHILLIP-TILL-1.
+      - in: path
+        name: shift_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - POS · Cash & records
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PosCloseShiftInRequest'
+            examples:
+              CloseWithASmallVariance:
+                value:
+                  id: SH4K9M2QZ
+                  cafe: braddon
+                  staffId: 0b6f3c1e-2d7a-4f55-9a61-7c1f0f4d2e11
+                  staffName: Mia Tran
+                  openedAt: 16 Oct, 6:02 am
+                  float: 20000
+                  cashSales: 48650
+                  cashRefunds: 630
+                  moves:
+                  - id: M2Q8ZK1PA
+                    type: out
+                    amount: 4500
+                    reason: Supplier paid in cash
+                    by: Mia Tran
+                    approver: Sam Lee
+                    at: 16 Oct, 11:20 am
+                  status: closed
+                  closedAt: 16 Oct, 3:08 pm
+                  closedBy: Mia Tran
+                  counted: 63500
+                  expected: 63520
+                  variance: -20
+                  note: ''
+                  approvedBy: ''
+                summary: Close with a small variance
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PosShiftOut'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/pos/shifts/{shift_id}/moves:
+    post:
+      operationId: v1_pos_shifts_moves_create
+      description: '`TransactionRecordsService.recordCashMove`. Idempotent on the
+        move `id`.'
+      summary: Cash in / cash out
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+        description: One per command, reused on every retry (the till's outbox entry
+          id).
+      - in: header
+        name: X-Terminal-Id
+        schema:
+          type: string
+        description: This till, e.g. PHILLIP-TILL-1.
+      - in: path
+        name: shift_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - POS · Cash & records
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PosCashMoveInRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PosShiftOut'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/pos/snapshot:
+    get:
+      operationId: v1_pos_snapshot_retrieve
+      description: |-
+        `PosBackend.loadSnapshot`, for one café (`?cafe=braddon`; send the till's saved café,
+        and load again when the till switches café).
+
+        - `locations`: every café this account works at (website shape, `id` = slug).
+        - `menu`: **this café's** menu at its prices, website shape (`price` and option prices in
+          AUD). `img` is the website path (`img/menu-original/…webp`, which the till maps to its
+          own `img-pos/…jpg`), or an absolute URL for photos added later in BOS.
+        - `availability.branchOff[cafe]`: items marked sold out at this café.
+        - `orders`: this café's orders from today plus every order still live (app orders
+          included, `channel: "app"`).
+        - `staff`: people with a till PIN who work here (and chain-wide accounts).
+        - `currentShift`: the open cash shift of this till (`X-Terminal-Id`), else `null`.
+        - `reports`: last 7 days / 4 weeks from real orders (gross totals).
+
+        Not connected yet and therefore empty: `tables`, `promotions`, `stock`, `stockLog`,
+        `customers`, `giftCards`, `reservations`, `catering`.
+      summary: Everything one till needs to start trading
+      parameters:
+      - in: header
+        name: X-Terminal-Id
+        schema:
+          type: string
+        description: This till, e.g. PHILLIP-TILL-1.
+      - in: query
+        name: cafe
+        schema:
+          type: string
+        description: 'Café slug; default: the first café.'
+      tags:
+      - POS · Start-up & catalogue
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PosSnapshotOut'
+              examples:
+                Braddon(abridged):
+                  value:
+                    locations:
+                    - id: braddon
+                      name: Braddon
+                      address: 1/18 Lonsdale St, Braddon ACT 2612
+                      phone: 0451 448 018
+                      hours: Mon–Sun 6:00am – 3:00pm
+                      hoursShort: 6am – 3pm, 7 days
+                      email: braddon@eightytwentyfood.com.au
+                    categories:
+                    - id: coffee
+                      name: Coffee & Hot Drinks
+                      note: ''
+                    menu:
+                    - id: mighty
+                      cat: allday
+                      name: Mighty Breakfast
+                      price: 35
+                      diet:
+                      - GF*
+                      - DF*
+                      img: img/menu-original/food/mighty-breakfast-01.webp
+                      desc: Sourdough, Smoked Bacon, Free Range Eggs…
+                      mods:
+                      - id: add
+                        name: Add ons
+                        required: false
+                        max: 0
+                        options:
+                        - - Avocado
+                          - 4
+                      featured: true
+                    cateringPackages: []
+                    tables: []
+                    promotions: []
+                    availability:
+                      soldOut: []
+                      branchOff:
+                        braddon:
+                        - matcha-heaven
+                      unavailableMods: []
+                      prices: {}
+                      lastPushedAt: '2026-10-16T06:00:00+11:00'
+                    stock: []
+                    stockLog: []
+                    orders:
+                    - id: BRADDON-TILL-1-0042
+                      channel: pos
+                      type: dinein
+                      status: new
+                      accepted: true
+                      cafe: braddon
+                      time: 09:41
+                      placedAt: '2026-10-16T09:41:12+11:00'
+                      table: T4
+                      tables:
+                      - T4
+                      lines:
+                      - key: L7K2Q9XMA
+                        itemId: hotcoffee
+                        name: Milk Based Coffee
+                        price: 6.3
+                        qty: 2
+                        sel:
+                          drink:
+                          - Flat White
+                          var:
+                          - OAT ADC
+                        adjust:
+                        - Extra hot
+                        note: ''
+                      - key: LQ2M7ZP0C
+                        itemId: mighty
+                        name: Mighty Breakfast
+                        price: 35
+                        qty: 1
+                        sel: {}
+                        adjust: []
+                        note: Eggs poached
+                      total: 47.6
+                      paid: false
+                      methods: []
+                      payments: []
+                      note: ''
+                      discounts: []
+                      rewardUsed: false
+                      staff: Mia Tran
+                      history:
+                      - at: 16 Oct, 9:41 am
+                        what: Created on till by Mia Tran
+                      refunds: []
+                      stamped: false
+                      cleared: false
+                    customers: []
+                    giftCards: []
+                    reservations: []
+                    catering: []
+                    staff:
+                    - id: 0b6f3c1e-2d7a-4f55-9a61-7c1f0f4d2e11
+                      name: Mia Tran
+                      initials: MT
+                      role: cashier
+                      cafe: braddon
+                      shift: ''
+                    roles:
+                      admin:
+                        label: Admin
+                        perms:
+                        - '*'
+                    settings:
+                      loyalty:
+                        per: 9
+                        wallet: true
+                        online: true
+                      loyaltyCopy:
+                        reward: Your 10th coffee is free.
+                        eligible: Any coffee or hot drink, any size, at any EightyTwenty
+                          café.
+                      rules:
+                        gst: '10'
+                        surcharge: '2.95'
+                        delivery: '10'
+                      toggles:
+                        kitchen: true
+                        receipt: false
+                        tips: false
+                        openDrawer: true
+                        autoStamp: true
+                      cafeFields: {}
+                      categoryOrder: []
+                    currentShift: null
+                    closedShifts: []
+                    audit: []
+                    reports:
+                      days:
+                      - d: Thu
+                        sales: 1240.5
+                        orders: 96
+                        partial: true
+                  summary: Braddon (abridged)
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/pos/staff/verify-pin:
+    post:
+      operationId: v1_pos_staff_verify_pin_create
+      description: |-
+        `StaffAuthService.verifyPin`. Returns the team member and the permissions the till
+        should apply (the role matrix in the snapshot's `roles`). **204 No Content = PIN not
+        recognised** (the adapter returns `null`). Wrong PINs count towards a limit of 20 checks
+        per minute per till account (`429`).
+
+        PINs are set in the BOS workspace (People → Users → Till PIN), 4 digits, unique across
+        the chain. Only people who work at one of this account's cafés (or chain-wide accounts)
+        are found.
+      summary: Check a staff PIN
+      parameters:
+      - in: header
+        name: X-Terminal-Id
+        schema:
+          type: string
+        description: This till, e.g. PHILLIP-TILL-1.
+      tags:
+      - POS · Device & staff
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PosPinInRequest'
+            examples:
+              PIN:
+                value:
+                  pin: '4821'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PosPinOut'
+              examples:
+                Recognised:
+                  value:
+                    staff:
+                      id: 0b6f3c1e-2d7a-4f55-9a61-7c1f0f4d2e11
+                      name: Mia Tran
+                      initials: MT
+                      role: cashier
+                      cafe: braddon
+                      shift: ''
+                    permissions:
+                    - pos
+                    - orders
+                    - reservations.view
+                    - customers.view
+                    - loyalty.stamp
+                    - gift.redeem
+                    - kitchen
+          description: ''
+        '204':
+          description: No response body
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/pos/transactions:
+    post:
+      operationId: v1_pos_transactions_create
+      description: |-
+        `TransactionRecordsService.submit`: the till's immutable `TransactionRecord` (sale,
+        payment, refund, void, cancel, cash in/out). Kept for the ledger and invoicing later.
+        Idempotent on café + `kind` + `reference`.
+      summary: Record money moving
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+        description: One per command, reused on every retry (the till's outbox entry
+          id).
+      - in: header
+        name: X-Terminal-Id
+        schema:
+          type: string
+        description: This till, e.g. PHILLIP-TILL-1.
+      tags:
+      - POS · Cash & records
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PosTransactionInRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PosOkOut'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
   /api/v1/public/bookings:
     post:
       operationId: v1_public_bookings_create
@@ -16019,6 +17916,1369 @@ components:
           maxLength: 4096
       required:
       - choice
+    PosAdjustInRequest:
+      type: object
+      properties:
+        adjustment:
+          $ref: '#/components/schemas/PosAdjustmentInRequest'
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/PosLineQtyInRequest'
+          description: The order's lines after the change (key + qty).
+        total:
+          type: number
+          format: double
+          maximum: 100000
+          minimum: 0
+          description: The order total after the change, AUD.
+        status:
+          $ref: '#/components/schemas/PosOrderStatus'
+      required:
+      - adjustment
+      - lines
+      - status
+      - total
+    PosAdjustmentInRequest:
+      type: object
+      properties:
+        key:
+          type: string
+          minLength: 1
+          maxLength: 60
+        mode:
+          $ref: '#/components/schemas/PosAdjustmentMode'
+        amount:
+          type: integer
+          maximum: 10000000
+          minimum: 0
+          description: Cents returned to the customer.
+        alloc:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        reason:
+          type: string
+          default: ''
+          maxLength: 200
+        by:
+          type: string
+          default: ''
+          maxLength: 120
+        approver:
+          type: string
+          default: ''
+          maxLength: 120
+        at:
+          type: string
+          default: ''
+          maxLength: 40
+        items:
+          type: object
+          additionalProperties:
+            type: integer
+            minimum: 0
+      required:
+      - amount
+      - key
+      - mode
+    PosAdjustmentMode:
+      enum:
+      - cancel
+      - void
+      - refund
+      type: string
+      description: |-
+        * `cancel` - cancel
+        * `void` - void
+        * `refund` - refund
+    PosAdjustmentOut:
+      type: object
+      properties:
+        key:
+          type: string
+        mode:
+          $ref: '#/components/schemas/PosAdjustmentMode'
+        amount:
+          type: integer
+        alloc:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        reason:
+          type: string
+        by:
+          type: string
+        approver:
+          type: string
+        at:
+          type: string
+        items:
+          type: object
+          additionalProperties:
+            type: integer
+      required:
+      - alloc
+      - amount
+      - approver
+      - at
+      - by
+      - items
+      - key
+      - mode
+      - reason
+    PosAuditInRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 100
+        at:
+          type: string
+          default: ''
+          maxLength: 60
+        ts:
+          type: integer
+        staff:
+          type: string
+          default: ''
+          maxLength: 120
+        role:
+          type: string
+          default: ''
+          maxLength: 40
+        action:
+          type: string
+          minLength: 1
+          maxLength: 120
+        detail:
+          type: string
+          default: ''
+          maxLength: 500
+        reason:
+          type: string
+          default: ''
+          maxLength: 200
+        approver:
+          type: string
+          default: ''
+          maxLength: 120
+        amount:
+          type: integer
+          nullable: true
+        area:
+          type: string
+          default: ''
+          maxLength: 60
+        cafe:
+          type: string
+          minLength: 1
+          maxLength: 50
+      required:
+      - action
+      - cafe
+      - id
+    PosCashMoveInRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 40
+        type:
+          $ref: '#/components/schemas/PosCashMoveType'
+        amount:
+          type: integer
+          maximum: 10000000
+          minimum: 1
+        reason:
+          type: string
+          default: ''
+          maxLength: 200
+        by:
+          type: string
+          default: ''
+          maxLength: 120
+        approver:
+          type: string
+          default: ''
+          maxLength: 120
+        at:
+          type: string
+          default: ''
+          maxLength: 40
+      required:
+      - amount
+      - id
+      - type
+    PosCashMoveType:
+      enum:
+      - in
+      - out
+      type: string
+      description: |-
+        * `in` - in
+        * `out` - out
+    PosCategoryOut:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        note:
+          type: string
+      required:
+      - id
+      - name
+      - note
+    PosCloseShiftInRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 60
+        cafe:
+          type: string
+          minLength: 1
+          maxLength: 50
+        staffId:
+          type: string
+          default: ''
+          maxLength: 60
+        staffName:
+          type: string
+          default: ''
+          maxLength: 120
+        openedAt:
+          type: string
+          default: ''
+          maxLength: 40
+        float:
+          type: integer
+          maximum: 10000000
+          minimum: 0
+          description: Opening float, cents.
+        cashSales:
+          type: integer
+          maximum: 10000000
+          minimum: 0
+          default: 0
+        cashRefunds:
+          type: integer
+          maximum: 10000000
+          minimum: 0
+          default: 0
+        moves:
+          type: array
+          items:
+            $ref: '#/components/schemas/PosCashMoveInRequest'
+        status:
+          $ref: '#/components/schemas/PosCloseShiftInStatusEnum'
+        closedAt:
+          type: string
+          default: ''
+          maxLength: 40
+        closedBy:
+          type: string
+          default: ''
+          maxLength: 120
+        counted:
+          type: integer
+          maximum: 10000000
+          minimum: 0
+        expected:
+          type: integer
+        variance:
+          type: integer
+        note:
+          type: string
+          default: ''
+          maxLength: 1000
+        approvedBy:
+          type: string
+          default: ''
+          maxLength: 120
+      required:
+      - cafe
+      - counted
+      - expected
+      - float
+      - id
+      - status
+      - variance
+    PosCloseShiftInStatusEnum:
+      enum:
+      - closed
+      type: string
+      description: '* `closed` - closed'
+    PosDiscountInRequest:
+      type: object
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 120
+        amount:
+          type: number
+          format: double
+          maximum: 100000
+          minimum: 0
+      required:
+      - amount
+      - label
+    PosDiscountOut:
+      type: object
+      properties:
+        label:
+          type: string
+        amount:
+          type: number
+          format: double
+      required:
+      - amount
+      - label
+    PosGroupDtoOut:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        required:
+          type: boolean
+        maxSelections:
+          type: integer
+          description: 0 = any number.
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/PosOptionDtoOut'
+      required:
+      - id
+      - maxSelections
+      - name
+      - options
+      - required
+    PosHistoryInRequest:
+      type: object
+      properties:
+        at:
+          type: string
+          minLength: 1
+          maxLength: 60
+        what:
+          type: string
+          minLength: 1
+          maxLength: 500
+      required:
+      - at
+      - what
+    PosHistoryOut:
+      type: object
+      properties:
+        at:
+          type: string
+        what:
+          type: string
+      required:
+      - at
+      - what
+    PosLineInRequest:
+      type: object
+      properties:
+        key:
+          type: string
+          minLength: 1
+          maxLength: 40
+        itemId:
+          type: string
+          minLength: 1
+          description: Menu item id (website slug).
+          maxLength: 50
+        name:
+          type: string
+          minLength: 1
+          maxLength: 160
+        price:
+          type: number
+          format: double
+          maximum: 100000
+          minimum: 0
+          description: Unit price incl. chosen options, AUD.
+        qty:
+          type: integer
+          maximum: 999
+          minimum: 1
+        sel:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+              minLength: 1
+              maxLength: 120
+          description: Modifier group id → chosen option labels.
+        adjust:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 120
+        note:
+          type: string
+          default: ''
+          maxLength: 500
+        prep:
+          $ref: '#/components/schemas/PrepEnum'
+      required:
+      - itemId
+      - key
+      - name
+      - price
+      - qty
+    PosLineOut:
+      type: object
+      properties:
+        key:
+          type: string
+        itemId:
+          type: string
+        name:
+          type: string
+        price:
+          type: number
+          format: double
+        qty:
+          type: integer
+        sel:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+        adjust:
+          type: array
+          items:
+            type: string
+        note:
+          type: string
+        prep:
+          $ref: '#/components/schemas/PrepEnum'
+      required:
+      - adjust
+      - itemId
+      - key
+      - name
+      - note
+      - price
+      - qty
+      - sel
+    PosLineQtyInRequest:
+      type: object
+      properties:
+        key:
+          type: string
+          minLength: 1
+          maxLength: 40
+        qty:
+          type: integer
+          maximum: 999
+          minimum: 0
+      required:
+      - key
+      - qty
+    PosLocationListOut:
+      type: object
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PosLocationRefOut'
+      required:
+      - results
+    PosLocationRefOut:
+      type: object
+      properties:
+        id:
+          type: string
+          description: Café slug (the till's cafe id).
+        slug:
+          type: string
+        name:
+          type: string
+      required:
+      - id
+      - name
+      - slug
+    PosMenuItemDtoOut:
+      type: object
+      properties:
+        id:
+          type: string
+        categoryId:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        priceCents:
+          type: integer
+        dietary:
+          type: array
+          items:
+            type: string
+        imageUrl:
+          type: string
+          nullable: true
+        featured:
+          type: boolean
+        available:
+          type: boolean
+        modifierGroups:
+          type: array
+          items:
+            $ref: '#/components/schemas/PosGroupDtoOut'
+      required:
+      - available
+      - categoryId
+      - description
+      - dietary
+      - featured
+      - id
+      - imageUrl
+      - modifierGroups
+      - name
+      - priceCents
+    PosMoveOut:
+      type: object
+      properties:
+        id:
+          type: string
+        type:
+          $ref: '#/components/schemas/PosCashMoveType'
+        amount:
+          type: integer
+        reason:
+          type: string
+        by:
+          type: string
+        approver:
+          type: string
+        at:
+          type: string
+      required:
+      - amount
+      - approver
+      - at
+      - by
+      - id
+      - reason
+      - type
+    PosOkOut:
+      type: object
+      properties:
+        ok:
+          type: boolean
+      required:
+      - ok
+    PosOptionDtoOut:
+      type: object
+      properties:
+        name:
+          type: string
+        priceCents:
+          type: integer
+      required:
+      - name
+      - priceCents
+    PosOrderFeedOut:
+      type: object
+      properties:
+        orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/PosOrderOut'
+        cursor:
+          type: string
+          description: Send as `since` on the next poll.
+      required:
+      - cursor
+      - orders
+    PosOrderInChannelEnum:
+      enum:
+      - pos
+      - web
+      - app
+      type: string
+      description: |-
+        * `pos` - pos
+        * `web` - web
+        * `app` - app
+    PosOrderInRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+          description: Unique across every till and the app.
+          maxLength: 40
+        channel:
+          $ref: '#/components/schemas/PosOrderInChannelEnum'
+        type:
+          $ref: '#/components/schemas/PosOrderType'
+        status:
+          allOf:
+          - $ref: '#/components/schemas/PosOrderStatus'
+          default: new
+        accepted:
+          type: boolean
+        cafe:
+          type: string
+          minLength: 1
+          maxLength: 50
+        time:
+          type: string
+          default: ''
+          maxLength: 5
+        placedAt:
+          type: string
+          format: date-time
+          nullable: true
+        table:
+          type: string
+          nullable: true
+          maxLength: 20
+        tables:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 20
+        customerId:
+          type: string
+          nullable: true
+          maxLength: 60
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/PosLineInRequest'
+        total:
+          type: number
+          format: double
+          maximum: 100000
+          minimum: 0
+          description: 'AUD: lines − discounts + delivery (no card surcharge).'
+        paid:
+          type: boolean
+        methods:
+          type: array
+          items:
+            type: string
+            minLength: 1
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/PosPaymentInRequest'
+        note:
+          type: string
+          default: ''
+          maxLength: 1000
+        discounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/PosDiscountInRequest'
+        rewardUsed:
+          type: boolean
+          default: false
+        staff:
+          type: string
+          default: ''
+          maxLength: 120
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/PosHistoryInRequest'
+      required:
+      - cafe
+      - channel
+      - id
+      - lines
+      - total
+      - type
+    PosOrderOut:
+      type: object
+      properties:
+        id:
+          type: string
+          description: 'Order number, e.g. #8020-4471 (app) or PHL1-0042 (till).'
+        channel:
+          $ref: '#/components/schemas/PosOrderOutChannelEnum'
+        type:
+          $ref: '#/components/schemas/PosOrderType'
+        status:
+          $ref: '#/components/schemas/PosOrderStatus'
+        accepted:
+          type: boolean
+          description: false = app order waiting for the café.
+        cafe:
+          type: string
+        time:
+          type: string
+          description: HH:MM café time (scheduled time for app orders).
+        placedAt:
+          type: string
+          format: date-time
+        table:
+          type: string
+        tables:
+          type: array
+          items:
+            type: string
+        customerId:
+          type: string
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/PosLineOut'
+        total:
+          type: number
+          format: double
+        paid:
+          type: boolean
+        methods:
+          type: array
+          items:
+            $ref: '#/components/schemas/PosTenderMethod'
+        payments:
+          type: array
+          items:
+            $ref: '#/components/schemas/PosPaymentOut'
+        note:
+          type: string
+        discounts:
+          type: array
+          items:
+            $ref: '#/components/schemas/PosDiscountOut'
+        rewardUsed:
+          type: boolean
+        staff:
+          type: string
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/PosHistoryOut'
+        refunds:
+          type: array
+          items:
+            $ref: '#/components/schemas/PosAdjustmentOut'
+        extRef:
+          type: string
+        stamped:
+          type: boolean
+        cleared:
+          type: boolean
+      required:
+      - accepted
+      - cafe
+      - channel
+      - cleared
+      - discounts
+      - history
+      - id
+      - lines
+      - methods
+      - note
+      - paid
+      - payments
+      - placedAt
+      - refunds
+      - rewardUsed
+      - staff
+      - stamped
+      - status
+      - tables
+      - time
+      - total
+      - type
+    PosOrderOutChannelEnum:
+      enum:
+      - pos
+      - app
+      type: string
+      description: |-
+        * `pos` - pos
+        * `app` - app
+    PosOrderStatus:
+      enum:
+      - new
+      - preparing
+      - ready
+      - completed
+      - refunded
+      - cancelled
+      - failed
+      type: string
+      description: |-
+        * `new` - new
+        * `preparing` - preparing
+        * `ready` - ready
+        * `completed` - completed
+        * `refunded` - refunded
+        * `cancelled` - cancelled
+        * `failed` - failed
+    PosOrderType:
+      enum:
+      - dinein
+      - pickup
+      - takeaway
+      - delivery
+      type: string
+      description: |-
+        * `dinein` - dinein
+        * `pickup` - pickup
+        * `takeaway` - takeaway
+        * `delivery` - delivery
+    PosPaymentInRequest:
+      type: object
+      properties:
+        method:
+          $ref: '#/components/schemas/PosTenderMethod'
+        amount:
+          type: integer
+          maximum: 10000000
+          minimum: 0
+          description: Cents applied to the order (no tip, no surcharge).
+        tip:
+          type: integer
+          maximum: 10000000
+          minimum: 0
+          default: 0
+        surcharge:
+          type: integer
+          maximum: 10000000
+          minimum: 0
+          default: 0
+        ref:
+          type: string
+          minLength: 1
+          description: Idempotency reference of this tender.
+          maxLength: 80
+        giftLast4:
+          type: string
+          nullable: true
+          maxLength: 4
+        at:
+          type: string
+          default: ''
+          maxLength: 40
+        by:
+          type: string
+          default: ''
+          maxLength: 120
+        mode:
+          $ref: '#/components/schemas/PosSplitMode'
+        items:
+          type: object
+          additionalProperties:
+            type: integer
+            minimum: 0
+        cashPaid:
+          type: integer
+          maximum: 10000000
+          minimum: 0
+          nullable: true
+        rounding:
+          type: integer
+          maximum: 100
+          minimum: -100
+          default: 0
+        change:
+          type: integer
+          maximum: 10000000
+          minimum: 0
+          nullable: true
+      required:
+      - amount
+      - method
+      - ref
+    PosPaymentOut:
+      type: object
+      properties:
+        method:
+          $ref: '#/components/schemas/PosTenderMethod'
+        amount:
+          type: integer
+        tip:
+          type: integer
+        surcharge:
+          type: integer
+        ref:
+          type: string
+        giftLast4:
+          type: string
+          nullable: true
+        at:
+          type: string
+        by:
+          type: string
+        mode:
+          type: string
+        items:
+          type: object
+          additionalProperties:
+            type: integer
+        cashPaid:
+          type: integer
+        rounding:
+          type: integer
+        change:
+          type: integer
+      required:
+      - amount
+      - at
+      - by
+      - giftLast4
+      - method
+      - ref
+      - surcharge
+      - tip
+    PosPinInRequest:
+      type: object
+      properties:
+        pin:
+          type: string
+          minLength: 1
+          description: 4 digits.
+          maxLength: 10
+      required:
+      - pin
+    PosPinOut:
+      type: object
+      properties:
+        staff:
+          $ref: '#/components/schemas/PosStaffOut'
+        permissions:
+          type: array
+          items:
+            type: string
+      required:
+      - permissions
+      - staff
+    PosPrepInRequest:
+      type: object
+      properties:
+        lines:
+          type: array
+          items:
+            $ref: '#/components/schemas/PosPrepLineInRequest'
+        status:
+          $ref: '#/components/schemas/PosOrderStatus'
+        note:
+          type: string
+          default: ''
+          maxLength: 300
+      required:
+      - lines
+      - status
+    PosPrepLineInRequest:
+      type: object
+      properties:
+        key:
+          type: string
+          minLength: 1
+          maxLength: 40
+        prep:
+          $ref: '#/components/schemas/PrepEnum'
+      required:
+      - key
+      - prep
+    PosRole:
+      enum:
+      - cashier
+      - manager
+      - admin
+      type: string
+      description: |-
+        * `cashier` - cashier
+        * `manager` - manager
+        * `admin` - admin
+    PosShiftInRequest:
+      type: object
+      properties:
+        id:
+          type: string
+          minLength: 1
+          maxLength: 60
+        cafe:
+          type: string
+          minLength: 1
+          maxLength: 50
+        staffId:
+          type: string
+          default: ''
+          maxLength: 60
+        staffName:
+          type: string
+          default: ''
+          maxLength: 120
+        openedAt:
+          type: string
+          default: ''
+          maxLength: 40
+        float:
+          type: integer
+          maximum: 10000000
+          minimum: 0
+          description: Opening float, cents.
+        cashSales:
+          type: integer
+          maximum: 10000000
+          minimum: 0
+          default: 0
+        cashRefunds:
+          type: integer
+          maximum: 10000000
+          minimum: 0
+          default: 0
+        moves:
+          type: array
+          items:
+            $ref: '#/components/schemas/PosCashMoveInRequest'
+        status:
+          allOf:
+          - $ref: '#/components/schemas/PosShiftStatus'
+          default: open
+      required:
+      - cafe
+      - float
+      - id
+    PosShiftOut:
+      type: object
+      properties:
+        id:
+          type: string
+        cafe:
+          type: string
+        staffId:
+          type: string
+        staffName:
+          type: string
+        openedAt:
+          type: string
+        float:
+          type: integer
+        cashSales:
+          type: integer
+        cashRefunds:
+          type: integer
+        moves:
+          type: array
+          items:
+            $ref: '#/components/schemas/PosMoveOut'
+        status:
+          $ref: '#/components/schemas/PosShiftStatus'
+        closedAt:
+          type: string
+        closedBy:
+          type: string
+        counted:
+          type: integer
+        expected:
+          type: integer
+        variance:
+          type: integer
+        note:
+          type: string
+        approvedBy:
+          type: string
+      required:
+      - cafe
+      - cashRefunds
+      - cashSales
+      - float
+      - id
+      - moves
+      - openedAt
+      - staffId
+      - staffName
+      - status
+    PosShiftStatus:
+      enum:
+      - open
+      - closed
+      type: string
+      description: |-
+        * `open` - open
+        * `closed` - closed
+    PosSnapshotOut:
+      type: object
+      properties:
+        locations:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          description: Website café records (id = slug).
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/PosCategoryOut'
+        menu:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          description: 'This café''s menu in the website shape: id, cat, name, price
+            (AUD), diet, img, desc, mods [{id, name, required, max, options [[label,
+            AUD]]}], featured.'
+        cateringPackages:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        tables:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          description: 'Not set up yet: [].'
+        promotions:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          description: 'Not yet: [].'
+        availability:
+          type: object
+          additionalProperties: {}
+        stock:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          description: 'Not yet: [].'
+        stockLog:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          description: 'Not yet: [].'
+        orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/PosOrderOut'
+        customers:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          description: 'Phase 2: [].'
+        giftCards:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          description: 'Phase 2: [].'
+        reservations:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          description: 'Phase 2: [].'
+        catering:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          description: 'Phase 2: [].'
+        staff:
+          type: array
+          items:
+            $ref: '#/components/schemas/PosStaffOut'
+        roles:
+          type: object
+          additionalProperties: {}
+        settings:
+          type: object
+          additionalProperties: {}
+        currentShift:
+          allOf:
+          - $ref: '#/components/schemas/PosShiftOut'
+          nullable: true
+        closedShifts:
+          type: array
+          items:
+            $ref: '#/components/schemas/PosShiftOut'
+        audit:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        reports:
+          type: object
+          additionalProperties: {}
+      required:
+      - audit
+      - availability
+      - categories
+      - catering
+      - cateringPackages
+      - closedShifts
+      - currentShift
+      - customers
+      - giftCards
+      - locations
+      - menu
+      - orders
+      - promotions
+      - reports
+      - reservations
+      - roles
+      - settings
+      - staff
+      - stock
+      - stockLog
+      - tables
+    PosSplitMode:
+      enum:
+      - full
+      - equal
+      - items
+      - amount
+      type: string
+      description: |-
+        * `full` - full
+        * `equal` - equal
+        * `items` - items
+        * `amount` - amount
+    PosStaffOut:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        initials:
+          type: string
+        role:
+          $ref: '#/components/schemas/PosRole'
+        cafe:
+          type: string
+        shift:
+          type: string
+      required:
+      - cafe
+      - id
+      - initials
+      - name
+      - role
+      - shift
+    PosStatusInRequest:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/PosOrderStatus'
+        note:
+          type: string
+          default: ''
+          maxLength: 300
+      required:
+      - status
+    PosTablesInRequest:
+      type: object
+      properties:
+        table:
+          type: string
+          nullable: true
+          maxLength: 20
+        tables:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            maxLength: 20
+        cleared:
+          type: boolean
+          nullable: true
+    PosTenderMethod:
+      enum:
+      - cash
+      - card
+      - wallet
+      - gift
+      - reward
+      type: string
+      description: |-
+        * `cash` - cash
+        * `card` - card
+        * `wallet` - wallet
+        * `gift` - gift
+        * `reward` - reward
+    PosTransactionInKindEnum:
+      enum:
+      - sale
+      - payment
+      - refund
+      - void
+      - cancel
+      - gift-issue
+      - cash-in
+      - cash-out
+      type: string
+      description: |-
+        * `sale` - sale
+        * `payment` - payment
+        * `refund` - refund
+        * `void` - void
+        * `cancel` - cancel
+        * `gift-issue` - gift-issue
+        * `cash-in` - cash-in
+        * `cash-out` - cash-out
+    PosTransactionInRequest:
+      type: object
+      properties:
+        kind:
+          $ref: '#/components/schemas/PosTransactionInKindEnum'
+        orderId:
+          type: string
+          default: ''
+          maxLength: 40
+        cafeId:
+          type: string
+          minLength: 1
+          maxLength: 50
+        terminalId:
+          type: string
+          default: ''
+          maxLength: 60
+        amountC:
+          type: integer
+          description: Cents, GST inclusive; negative = money returned.
+        gstC:
+          type: integer
+        at:
+          type: string
+          format: date-time
+        staff:
+          type: string
+          default: ''
+          maxLength: 120
+        reference:
+          type: string
+          minLength: 1
+          maxLength: 80
+      required:
+      - amountC
+      - at
+      - cafeId
+      - gstC
+      - kind
+      - reference
     PreferencesOut:
       type: object
       properties:
@@ -16040,6 +19300,16 @@ components:
       - homeCafeId
       - notifications
       - security
+    PrepEnum:
+      enum:
+      - new
+      - preparing
+      - ready
+      type: string
+      description: |-
+        * `new` - new
+        * `preparing` - preparing
+        * `ready` - ready
     Profile:
       type: object
       properties:

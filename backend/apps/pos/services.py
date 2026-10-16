@@ -1,0 +1,573 @@
+"""
+Till rules: orders rung up at the counter, tenders, refunds/voids/cancellations, kitchen progress,
+tables, cash shifts and till records. The till works offline and sends each change later as a
+command (POS src/services/commands.ts), so a sale that already happened is recorded even when
+its prices no longer match the menu; the differences are noted on the order for a manager.
+"""
+
+import ipaddress
+from datetime import timedelta
+from decimal import ROUND_HALF_UP, Decimal
+
+from django.db.models import Sum
+from django.utils import timezone
+from django.utils.dateparse import parse_datetime
+from rest_framework.throttling import BaseThrottle
+
+from apps.accounts.models import User
+from apps.core.models import AuditLog
+from apps.core.permissions import scoped_locations
+from apps.core.services import audit, snapshot
+from apps.menu.catalog import menu_items
+from apps.mobile.errors import AppError, invalid, not_found
+from apps.orders import services as order_services
+from apps.orders.models import Order, OrderAdjustment, OrderLine, OrderPayment
+
+from .models import CashShift, TillTransaction
+
+# POS OrderStatus ↔ stored status. "new" is confirmed (accepted) for till orders; an app order
+# waiting for the café is "received" and shows on the till as new + accepted: false.
+FROM_TILL = {
+    "new": "confirmed",
+    "preparing": "preparing",
+    "ready": "ready",
+    "completed": "completed",
+    "cancelled": "cancelled",
+    "refunded": "refunded",
+    "failed": "failed",
+}
+TO_TILL = {
+    "received": "new",
+    "confirmed": "new",
+    "preparing": "preparing",
+    "ready": "ready",
+    "completed": "completed",
+    "declined": "cancelled",
+    "cancelled": "cancelled",
+    "refunded": "refunded",
+    "failed": "failed",
+}
+METHOD_FROM_TILL = {
+    "dinein": "dine_in",
+    "pickup": "pickup",
+    "takeaway": "takeaway",
+    "delivery": "delivery",
+}
+FINAL = {"completed", "declined", "cancelled", "refunded"}
+PREPARABLE = {"confirmed", "preparing", "ready"}
+LIVE = ["received", "confirmed", "preparing", "ready", "failed"]
+TOTAL_TOLERANCE_CENTS = 1  # the till rounds in dollars, the server in cents
+
+
+def cents(value):
+    """AUD dollars (as the till sends them) → integer cents, half-up."""
+    return int((Decimal(str(value)) * 100).quantize(Decimal("1"), rounding=ROUND_HALF_UP))
+
+
+def money(value):
+    return f"${value / 100:,.2f}"
+
+
+def terminal_of(request):
+    return request.headers.get("X-Terminal-Id", "").strip()[:60]
+
+
+def till_locations(user):
+    return scoped_locations(user).filter(is_published=True).order_by("name")
+
+
+def location_for(user, slug):
+    location = till_locations(user).filter(slug=slug).first()
+    if location is None:
+        raise not_found("That café isn’t available on this till.")
+    return location
+
+
+def default_location(user):
+    location = till_locations(user).exclude(status="tbc").first()
+    if location is None:
+        raise not_found("This account isn’t assigned to a café yet.")
+    return location
+
+
+def orders_for(user):
+    return Order.objects.filter(location__in=till_locations(user))
+
+
+def order_for(user, number, lock=False):
+    qs = orders_for(user)
+    if lock:
+        qs = qs.select_for_update(of=("self",))
+    order = qs.filter(number=number).select_related("location", "customer").first()
+    if order is None:
+        raise not_found(f"Order {number} was not found.")
+    return order
+
+
+def note_history(order, text):
+    if text:
+        order.history = [*order.history, {"at": timezone.localtime().isoformat(), "what": text}]
+
+
+def touch(order, request, *fields):
+    order.updated_by = request.user
+    order.save(update_fields=[*fields, "updated_by", "updated_at"])
+
+
+# ---------------------------------------------------------------- orders
+
+
+def menu_check(location, lines):
+    """Compare till prices with the menu. Returns (menu items by slug, review notes)."""
+    entries = {
+        e.item.slug: e for e in menu_items(location, slugs={line["itemId"] for line in lines})
+    }
+    notes = []
+    for line in lines:
+        entry = entries.get(line["itemId"])
+        if entry is None:
+            notes.append(f"{line['name']} is not on the {location.name} menu.")
+            continue
+        unit, groups = entry.price_cents, {g.code: dict(g.options) for g in entry.groups}
+        for code, labels in (line.get("sel") or {}).items():
+            for label in labels:
+                if label not in groups.get(code, {}):
+                    notes.append(f"{line['name']}: option “{label}” is not on the menu.")
+                else:
+                    unit += groups[code][label]
+        price = cents(line["price"])
+        if price != unit:
+            notes.append(f"{line['name']} rung up at {money(price)} (menu {money(unit)}).")
+        elif not entry.available:
+            notes.append(f"{line['name']} was sold while marked sold out.")
+    return entries, notes
+
+
+def till_totals(data, location):
+    subtotal = sum(cents(line["price"]) * line["qty"] for line in data["lines"])
+    discount = sum(cents(row["amount"]) for row in data.get("discounts") or [])
+    if discount > subtotal:
+        raise invalid("The discount is more than the order.", discounts="invalid")
+    delivery_rate, _ = order_services.order_rules()
+    delivery = (
+        order_services.apply_rate(subtotal - discount, delivery_rate)
+        if data["type"] == "delivery"
+        else 0
+    )
+    total = cents(data["total"])
+    expected = subtotal - discount + delivery
+    if abs(total - expected) > TOTAL_TOLERANCE_CENTS:
+        raise invalid(
+            f"The order total {money(total)} does not add up: lines {money(subtotal)} − "
+            f"discounts {money(discount)} + delivery {money(delivery)} = {money(expected)}.",
+            total="invalid",
+        )
+    return subtotal, discount, delivery, total
+
+
+def customer_of(customer_id):
+    if not customer_id:
+        return None
+    try:
+        return User.objects.filter(pk=customer_id, role="customer", is_active=True).first()
+    except (ValueError, TypeError):
+        return None
+
+
+def create_order(request, data):
+    user = request.user
+    location = location_for(user, data["cafe"])
+    if data["channel"] != "pos":
+        raise invalid("Only till orders can be created here.", channel="invalid")
+    if Order.objects.filter(number=data["id"]).exists():
+        raise AppError(
+            "CONFLICT",
+            f"Order {data['id']} already exists. Each till must number its orders uniquely.",
+            409,
+        )
+    subtotal, discount, delivery, total = till_totals(data, location)
+    entries, notes = menu_check(location, data["lines"])
+    status = FROM_TILL[data["status"]]
+    if status not in {"confirmed", "preparing", "ready", "completed"}:
+        raise invalid("A new till order starts as new, preparing, ready or completed.")
+    placed = data.get("placedAt") or timezone.now()
+    table = (data.get("table") or "").strip()
+    order = Order.objects.create(
+        number=data["id"],
+        channel="pos",
+        customer=customer_of(data.get("customerId")),
+        location=location,
+        method=METHOD_FROM_TILL[data["type"]],
+        status=status,
+        table_number=table[:20],
+        tables=data.get("tables") or ([table] if table else []),
+        subtotal_cents=subtotal,
+        delivery_cents=delivery,
+        discount_cents=discount,
+        discounts=data.get("discounts") or [],
+        total_cents=total,
+        reward_redeemed=data.get("rewardUsed", False),
+        placed_at=placed,
+        note=data.get("note") or "",
+        staff_name=data.get("staff") or "",
+        terminal_id=terminal_of(request),
+        history=data.get("history") or [],
+        review_note="\n".join(notes),
+        handled_by=user,
+        handled_at=timezone.now(),
+        created_by=user,
+        updated_by=user,
+    )
+    for position, line in enumerate(data["lines"]):
+        entry = entries.get(line["itemId"])
+        sel = line.get("sel") or {}
+        OrderLine.objects.create(
+            order=order,
+            menu_item=entry.item if entry else None,
+            item_slug=line["itemId"],
+            name=line["name"],
+            qty=line["qty"],
+            unit_price_cents=cents(line["price"]),
+            selections=sel,
+            modifiers_label=", ".join(label for labels in sel.values() for label in labels),
+            note=line.get("note") or "",
+            position=position,
+            key=line["key"],
+            adjust=line.get("adjust") or [],
+            prep=line.get("prep") or "",
+        )
+    for payment in data.get("payments") or []:
+        record_payment(request, order, payment, save=False)
+    return order
+
+
+def paid_cents(order):
+    return order.payments.aggregate(total=Sum("amount_cents"))["total"] or 0
+
+
+def refunded_cents(order):
+    return order.adjustments.aggregate(total=Sum("amount_cents"))["total"] or 0
+
+
+def record_payment(request, order, data, save=True):
+    """Records a tender already taken (cash counted, card approved on the terminal)."""
+    if order.payments.filter(reference=data["ref"]).exists():
+        return order
+    if order.status in {"declined", "cancelled", "refunded"}:
+        raise AppError(
+            "CONFLICT", f"Order {order.number} is {order.status}; no payment taken.", 409
+        )
+    due = order.total_cents - paid_cents(order)
+    if data["amount"] > due:
+        raise invalid(
+            f"{money(data['amount'])} is more than the {money(max(0, due))} due on {order.number}.",
+            amount="invalid",
+        )
+    OrderPayment.objects.create(
+        order=order,
+        method=data["method"],
+        amount_cents=data["amount"],
+        tip_cents=data.get("tip") or 0,
+        surcharge_cents=data.get("surcharge") or 0,
+        reference=data["ref"],
+        gift_last4=data.get("giftLast4") or "",
+        split_mode=data.get("mode") or "",
+        items=data.get("items") or {},
+        cash_paid_cents=data.get("cashPaid"),
+        rounding_cents=data.get("rounding") or 0,
+        change_cents=data.get("change"),
+        staff_name=data.get("by") or "",
+        taken_at=data.get("at") or "",
+        terminal_id=terminal_of(request),
+    )
+    if data.get("surcharge"):
+        order.surcharge_cents += data["surcharge"]
+    if save:
+        touch(order, request, "surcharge_cents")
+    elif data.get("surcharge"):
+        order.save(update_fields=["surcharge_cents"])
+    return order
+
+
+def change_status(request, order, status, text):
+    """Stores a new status, notes it, and tells an app customer what happened."""
+    previous = order.status
+    order.status = status
+    order.handled_by = request.user
+    order.handled_at = timezone.now()
+    note_history(order, text)
+    touch(order, request, "status", "handled_by", "handled_at", "history")
+    if previous != status:
+        if order.channel == "app":
+            audit(request, order, {"status": previous}, "pos_status", {"status": status})
+        order_services.after_status_change(order, previous)
+
+
+def set_status(request, order, till_status, text):
+    if till_status not in {"new", "preparing", "ready", "completed"}:
+        raise invalid("Use adjustments to cancel or refund an order.", status="invalid")
+    target = FROM_TILL[till_status]
+    if order.status == target or (order.status == "received" and target == "confirmed"):
+        note_history(order, text)
+        touch(order, request, "history")
+        return order
+    if order.status in FINAL or order.status == "failed":
+        raise AppError("CONFLICT", f"Order {order.number} is already {order.status}.", 409)
+    change_status(request, order, target, text)
+    return order
+
+
+def accept(request, order):
+    if order.status in FINAL or order.status == "failed":
+        raise AppError("CONFLICT", f"Order {order.number} is already {order.status}.", 409)
+    if order.status in {"received", "confirmed"}:
+        change_status(request, order, "preparing", "Accepted at the café")
+    return order
+
+
+def set_prep(request, order, data):
+    if order.status not in PREPARABLE:
+        state = "waiting to be accepted" if order.status == "received" else order.status
+        raise AppError("CONFLICT", f"Order {order.number} is {state}; no change made.", 409)
+    if data["status"] not in {"new", "preparing", "ready"}:
+        raise invalid("Kitchen progress sets new, preparing or ready.", status="invalid")
+    lines = {line.key or str(line.pk): line for line in order.lines.all()}
+    unknown = [row["key"] for row in data["lines"] if row["key"] not in lines]
+    if unknown:
+        raise invalid(f"Order {order.number} has no line {unknown[0]}.", lines="invalid")
+    for row in data["lines"]:
+        line = lines[row["key"]]
+        if line.prep != row["prep"]:
+            line.prep = row["prep"]
+            line.save(update_fields=["prep", "updated_at"])
+    target = FROM_TILL[data["status"]]
+    if target != order.status:
+        change_status(request, order, target, data.get("note") or "")
+    else:
+        note_history(order, data.get("note") or "")
+        touch(order, request, "history")
+    return order
+
+
+def adjust(request, order, data):
+    change = data["adjustment"]
+    if order.adjustments.filter(key=change["key"]).exists():
+        return order
+    status = FROM_TILL.get(data["status"])
+    if status is None or status in {"failed"}:
+        raise invalid("That status can’t follow a refund, void or cancellation.", status="invalid")
+    if order.status in {"declined", "cancelled", "refunded"}:
+        raise AppError("CONFLICT", f"Order {order.number} is already {order.status}.", 409)
+    refundable = paid_cents(order) - refunded_cents(order)
+    if change["amount"] > refundable:
+        raise invalid(
+            f"{money(change['amount'])} is more than the {money(refundable)} that can be returned.",
+            amount="invalid",
+        )
+    total = cents(data["total"])
+    if total > order.total_cents:
+        raise invalid(
+            "A refund, void or cancellation can’t raise the order total.", total="invalid"
+        )
+    lines = {line.key or str(line.pk): line for line in order.lines.all()}
+    kept = {row["key"]: row["qty"] for row in data["lines"]}
+    unknown = [key for key in kept if key not in lines]
+    if unknown:
+        raise invalid(f"Order {order.number} has no line {unknown[0]}.", lines="invalid")
+    for key, line in lines.items():
+        qty = kept.get(key, 0)
+        if qty > line.qty:
+            raise invalid(f"{line.name}: a void can only lower the quantity.", lines="invalid")
+        if qty != line.qty:
+            line.qty = qty
+            line.save(update_fields=["qty", "updated_at"])
+    before = snapshot(order)
+    OrderAdjustment.objects.create(
+        order=order,
+        key=change["key"],
+        mode=change["mode"],
+        amount_cents=change["amount"],
+        allocation=change.get("alloc") or [],
+        items=change.get("items") or {},
+        reason=change.get("reason") or "",
+        staff_name=change.get("by") or "",
+        approver_name=change.get("approver") or "",
+        made_at=change.get("at") or "",
+        terminal_id=terminal_of(request),
+    )
+    order.total_cents = total
+    touch(order, request, "total_cents")
+    label = {"cancel": "Cancelled", "void": "Items voided", "refund": "Refunded"}[change["mode"]]
+    text = f"{label} at the till · {change.get('reason') or 'no reason given'}"
+    if status == "cancelled" and order.channel == "app" and order.status == "received":
+        status = "declined"  # the app shows a café refusing an order as declined
+    if status != order.status:
+        change_status(request, order, status, text)
+    else:
+        note_history(order, text)
+        touch(order, request, "history")
+    audit(request, order, before, f"pos_{change['mode']}")
+    return order
+
+
+def set_tables(request, order, data):
+    table = (data.get("table") or "").strip()[:20]
+    order.table_number = table
+    order.tables = [str(t)[:20] for t in data.get("tables") or []]
+    if data.get("cleared") is not None:
+        order.table_cleared = data["cleared"]
+    touch(order, request, "table_number", "tables", "table_cleared")
+    return order
+
+
+def changed_since(user, location, since):
+    """Orders at a café changed since a cursor, oldest change first, and the next cursor."""
+    qs = orders_for(user).filter(location=location)
+    if since is None:
+        today = timezone.localtime().replace(hour=0, minute=0, second=0, microsecond=0)
+        qs = qs.filter(updated_at__gte=today) | qs.filter(status__in=LIVE)
+    else:
+        # A little overlap so a change committed just after the last poll is never missed;
+        # the till merges by order id, so repeats are harmless.
+        qs = qs.filter(updated_at__gte=since - timedelta(seconds=10))
+    rows = list(qs.distinct().order_by("updated_at")[:500])
+    cursor = rows[-1].updated_at if rows else (since or timezone.now())
+    return rows, cursor
+
+
+def parse_since(value):
+    if not value:
+        return None
+    parsed = parse_datetime(value.replace(" ", "+"))
+    if parsed is None:
+        raise invalid("`since` must be the cursor from the previous response.", since="invalid")
+    return parsed if timezone.is_aware(parsed) else timezone.make_aware(parsed)
+
+
+# ---------------------------------------------------------------- cash & records
+
+
+def open_shift(request, data):
+    location = location_for(request.user, data["cafe"])
+    existing = CashShift.objects.filter(reference=data["id"]).first()
+    if existing:
+        raise AppError("CONFLICT", f"Shift {data['id']} already exists.", 409)
+    terminal = terminal_of(request)
+    if (
+        terminal
+        and CashShift.objects.filter(
+            location=location, terminal_id=terminal, status="open"
+        ).exists()
+    ):
+        raise AppError("CONFLICT", "A shift is already open on this till. Close it first.", 409)
+    return CashShift.objects.create(
+        reference=data["id"],
+        location=location,
+        terminal_id=terminal,
+        staff_ref=data.get("staffId") or "",
+        staff_name=data.get("staffName") or "",
+        opened_label=data.get("openedAt") or "",
+        float_cents=data["float"],
+        created_by=request.user,
+        updated_by=request.user,
+    )
+
+
+def shift_for(user, reference, lock=False):
+    qs = CashShift.objects.filter(reference=reference, location__in=till_locations(user))
+    shift = (qs.select_for_update() if lock else qs).first()
+    if shift is None:
+        raise not_found(f"Shift {reference} was not found.")
+    return shift
+
+
+def cash_move(request, shift, move):
+    if any(row.get("id") == move["id"] for row in shift.moves):
+        return shift
+    if shift.status != "open":
+        raise AppError("CONFLICT", "This shift is already closed.", 409)
+    shift.moves = [*shift.moves, move]
+    shift.updated_by = request.user
+    shift.save(update_fields=["moves", "updated_by", "updated_at"])
+    return shift
+
+
+def expected_cash(shift_float, sales, refunds, moves):
+    moved = sum(m["amount"] if m["type"] == "in" else -m["amount"] for m in moves)
+    return shift_float + sales - refunds + moved
+
+
+def close_shift(request, shift, data):
+    if shift.status == "closed":
+        if shift.counted_cents == data["counted"]:
+            return shift
+        raise AppError("CONFLICT", "This shift is already closed.", 409)
+    known = {row.get("id") for row in shift.moves}
+    moves = [*shift.moves, *[m for m in data.get("moves") or [] if m["id"] not in known]]
+    expected = expected_cash(shift.float_cents, data["cashSales"], data["cashRefunds"], moves)
+    if data["expected"] != expected or data["variance"] != data["counted"] - expected:
+        raise invalid(
+            f"The drawer does not add up: expected {money(expected)} "
+            f"(float + cash sales − cash refunds ± cash in/out).",
+            expected="invalid",
+        )
+    shift.moves = moves
+    shift.cash_sales_cents = data["cashSales"]
+    shift.cash_refunds_cents = data["cashRefunds"]
+    shift.status = "closed"
+    shift.closed_at = timezone.now()
+    shift.closed_label = data.get("closedAt") or ""
+    shift.closed_by = data.get("closedBy") or ""
+    shift.counted_cents = data["counted"]
+    shift.expected_cents = expected
+    shift.variance_cents = data["variance"]
+    shift.note = data.get("note") or ""
+    shift.approved_by = data.get("approvedBy") or ""
+    shift.updated_by = request.user
+    shift.save()
+    return shift
+
+
+def record_transaction(request, data):
+    location = location_for(request.user, data["cafeId"])
+    row, _ = TillTransaction.objects.get_or_create(
+        location=location,
+        kind=data["kind"],
+        reference=data["reference"],
+        defaults={
+            "order_number": data.get("orderId") or "",
+            "terminal_id": data.get("terminalId") or terminal_of(request),
+            "amount_cents": data["amountC"],
+            "gst_cents": data["gstC"],
+            "occurred_at": data["at"],
+            "staff_name": data.get("staff") or "",
+            "created_by": request.user,
+            "updated_by": request.user,
+        },
+    )
+    return row
+
+
+AUDIT_TYPE = "pos.audit"
+
+
+def client_ip(request):
+    try:
+        return str(ipaddress.ip_address(BaseThrottle().get_ident(request)))
+    except ValueError:
+        return None
+
+
+def append_audit(request, entry):
+    """The till's own activity log (who did what, approvals) kept in the BOS activity log."""
+    location_for(request.user, entry["cafe"])
+    if AuditLog.objects.filter(entity_type=AUDIT_TYPE, entity_id=entry["id"]).exists():
+        return
+    AuditLog.objects.create(
+        actor=request.user,
+        action=f"pos: {entry['action']}"[:60],
+        entity_type=AUDIT_TYPE,
+        entity_id=entry["id"],
+        after={**entry, "terminal": terminal_of(request)},
+        ip=client_ip(request),
+    )
