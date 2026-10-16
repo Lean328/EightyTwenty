@@ -73,6 +73,7 @@ NAVIGATION = (
         (
             ("view:bos_system", "System status", "activity"),
             ("notifications.emailmessage", "Email delivery", "mail"),
+            ("notifications.pushdevice", "Push devices", "message"),
             ("core.auditlog", "Activity log", "history"),
         ),
     ),

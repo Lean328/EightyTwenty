@@ -539,3 +539,12 @@ class OfferOut(serializers.Serializer):
 class FaqOut(serializers.Serializer):
     question = serializers.CharField()
     answer = serializers.CharField()
+
+
+class PushTokenIn(serializers.Serializer):
+    token = serializers.RegexField(
+        r"^Expo(nent)?PushToken\[[^\]]+\]$",
+        max_length=200,
+        help_text="From expo-notifications getExpoPushTokenAsync(), e.g. ExponentPushToken[xxxx].",
+    )
+    platform = serializers.ChoiceField(choices=["ios", "android"], required=False)

@@ -183,6 +183,10 @@ SPECTACULAR_SETTINGS = {
         "PosTenderMethod": "apps.pos.serializers.METHODS",
         "PosAdjustmentMode": "apps.pos.serializers.ADJUSTMENT_MODES",
         "PosSplitMode": "apps.pos.serializers.SPLIT_MODES",
+        "PosReservationStatus": "apps.pos.serializers.RESERVATION_STATUSES",
+        "PosCateringStatus": "apps.pos.serializers.CATERING_STATUSES",
+        "PosChannel": "apps.pos.serializers.CHANNELS",
+        "PosOrderChannel": "apps.pos.serializers.ORDER_CHANNELS",
         "BookingStatus": [
             (v, v.replace("_", " ").title())
             for v in ["requested", "confirmed", "declined", "cancelled", "seated", "no_show"]
@@ -239,6 +243,10 @@ JOB_TOKEN = env("JOB_TOKEN", default="")
 # Mobile app payments. No provider has been chosen yet: empty = card/Apple Pay charges answer
 # 501 NOT_IMPLEMENTED (orders fully covered by a gift card still go through). "demo" accepts
 # the app's demo_… tokens and charges nothing — only for testing the app end to end.
+# Expo push notifications for the customer app (no key needed; optional access token).
+PUSH_ENABLED = env.bool("PUSH_ENABLED", default=True)
+EXPO_PUSH_URL = env("EXPO_PUSH_URL", default="https://exp.host/--/api/v2/push/send")
+EXPO_ACCESS_TOKEN = env("EXPO_ACCESS_TOKEN", default="")
 PAYMENT_PROVIDER = env("PAYMENT_PROVIDER", default="")
 DOCS_ENABLED = env.bool("DOCS_ENABLED", default=True)
 DATA_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024
@@ -271,7 +279,8 @@ if TESTING:
     MIDDLEWARE = [m for m in MIDDLEWARE if m != "whitenoise.middleware.WhiteNoiseMiddleware"]
     JOB_TOKEN = "test-job-secret-not-for-production"
     SUPABASE_URL = SUPABASE_SERVICE_ROLE_KEY = SUPABASE_PUBLIC_MEDIA_BASE = ""
-    EMAIL_PROVIDER_API_KEY = TURNSTILE_SECRET_KEY = PAYMENT_PROVIDER = ""
+    EMAIL_PROVIDER_API_KEY = TURNSTILE_SECRET_KEY = PAYMENT_PROVIDER = EXPO_ACCESS_TOKEN = ""
+    PUSH_ENABLED = False
     # backend/.env points at the shared Supabase database, so anything that is not a local
     # PostgreSQL (CI, docker compose) becomes an in-memory SQLite database.
     if DATABASES["default"]["ENGINE"].endswith("postgresql") and DATABASES["default"].get(

@@ -3,7 +3,7 @@ from django.contrib import admin
 from apps.core.admin_base import ReadOnlyAdmin
 from apps.core.templatetags.bos_admin import status_badge
 
-from .models import EmailMessage
+from .models import EmailMessage, PushDevice
 
 
 @admin.register(EmailMessage)
@@ -34,3 +34,13 @@ class EmailMessageAdmin(ReadOnlyAdmin):
     @admin.display(description="Delivery", ordering="status")
     def delivery_status(self, obj):
         return status_badge(obj.status)
+
+
+@admin.register(PushDevice)
+class PushDeviceAdmin(ReadOnlyAdmin):
+    list_display = ("user", "platform", "is_active", "last_error", "updated_at")
+    list_filter = ("is_active", "platform")
+    search_fields = ("user__email", "token")
+    ordering = ("-updated_at",)
+    description = "Phones registered by the customer app for push notifications."
+    fields = ("user", "platform", "is_active", "last_error", "token", "created_at", "updated_at")

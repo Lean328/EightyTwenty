@@ -55,7 +55,7 @@ curl https://eightytwenty-api.onrender.com/api/v1/app/locations
 | Saved cards | ⚠️ `GET` returns `[]`, `POST` answers `501`, `DELETE` is a no-op `204` (needs the payment provider). |
 | Send an eGift card | ⚠️ `501` until a payment provider is connected (demo mode records it without sending anything). |
 | Apple Wallet pass | ⚠️ `GET /me/loyalty/wallet-pass` answers `404` (no pass signing yet), which the app already treats as "not available". |
-| Push notifications | ❌ Not built (the in-app feed works). |
+| Push notifications | ✅ Expo push: register the phone with `POST /me/push-tokens` after sign-in, remove it with `DELETE /me/push-tokens/{token}` before sign-out. Every feed item is pushed too, following the notification toggles in preferences. |
 
 ## 3. Conventions
 

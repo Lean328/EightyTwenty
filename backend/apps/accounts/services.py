@@ -90,7 +90,7 @@ def anonymize(user):
     from apps.bookings.models import Booking
     from apps.enquiries.models import Enquiry
     from apps.loyalty.models import GiftCardActivity
-    from apps.notifications.models import AppNotification
+    from apps.notifications.models import AppNotification, PushDevice
     from apps.orders.models import Order, OrderLine
 
     user = User.objects.select_for_update().get(pk=user.pk)
@@ -126,6 +126,7 @@ def anonymize(user):
     )
     SavedAddress.objects.filter(user=user).delete()
     AppNotification.objects.filter(user=user).delete()
+    PushDevice.objects.filter(user=user).delete()
     EmailMessage.objects.filter(recipient=previous_email).delete()
     CustomerProfile.objects.filter(user=user).update(
         birthday=None, preferred_location=None, notes="", app_preferences=None, favourite_items=None

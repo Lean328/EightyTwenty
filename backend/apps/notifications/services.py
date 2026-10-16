@@ -8,7 +8,7 @@ from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
 
-from .models import AppNotification, EmailMessage
+from .models import AppNotification, EmailMessage, PushDevice
 
 logger = logging.getLogger(__name__)
 
@@ -82,8 +82,88 @@ def retry_emails(limit=10):
     return sum(deliver_email(pk) for pk in ids)
 
 
+# Feed kind → the app's notification toggle (Profile → Notifications).
+PUSH_TOGGLES = {
+    "order": "orderUpdates",
+    "booking": "bookings",
+    "loyalty": "coffeeCard",
+    "gift_card": "giftCardActivity",
+    "offer": "offersAndNews",
+}
+
+
 def notify(user, kind, text):
-    """Add a line to a customer's in-app feed (mobile app bell). Push is not built yet."""
+    """Add a line to a customer's in-app feed (mobile app bell) and push it to their phones."""
     if user is None or not user.is_active:
         return None
-    return AppNotification.objects.create(user=user, kind=kind, text=text[:300])
+    item = AppNotification.objects.create(user=user, kind=kind, text=text[:300])
+    if wants_push(user, kind):
+        transaction.on_commit(lambda: send_push(user.pk, item), robust=True)
+    return item
+
+
+def wants_push(user, kind):
+    if not settings.PUSH_ENABLED:
+        return False
+    if not PushDevice.objects.filter(user=user, is_active=True).exists():
+        return False
+    from apps.accounts.models import CustomerProfile
+    from apps.mobile.presenters import APP_PREFERENCE_DEFAULTS
+
+    stored = CustomerProfile.objects.filter(user=user).values_list("app_preferences", flat=True)
+    toggles = {
+        **APP_PREFERENCE_DEFAULTS["notifications"],
+        **((stored.first() or {}).get("notifications") or {}),
+    }
+    return bool(toggles.get(PUSH_TOGGLES.get(kind, ""), True))
+
+
+def send_push(user_id, item):
+    """One Expo push request for every active phone of the user. Failures never raise."""
+    devices = list(PushDevice.objects.filter(user_id=user_id, is_active=True))
+    if not devices:
+        return 0
+    messages = [
+        {
+            "to": device.token,
+            "title": "EightyTwenty",
+            "body": item.text,
+            "sound": "default",
+            "data": {"kind": item.kind, "notificationId": str(item.pk)},
+        }
+        for device in devices
+    ]
+    headers = {"Accept": "application/json"}
+    if settings.EXPO_ACCESS_TOKEN:
+        headers["Authorization"] = f"Bearer {settings.EXPO_ACCESS_TOKEN}"
+    try:
+        response = httpx.post(settings.EXPO_PUSH_URL, json=messages, headers=headers, timeout=5)
+        response.raise_for_status()
+        tickets = response.json().get("data") or []
+    except Exception as exc:
+        logger.warning("Push delivery failed for user %s (%s)", user_id, type(exc).__name__)
+        return 0
+    sent = 0
+    for device, ticket in zip(devices, tickets, strict=False):
+        if ticket.get("status") == "ok":
+            sent += 1
+            continue
+        error = (ticket.get("details") or {}).get("error") or ticket.get("message") or "error"
+        device.last_error = str(error)[:120]
+        # The app was uninstalled or the token expired: stop sending to it.
+        device.is_active = error != "DeviceNotRegistered"
+        device.save(update_fields=["last_error", "is_active", "updated_at"])
+    return sent
+
+
+def register_push_device(user, token, platform=""):
+    """The token moves to whoever signed in on that phone last."""
+    device, _ = PushDevice.objects.update_or_create(
+        token=token,
+        defaults={"user": user, "platform": platform, "is_active": True, "last_error": ""},
+    )
+    return device
+
+
+def remove_push_device(user, token):
+    PushDevice.objects.filter(user=user, token=token).update(is_active=False)

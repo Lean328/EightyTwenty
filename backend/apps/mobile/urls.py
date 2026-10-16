@@ -34,6 +34,8 @@ urlpatterns = [
     path("me/notifications", v.NotificationsView.as_view()),
     path("me/notifications/seen", v.NotificationsSeenView.as_view()),
     path("me/notifications/read-all", v.NotificationsReadAllView.as_view()),
+    path("me/push-tokens", v.PushTokensView.as_view()),
+    path("me/push-tokens/<str:token>", v.PushTokenView.as_view()),
     path("locations", v.LocationsView.as_view()),
     path("locations/<str:slug>", v.LocationView.as_view()),
     path("locations/<str:slug>/menu", v.LocationMenuView.as_view()),

@@ -228,7 +228,7 @@ def test_snapshot_shape_menu_and_staff(till, cafe, menu, cashier):
         "id": "drink", "name": "Choose your drink", "required": True, "max": 1,
         "options": [["Flat White", 0.5]],
     }  # fmt: skip
-    assert snap["availability"]["branchOff"] == {"braddon": ["bburger"]}
+    assert snap["availability"]["soldOut"] == ["bburger"]  # the account has one café
     assert [s["name"] for s in snap["staff"]] == ["Mia Tran"]
     assert snap["roles"]["cashier"]["perms"][0] == "pos"
     assert snap["settings"]["rules"]["surcharge"] == "2.95"
@@ -548,3 +548,165 @@ def test_any_origin_and_host_may_call_the_api(client, settings):
     )
     assert response.status_code == 200
     assert response["access-control-allow-origin"] == "*"
+
+
+# ---------------------------------------------------------------- phase 2: customers & bookings
+
+
+@pytest.fixture
+def regular(cafe):
+    from apps.accounts.models import CustomerProfile
+
+    user = UserFactory(first_name="Sophie", last_name="Nguyen", phone="0400 123 456")
+    CustomerProfile.objects.create(user=user, preferred_location=cafe, notes="Oat milk")
+    LoyaltyCard.objects.create(user=user, stamps=9)
+    return user
+
+
+def test_snapshot_lists_customers_with_their_coffee_card(till, cafe, menu, regular):
+    people = till.get(f"{BASE}/snapshot?cafe=braddon").json()["customers"]
+    assert people[0]["id"] == str(regular.pk) and people[0]["name"] == "Sophie Nguyen"
+    assert (people[0]["stamps"], people[0]["rewards"]) == (0, 1)
+    assert people[0]["homeCafe"] == "braddon" and people[0]["notes"] == "Oat milk"
+
+
+def test_customer_edit_and_coffee_card_from_the_till(till, regular):
+    path = f"/customers/{regular.pk}"
+    edited = post(till, path, {"name": "Sophie N", "dietary": ["Vegan"], "notes": "Allergic to nuts"},
+                  method="put").json()  # fmt: skip
+    assert edited["name"] == "Sophie N" and edited["dietary"] == ["Vegan"]
+    other = UserFactory(email="taken@example.com")
+    assert post(till, path, {"email": other.email}, method="put").status_code == 409
+    redeemed = post(till, f"{path}/loyalty", {"stamps": 0, "rewards": 0, "reason": "Free coffee"},
+                    method="put").json()  # fmt: skip
+    assert (redeemed["stamps"], redeemed["rewards"]) == (0, 0)
+    assert LoyaltyCard.objects.get(user=regular).stamps == 0
+    stamped = post(till, f"{path}/loyalty", {"stamps": 2, "rewards": 0}, method="put").json()
+    assert stamped["stamps"] == 2
+    assert LoyaltyCard.objects.get(user=regular).activity.filter(type="earn").exists()
+    assert AppNotification.objects.filter(user=regular, kind="loyalty").exists()
+    full = post(till, f"{path}/loyalty", {"stamps": 3, "rewards": 2}, method="put").json()
+    assert (full["stamps"], full["rewards"]) == (0, 1)
+    assert post(till, "/customers/not-a-uuid/loyalty", {"stamps": 1, "rewards": 0},
+                method="put").status_code == 404  # fmt: skip
+
+
+def test_sold_out_from_the_till(till, cafe, elsewhere, menu):
+    path = "/items/bburger/sold-out"
+    assert post(till, path, {"soldOut": True}, method="put").json() == {"ok": True}
+    assert not LocationMenuItem.objects.get(location=cafe, menu_item=menu["burger"]).is_available
+    assert not LocationMenuItem.objects.filter(location=elsewhere).exists()  # not this account's
+    snap = till.get(f"{BASE}/snapshot?cafe=braddon").json()["availability"]
+    assert snap["soldOut"] == ["bburger"] and snap["branchOff"] == {"braddon": []}
+    on = post(
+        till, "/locations/braddon/items/bburger/availability", {"available": True}, method="put"
+    )
+    assert on.status_code == 200
+    assert LocationMenuItem.objects.get(location=cafe, menu_item=menu["burger"]).is_available
+    assert post(till, "/items/nope/sold-out", {"soldOut": True}, method="put").status_code == 404
+    assert post(till, "/locations/civic/items/bburger/availability", {"available": False},
+                method="put").status_code == 404  # fmt: skip
+
+
+def reservation_body(**overrides):
+    body = {"id": "rK2M9QZ1A", "cafe": "braddon", "date": str(timezone.localdate() + timedelta(days=1)),
+            "time": "09:30", "guests": 4, "name": "Hannah Lee", "phone": "0412 345 678",
+            "notes": "High chair", "status": "pending"}  # fmt: skip
+    body.update(overrides)
+    return body
+
+
+def test_reservations_from_the_till(till, cafe, regular):
+    from apps.bookings.models import Booking
+    from apps.notifications.models import EmailMessage
+
+    path = "/reservations/rK2M9QZ1A"
+    made = post(till, path, reservation_body(customerId=str(regular.pk)), method="put").json()
+    assert made["status"] == "pending" and made["source"] == "pos"
+    booking = Booking.objects.get(reference="rK2M9QZ1A")
+    assert booking.source == "staff" and booking.customer == regular and booking.party_size == 4
+    seated = post(till, path, reservation_body(status="completed", guests=5), method="put").json()
+    assert seated["status"] == "completed" and seated["guests"] == 5
+    booking.refresh_from_db()
+    assert booking.status == "seated"
+    assert not EmailMessage.objects.filter(recipient="").exists()  # no email → no mail
+    assert post(till, path, reservation_body(status="pending"), method="put").status_code == 409
+    assert post(till, path, reservation_body(id="other"), method="put").status_code == 422
+    snap = till.get(f"{BASE}/snapshot?cafe=braddon").json()["reservations"]
+    assert [r["id"] for r in snap] == ["rK2M9QZ1A"]
+
+
+def test_website_bookings_show_and_confirm_on_the_till(till, cafe):
+    from apps.bookings.models import Booking
+
+    web = Booking.objects.create(
+        location=cafe, date=timezone.localdate() + timedelta(days=2), time="10:00", party_size=2,
+        name="Web Guest", email="guest@example.com", phone="0400", source="web",
+    )  # fmt: skip
+    row = next(r for r in till.get(f"{BASE}/snapshot?cafe=braddon").json()["reservations"])
+    assert row["id"] == web.reference and row["source"] == "web" and row["status"] == "pending"
+    body = {**row, "status": "confirmed"}
+    assert (
+        post(till, f"/reservations/{web.reference}", body, method="put").json()["status"]
+        == "confirmed"
+    )
+    web.refresh_from_db()
+    assert web.status == "confirmed" and web.handled_by is not None
+
+
+def test_catering_from_the_till(till, cafe):
+    from apps.enquiries.models import CateringPackage, Enquiry
+
+    CateringPackage.objects.create(slug="grazing", name="Grazing Box", price_cents=2200)
+    body = {"id": "ceQ2M8ZK1", "packageId": "Grazing Box", "guests": 20, "date": "2026-11-02",
+            "time": "11:30", "fulfil": "delivery", "address": "1 Office St", "cafe": "",
+            "name": "Acme Pty Ltd", "contact": "Jo · 0400 111 222", "dietary": ["2 vegan"],
+            "notes": "Leave at reception", "quote": 484, "status": "enquiry"}  # fmt: skip
+    made = post(till, "/catering/ceQ2M8ZK1", body, method="put").json()
+    assert made["source"] == "pos" and made["quote"] == 484 and made["fulfil"] == "delivery"
+    enquiry = Enquiry.objects.get(reference="ceQ2M8ZK1")
+    assert enquiry.kind == "catering" and enquiry.headcount == 20 and enquiry.status == "new"
+    won = post(till, "/catering/ceQ2M8ZK1", {**body, "status": "confirmed"}, method="put").json()
+    assert won["status"] == "confirmed"
+    enquiry.refresh_from_db()
+    assert enquiry.status == "won" and enquiry.payload["address"] == "1 Office St"
+    snap = till.get(f"{BASE}/snapshot?cafe=braddon").json()["catering"]
+    assert snap[0]["id"] == "ceQ2M8ZK1" and snap[0]["packageId"] == "Grazing Box"
+
+
+# ---------------------------------------------------------------- BOS sales report
+
+
+def test_bos_reports_show_sales_from_app_and_till_orders(till, cafe, menu, app_order):
+    from django.test import Client
+
+    create(till)  # $35.60 till order
+    number = "BRADDON-TILL-1-0001"
+    pay(till, number, 3560, method="card", surcharge=105)
+    refund = {"adjustment": {"key": "R1", "mode": "refund", "amount": 630, "reason": "Wrong item"},
+              "lines": [{"key": "L1", "qty": 2}, {"key": "L2", "qty": 1}], "total": 35.6,
+              "status": "new"}  # fmt: skip
+    post(till, f"/orders/{quote(number)}/adjustments", refund)
+    post(till, f"/orders/{quote('#8020-4471')}/accept", {})  # app order: $11.30 Apple Pay
+    create(till, id="CANCELLED-1", status="new")
+    cancel = {"adjustment": {"key": "R2", "mode": "cancel", "amount": 0, "reason": "x"},
+              "lines": [], "total": 0, "status": "cancelled"}  # fmt: skip
+    post(till, "/orders/CANCELLED-1/adjustments", cancel)
+    owner = UserFactory(role="owner", is_superuser=True, is_staff=True)
+    browser = Client()
+    browser.force_login(owner)
+    page = browser.get(reverse("admin:bos_reports"))
+    assert page.status_code == 200
+    sales = page.context["sales"]
+    assert sales["total"] == 3560 + 1130 and sales["orders"] == 2
+    assert sales["returned"] == 630
+    assert {row["label"]: row["value"] for row in sales["tenders"]} == {
+        "Card": 3560,
+        "Wallet": 1130,
+    }
+    assert {row["label"] for row in sales["channels"]} == {"Till", "App"}
+    assert sales["items"][0]["label"] == "Milk Based Coffee"  # app + till lines, menu name
+    assert sales["items"][0]["value"] == 4
+    assert b"Sales over time" in page.content and b"$46.90" in page.content
+    csv = browser.get(reverse("admin:bos_reports") + "?export=orders").content.decode()
+    assert "BRADDON-TILL-1-0001" in csv and "#8020-4471" in csv and "CANCELLED-1" not in csv

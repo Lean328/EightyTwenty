@@ -40,7 +40,7 @@ from apps.loyalty.models import GiftCardActivity, LoyaltyActivity
 from apps.menu.catalog import menu_items
 from apps.menu.models import Category, MenuItem
 from apps.notifications.models import AppNotification
-from apps.notifications.services import enqueue_email
+from apps.notifications.services import enqueue_email, register_push_device, remove_push_device
 from apps.orders import payments
 from apps.orders import services as order_services
 from apps.orders.models import Order
@@ -1174,6 +1174,33 @@ class NotificationsSeenView(AppView):
         profile = profile_of(request.user)
         profile.notifications_seen_at = timezone.now()
         profile.save(update_fields=["notifications_seen_at", "updated_at"])
+        return Response(status=204)
+
+
+class PushTokensView(AppView):
+    @doc(FEED, "Register this phone for push notifications", s.PushTokenIn, {204: None}, (422,))
+    def post(self, request):
+        """
+        Call after sign-in (and whenever Expo gives a new token) with the Expo push token from
+        `expo-notifications` `getExpoPushTokenAsync()`. `204`. Every feed item (order status,
+        stamps, booking decisions, gift card top-ups) is then also pushed to this phone, unless
+        the customer turned that kind off in `PUT /me/preferences` → `notifications`. Push
+        `data`: `{kind, notificationId}` (the feed item's id). The same token moves to whoever
+        signs in on the phone last. Uninstalled apps are dropped automatically.
+        """
+        data = s.PushTokenIn(data=request.data)
+        data.is_valid(raise_exception=True)
+        register_push_device(
+            request.user, data.validated_data["token"], data.validated_data.get("platform", "")
+        )
+        return Response(status=204)
+
+
+class PushTokenView(AppView):
+    @doc(FEED, "Stop push notifications on this phone", responses={204: None})
+    def delete(self, request, token):
+        """Call before signing out (URL-encode the token). Idempotent `204`."""
+        remove_push_device(request.user, token)
         return Response(status=204)
 
 
