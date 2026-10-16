@@ -68,6 +68,7 @@ Booking mặc định tắt. Cần cấu hình `OpeningHours`, ngày ngoại l�
 - Django Admin là BOS workspace hoàn chỉnh, phân quyền 3 cấp (chủ chuỗi / chủ quán / nhân viên): dashboard vận hành, menu, chi nhánh, booking, enquiry, CMS, media và audit log.
 
 - API cho app điện thoại `/api/v1/app/...` (12/10/2026) theo hợp đồng của app Expo: đăng ký/đăng nhập, hồ sơ, sở thích, món yêu thích, địa chỉ, quán + menu, order (tính giá phía server, idempotency, theo dõi trạng thái), thẻ tích dấu cà phê, gift card, đặt bàn, catering, thông báo trong app, offer/FAQ. BOS có thêm App orders, Coffee cards, Gift cards, App offers/FAQs. Tài liệu: [docs/APP_API.md](docs/APP_API.md).
+- API cho máy POS + màn hình bếp `/api/v1/pos/...` (16/10/2026, giai đoạn 1) theo `contracts.ts` của repo POS khách gửi: máy đăng nhập bằng tài khoản nhân viên (JWT), từng người vào bằng PIN 4 số (đặt trong BOS → Users → Till PIN), snapshot khởi động theo quán, tạo đơn tại quầy (kiểm tra tổng, ghi chú lệch giá so với menu thay vì từ chối), ghi nhận thanh toán, hoàn/void/hủy, tiến độ bếp, bàn, feed đơn thay đổi (gồm đơn app), ca két, sổ giao dịch, nhật ký. Mọi lệnh ghi idempotent theo `Idempotency-Key`. BOS có thêm Orders (gộp app + quầy), Till shifts, Till transactions. Tài liệu: [docs/POS_API.md](docs/POS_API.md).
 
 Chưa có giao diện React BOS, thanh toán thật (chưa chọn cổng: order có tiền phải trả trả 501), push notification, Apple Wallet, báo cáo doanh thu hay kho nguyên liệu. Những module đó thuộc phần giao diện hoặc phase sau; API không trả dữ liệu giả cho các chức năng chưa triển khai.
 
@@ -114,6 +115,7 @@ Trang lỗi: người đã đăng nhập thấy 403/404 ngay trong workspace (c�
 
 - [API cho web/mobile/BOS](docs/API_GUIDE.md): quy ước, endpoint, JSON mẫu, auth, lỗi và upload.
 - API cho app điện thoại (tiếng Anh, bàn giao cho dev app), publish tại `/api/docs/app/` (Swagger), `/api/docs/app/redoc/`, `/api/docs/app/schema/` — production: https://eightytwenty-api.onrender.com/api/docs/app/ (xem [docs/APP_API.md](docs/APP_API.md)).
+- API cho máy POS (tiếng Anh, bàn giao cho dev POS), publish tại `/api/docs/pos/`, `/api/docs/pos/redoc/`, `/api/docs/pos/schema/` (xem [docs/POS_API.md](docs/POS_API.md)).
 - [OpenAPI đầy đủ](docs/openapi.yaml): import vào Postman/Insomnia hoặc sinh TypeScript types.
 - [Phân chia công việc và quy tắc code](docs/CONTRIBUTING.md).
 - [Deploy, vận hành và restore](docs/OPERATIONS.md).
