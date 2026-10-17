@@ -532,7 +532,8 @@ Website nằm ở `website/` (không phải `web/`), không đổi cấu hình V
 - **Đơn quầy không bị từ chối vì giá**: quầy bán theo menu đã tải; server chỉ chặn khi tổng không khớp (Σ giá × SL − giảm + phí giao, lệch ≤1¢), còn lệch giá/món lạ/món hết → ghi `review_note` cho quản lý xem trong BOS.
 - Host và CORS mở hoàn toàn (`ALLOWED_HOSTS = ["*"]`, `CORS_ALLOW_ALL_ORIGINS = True`, 16/10/2026) theo định hướng "mì ăn liền" của chủ dự án: API dùng bearer token, không dùng cookie, nên không cần danh sách origin.
 - Giai đoạn 2 (16/10/2026): khách hàng (= tài khoản khách app), thẻ cà phê dùng chung với app (POS stamps/rewards ↔ 0–9 dấu, một ly miễn phí chờ tại một thời điểm), còn-hết món (qua `set_availability`), đặt bàn (= `Booking`, reference = id POS) và catering (= `Enquiry`, field POS trong `payload`) từ POS.
-- Chưa làm: giá/modifier/thứ tự danh mục từ POS (sửa trong BOS), nhân viên/role/settings từ POS, gift card Square, kho, khuyến mãi, bàn (cấu hình), hóa đơn điện tử, máy quẹt thẻ/máy in (ở thiết bị).
+- Sơ đồ bàn (`pos.TillTable`, chủ quán khai báo) và mã giảm giá (`pos.Promotion`, chủ chuỗi khai báo) nằm trong BOS, POS đọc qua snapshot; mã chỉ kiểm ở POS (đơn mang `discounts`, server không đối chiếu mã).
+- Chưa làm: giá/modifier/thứ tự danh mục từ POS (sửa trong BOS), nhân viên/role/settings từ POS, gift card Square, kho, hóa đơn điện tử, máy quẹt thẻ/máy in (ở thiết bị).
 
 ## 20. Ghi nhận 16/10/2026 — doanh thu trong BOS và push cho app
 
