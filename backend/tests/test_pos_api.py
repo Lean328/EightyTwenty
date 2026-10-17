@@ -12,8 +12,9 @@ from rest_framework.test import APIClient
 
 from apps.accounts.models import StaffAssignment
 from apps.core.models import AuditLog
+from apps.core.throttles import PersistentThrottle
 from apps.locations.models import Location
-from apps.loyalty.models import LoyaltyCard
+from apps.loyalty.models import GiftCard, LoyaltyCard
 from apps.menu.models import (
     Category,
     LocationMenuItem,
@@ -26,6 +27,7 @@ from apps.notifications.models import AppNotification
 from apps.orders.models import Order, OrderLine
 from apps.pos import pins
 from apps.pos.models import CashShift, CommandReceipt, TillTransaction
+from apps.pos.views import OrdersView, PosView, SnapshotView, VerifyPinView
 
 from .factories import UserFactory
 
@@ -424,6 +426,37 @@ def test_cancelling_an_app_order_returns_stamps(till, app_order):
     app.force_authenticate(app_order.customer)
     mine = app.get("/api/v1/app/me/orders").json()["items"]
     assert mine[0]["status"] == "declined"
+
+
+def test_cancel_and_refund_app_orders_as_the_till_sends_them(till, app_order):
+    # What the till really sends: its view of the order (gift card share counted) and the
+    # whole paid amount back (ledger.refundableC), lines unchanged.
+    app_order.gift_card_cents, app_order.total_cents = 300, 830
+    app_order.save()
+    path = f"/orders/{quote('#8020-4471')}"
+    seen = till.get(f"{BASE}/orders?cafe=braddon").json()["orders"][0]
+    assert seen["total"] == 11.3 and seen["paid"] is True and seen["stamped"] is False
+    assert pay(till, "#8020-4471", 100).status_code == 422  # nothing is due
+    lines = [{"key": row["key"], "qty": row["qty"]} for row in seen["lines"]]
+    too_much = {"adjustment": {"key": "R0", "mode": "refund", "amount": 1131},
+                "lines": lines, "total": 11.3, "status": "new"}  # fmt: skip
+    assert post(till, f"{path}/adjustments", too_much).status_code == 422
+    cancel = {"adjustment": {"key": "R1", "mode": "cancel", "amount": 1130, "reason": "Café too busy"},
+              "lines": lines, "total": 11.3, "status": "cancelled"}  # fmt: skip
+    response = post(till, f"{path}/adjustments", cancel)
+    data = response.json()
+    assert response.status_code == 200 and data["status"] == "cancelled", data
+    assert data["refunds"][0]["amount"] == 1130
+    app_order.refresh_from_db()
+    assert app_order.status == "declined" and app_order.total_cents == 830
+    assert LoyaltyCard.objects.get(user=app_order.customer).stamps == 1
+    assert GiftCard.objects.get(user=app_order.customer).balance_cents == 300
+
+
+def test_only_pin_checks_are_rate_limited(monkeypatch):
+    monkeypatch.setattr(PosView, "throttle_classes", [PersistentThrottle])
+    assert OrdersView().get_throttles() == [] and SnapshotView().get_throttles() == []
+    assert len(VerifyPinView().get_throttles()) == 1
 
 
 def test_till_orders_do_not_show_in_the_customer_app(till, cafe, menu, app_order):

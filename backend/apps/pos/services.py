@@ -251,7 +251,16 @@ def create_order(request, data):
     return order
 
 
+def till_total_cents(order):
+    """The order total as the till sees it: an app order's gift card share counts, its surcharge not."""
+    if order.channel == "app":
+        return order.total_cents + order.gift_card_cents - order.surcharge_cents
+    return order.total_cents
+
+
 def paid_cents(order):
+    if order.channel == "app":  # paid in full in the app (presenters.app_payments)
+        return till_total_cents(order)
     return order.payments.aggregate(total=Sum("amount_cents"))["total"] or 0
 
 
@@ -267,7 +276,7 @@ def record_payment(request, order, data, save=True):
         raise AppError(
             "CONFLICT", f"Order {order.number} is {order.status}; no payment taken.", 409
         )
-    due = order.total_cents - paid_cents(order)
+    due = till_total_cents(order) - paid_cents(order)
     if data["amount"] > due:
         raise invalid(
             f"{money(data['amount'])} is more than the {money(max(0, due))} due on {order.number}.",
@@ -375,7 +384,7 @@ def adjust(request, order, data):
             amount="invalid",
         )
     total = cents(data["total"])
-    if total > order.total_cents:
+    if total > till_total_cents(order):
         raise invalid(
             "A refund, void or cancellation can’t raise the order total.", total="invalid"
         )
@@ -405,8 +414,9 @@ def adjust(request, order, data):
         made_at=change.get("at") or "",
         terminal_id=terminal_of(request),
     )
-    order.total_cents = total
-    touch(order, request, "total_cents")
+    if order.channel != "app":  # an app order keeps what the app charged (refunded on cancel)
+        order.total_cents = total
+        touch(order, request, "total_cents")
     label = {"cancel": "Cancelled", "void": "Items voided", "refund": "Refunded"}[change["mode"]]
     text = f"{label} at the till · {change.get('reason') or 'no reason given'}"
     if status == "cancelled" and order.channel == "app" and order.status == "received":

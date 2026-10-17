@@ -129,6 +129,11 @@ class PosView(APIView):
     def get_exception_handler(self):
         return app_exception_handler
 
+    def get_throttles(self):
+        # Tills poll all day and replay their outbox after being offline (a 429 there would be
+        # rejected, losing the command), so only PIN checks are limited.
+        return super().get_throttles() if getattr(self, "throttle_scope", None) else []
+
     def valid(self, serializer):
         data = serializer(data=self.request.data)
         data.is_valid(raise_exception=True)

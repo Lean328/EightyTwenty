@@ -34,6 +34,7 @@ from .services import (
     customers,
     till_balance,
     till_locations,
+    till_total_cents,
 )
 
 TILL_TYPE = {
@@ -420,9 +421,9 @@ def adjustment(row):
 def order(row):
     placed = local(row.placed_at or row.created_at)
     lines = [line(item) for item in row.lines.all() if item.qty]
+    total = till_total_cents(row)
     if row.channel == "app":
         payments = app_payments(row)
-        total = row.total_cents + row.gift_card_cents - row.surcharge_cents
         discounts = (
             [{"label": "Free coffee", "amount": dollars(row.reward_cents)}]
             if row.reward_cents
@@ -434,7 +435,7 @@ def order(row):
         note = f"App order · {extra}" if extra else "App order"
     else:
         payments = [payment(p) for p in row.payments.all()]
-        total, discounts, note = row.total_cents, row.discounts, row.note
+        discounts, note = row.discounts, row.note
     paid = sum(p["amount"] for p in payments)
     data = {
         "id": row.number,
@@ -457,7 +458,8 @@ def order(row):
         "staff": row.staff_name or person(row.handled_by),
         "history": row.history,
         "refunds": [adjustment(a) for a in row.adjustments.all()],
-        "stamped": paid >= total,
+        # App orders: the server adds and returns their stamps, so the till must not touch the card.
+        "stamped": row.channel != "app" and paid >= total,
         "cleared": row.table_cleared,
     }
     if row.table_number:

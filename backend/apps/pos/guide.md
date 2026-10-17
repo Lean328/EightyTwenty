@@ -112,7 +112,7 @@ staff and can be shown as is. The HTTP status drives the till's `ApiError.kind`:
 | 404 | `NOT_FOUND` | Café not on this account, unknown order/shift, command not built yet | rejected |
 | 409 | `CONFLICT` | Number already used, order already finished, key reused | rejected |
 | 422 | `VALIDATION` | Wrong shape or numbers that do not add up (`fields` names the field) | rejected |
-| 429 | `TOO_MANY_REQUESTS` | Too many PIN checks | wait (`Retry-After`) |
+| 429 | `TOO_MANY_REQUESTS` | Too many PIN checks (the only limited call) | wait (`Retry-After`) |
 | 5xx | `SERVER` | Server problem | retried with the same key |
 
 ## 5. Orders: what the server checks and does
@@ -125,8 +125,10 @@ staff and can be shown as is. The HTTP status drives the till's `ApiError.kind`:
 - **App orders show on the till** with `channel: "app"`, `accepted: false` until the café accepts them,
   `paid: true` (paid in the app; the till sees one card/Apple Pay payment and, if used, one gift card
   payment), contact and delivery address in `note`, the free coffee as a discount. Accepting, kitchen
-  progress, ready and completed are sent to the customer's app feed. Cancelling an app order through
-  `/adjustments` returns its stamps and gift card spend.
+  progress, ready and completed are sent to the customer's app feed. Cancelling or fully refunding an app
+  order through `/adjustments` (as the till sends it: `amount` = what was paid, `total` unchanged) returns
+  its payment, stamps and gift card spend; the app order keeps its own total. App orders come with
+  `stamped: false` so the till leaves their coffee card alone (the server adds and returns their stamps).
 - **Status map:** the server keeps one status per order; the till sees `new` (and `accepted`) for orders that
   are confirmed or waiting, then `preparing`, `ready`, `completed`, `cancelled`, `refunded`, `failed`.
 - **Finished orders** (completed, cancelled, refunded) accept no more status or kitchen changes (`409`); a
