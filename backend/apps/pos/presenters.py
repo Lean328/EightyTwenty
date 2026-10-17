@@ -4,10 +4,11 @@ prices are AUD dollars (numbers); payments, refunds and cash are integer cents. 
 ids are the website slugs ("braddon", "mighty").
 """
 
+import re
 from collections import defaultdict
 from datetime import timedelta
 
-from django.db.models import Count, F, Max, Q, Sum
+from django.db.models import Case, Count, F, IntegerField, Max, Q, Sum, When
 from django.db.models.functions import Coalesce, TruncDate
 from django.utils import timezone
 
@@ -16,19 +17,20 @@ from apps.core.models import AuditLog, SiteSettings
 from apps.core.public_services import categories_data, locations_data
 from apps.enquiries.models import CateringPackage
 from apps.loyalty import services as loyalty
-from apps.loyalty.models import STAMPS_PER_REWARD
+from apps.loyalty.models import STAMPS_PER_REWARD, LoyaltyActivity, LoyaltyCard
 from apps.menu.catalog import menu_items
 from apps.menu.models import LocationMenuItem
 from apps.orders import services as order_services
 from apps.orders.models import Order, OrderLine, OrderPayment
 
 from . import pins
-from .models import CashShift
+from .models import CashShift, Promotion, TillTable
 from .services import (
     AUDIT_TYPE,
     LIVE,
     TO_TILL,
     catering_scope,
+    catering_scope_location,
     customers,
     till_balance,
     till_locations,
@@ -505,8 +507,85 @@ def audit_entry(row):
 # ---------------------------------------------------------------- reports
 
 
+SALE_VALUE = Case(
+    When(channel="app", then=F("total_cents") + F("gift_card_cents") - F("surcharge_cents")),
+    default=F("total_cents"),
+    output_field=IntegerField(),
+)
+STAMPS = re.compile(r"\+(\d+) stamp")
+
+
+def change(current, previous):
+    if not previous:
+        return ""
+    pct = (current - previous) * 100 / previous
+    return f"{'+' if pct >= 0 else '−'}{abs(pct):.0f}%"
+
+
+def when(value):
+    moment = local(value)
+    days = (timezone.localdate() - moment.date()).days
+    clock = moment.strftime("%I:%M%p").lstrip("0").lower()
+    if days == 0:
+        return f"Today {clock}"
+    if days == 1:
+        return f"Yesterday {clock}"
+    return f"{moment.day} {moment:%b}"
+
+
+def guest_figures(location, today):
+    """Coffee cards, bookings and catering at this café, for the dashboard and reports."""
+    week = today - timedelta(days=6)
+    activity = LoyaltyActivity.objects.filter(location_name=location.name)
+    recent = activity.filter(created_at__date__gte=week)
+    stamps = sum(
+        int(match.group(1))
+        for text in recent.filter(type="earn").values_list("description", flat=True)
+        if (match := STAMPS.search(text))
+    )
+    regulars = customers().filter(profile__preferred_location=location)
+    kept = Booking.objects.filter(location=location, date__range=(week, today)).exclude(
+        status__in=["declined", "cancelled"]
+    )
+    bookings = kept.aggregate(n=Count("id"), covers=Sum("party_size"))
+    month = catering_scope_for(location).filter(created_at__date__gte=today - timedelta(days=29))
+    won = [row for row in month if row.status == "won"]
+    return {
+        "loyalty": {
+            "stamps": stamps,
+            "rewards": recent.filter(description__startswith="Free coffee redeemed").count(),
+            "newMembers": regulars.filter(date_joined__date__gte=week).count(),
+            "walletPasses": LoyaltyCard.objects.filter(
+                wallet_pass_added=True, user__profile__preferred_location=location
+            ).count(),
+        },
+        "reservations": {
+            "week": bookings["n"],
+            "covers": bookings["covers"] or 0,
+            "noShow": kept.filter(status="no_show").count(),
+            "avgParty": round((bookings["covers"] or 0) / bookings["n"], 1) if bookings["n"] else 0,
+        },
+        "catering": {
+            "enquiries": len(month),
+            "confirmed": len(won),
+            "revenue": sum(catering_enquiry(row)["quote"] for row in won),
+        },
+        "loyaltyActivity": [
+            {
+                "what": f"{row.description} · {person(row.card.user)}",
+                "when": when(row.created_at),
+            }
+            for row in activity.select_related("card__user").order_by("-created_at")[:8]
+        ],
+    }
+
+
+def catering_scope_for(location):
+    return catering_scope_location(location).select_related("location", "package").order_by("-id")
+
+
 def reports(location):
-    """Read-only figures for the till dashboard, from this café's orders (gross order totals)."""
+    """Read-only figures for the till dashboard, from this café's records (gross order totals)."""
     today = timezone.localdate()
     start = today - timedelta(days=27)
     sold = Order.objects.filter(location=location).exclude(status__in=order_services.CLOSED)
@@ -517,8 +596,15 @@ def reports(location):
         for row in sold.filter(at__date__gte=start)
         .annotate(day=TruncDate("at"))
         .values("day")
-        .annotate(sales=Sum("total_cents"), orders=Count("id"))
+        .annotate(sales=Sum(SALE_VALUE), orders=Count("id"))
     }
+
+    def sales_on(day):
+        return by_day.get(day, {}).get("sales") or 0
+
+    def sales_in(back):
+        return sum(sales_on(today - timedelta(days=back + n)) for n in range(7))
+
     days = []
     for offset in range(6, -1, -1):
         day = today - timedelta(days=offset)
@@ -575,16 +661,39 @@ def reports(location):
             }
             for row in channels
         ],
-        "loyalty": {"stamps": 0, "rewards": 0, "newMembers": 0, "walletPasses": 0},
-        "reservations": {"week": 0, "covers": 0, "noShow": 0, "avgParty": 0},
-        "catering": {"enquiries": 0, "confirmed": 0, "revenue": 0},
-        "salesTodayComparison": "",
-        "weekComparison": "",
-        "loyaltyActivity": [],
+        **guest_figures(location, today),
+        "salesTodayComparison": (
+            f"{change(sales_on(today), sales_on(today - timedelta(days=7)))} vs last {today:%A}"
+            if sales_on(today - timedelta(days=7))
+            else ""
+        ),
+        "weekComparison": (
+            f"{change(sales_in(0), sales_in(7))} vs previous week" if sales_in(7) else ""
+        ),
     }
 
 
 # ---------------------------------------------------------------- start-up snapshot
+
+
+def promotions(location):
+    """Promo codes live today at this café (or every café)."""
+    today = timezone.localdate()
+    rows = (
+        Promotion.objects.filter(is_active=True)
+        .filter(Q(location__isnull=True) | Q(location=location))
+        .filter(Q(starts_on__isnull=True) | Q(starts_on__lte=today))
+        .filter(Q(ends_on__isnull=True) | Q(ends_on__gte=today))
+    )
+    return [
+        {
+            "code": row.code,
+            "kind": row.kind,
+            "value": row.percent if row.kind == "pct" else dollars(row.amount_cents or 0),
+            "label": row.label,
+        }
+        for row in rows
+    ]
 
 
 def percent(rate):
@@ -648,8 +757,11 @@ def snapshot(user, location, terminal):
         "categories": categories_data(),
         "menu": items,
         "cateringPackages": catering(),
-        "tables": [],
-        "promotions": [],
+        "tables": [
+            {"id": row.label, "seats": row.seats, "zone": row.zone}
+            for row in TillTable.objects.filter(location=location, is_active=True)
+        ],
+        "promotions": promotions(location),
         "availability": availability(user, location, unavailable),
         "stock": [],
         "stockLog": [],

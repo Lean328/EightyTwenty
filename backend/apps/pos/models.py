@@ -1,4 +1,6 @@
 from django.conf import settings
+from django.core.exceptions import ValidationError
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 from apps.core.models import BaseModel, ManagedModel
@@ -87,3 +89,75 @@ class CommandReceipt(BaseModel):
         constraints = [
             models.UniqueConstraint(fields=["user", "key"], name="unique_command_receipt")
         ]
+
+
+class TillTable(ManagedModel):
+    """A table on a café's floor plan, as the till shows it for dine-in orders."""
+
+    def __str__(self):
+        return f"{self.location} · {self.label}"
+
+    location = models.ForeignKey(
+        "locations.Location", on_delete=models.PROTECT, related_name="till_tables"
+    )
+    label = models.CharField(max_length=20, help_text="What staff call it, e.g. T4.")
+    seats = models.PositiveSmallIntegerField(default=4, validators=[MinValueValidator(1)])
+    zone = models.CharField(max_length=40, blank=True, help_text="e.g. Window, Courtyard.")
+    sort_order = models.PositiveIntegerField(default=0)
+    is_active = models.BooleanField(default=True)
+
+    class Meta(ManagedModel.Meta):
+        verbose_name = "table"
+        ordering = ["location", "sort_order", "label"]
+        constraints = [
+            models.UniqueConstraint(fields=["location", "label"], name="unique_till_table")
+        ]
+
+
+class Promotion(ManagedModel):
+    """A promo code staff type at the till: a percentage or a dollar amount off the order."""
+
+    def __str__(self):
+        return self.code
+
+    code = models.CharField(
+        max_length=30, unique=True, help_text="Staff type it; not case sensitive."
+    )
+    label = models.CharField(max_length=80, help_text="Shown on the order, e.g. 10% off.")
+    kind = models.CharField(
+        max_length=3, choices=[("pct", "Percentage off"), ("amt", "Amount off")], default="pct"
+    )
+    percent = models.PositiveSmallIntegerField(
+        null=True,
+        blank=True,
+        validators=[MinValueValidator(1), MaxValueValidator(100)],
+        help_text="For a percentage off.",
+    )
+    amount_cents = models.PositiveIntegerField(null=True, blank=True)
+    location = models.ForeignKey(
+        "locations.Location",
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        help_text="Empty = every café.",
+    )
+    starts_on = models.DateField(null=True, blank=True)
+    ends_on = models.DateField(null=True, blank=True)
+    is_active = models.BooleanField(default=True)
+
+    class Meta(ManagedModel.Meta):
+        verbose_name = "promo code"
+        ordering = ["code"]
+
+    def clean(self):
+        self.code = (self.code or "").strip().upper()
+        if self.kind == "pct" and not self.percent:
+            raise ValidationError({"percent": "Enter the percentage off."})
+        if self.kind == "amt" and not self.amount_cents:
+            raise ValidationError({"amount_cents": "Enter the amount off."})
+        if self.starts_on and self.ends_on and self.ends_on < self.starts_on:
+            raise ValidationError({"ends_on": "The end date is before the start date."})
+
+    def save(self, *args, **kwargs):
+        self.code = (self.code or "").strip().upper()
+        super().save(*args, **kwargs)

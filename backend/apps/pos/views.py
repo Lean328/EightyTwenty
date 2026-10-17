@@ -228,8 +228,12 @@ class SnapshotView(PosView):
           90 days or still to come.
         - `availability.soldOut`: sold out at every café of this account; `branchOff[cafe]`: here.
 
-        Not connected yet and therefore empty: `tables`, `promotions`, `stock`, `stockLog`,
-        `giftCards`.
+        - `tables`: this café's floor plan (BOS → Tables), `promotions`: promo codes live today
+          at this café (BOS → Promo codes).
+        - `reports`: also coffee card, booking and catering figures for the dashboard, and the
+          "vs last week" lines.
+
+        Not connected yet and therefore empty: `stock`, `stockLog`, `giftCards`.
         """
         cafe = request.query_params.get("cafe")
         location = (

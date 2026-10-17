@@ -1,9 +1,11 @@
+from django import forms
 from django.contrib import admin
 
-from apps.core.admin_base import ReadOnlyAdmin
-from apps.core.bos_access import OWNERS
+from apps.core.admin_base import RECORD_FIELDS, OperationsAdmin, ReadOnlyAdmin
+from apps.core.admin_forms import AUDField
+from apps.core.bos_access import ALL, OWNERS
 
-from .models import CashShift, TillTransaction
+from .models import CashShift, Promotion, TillTable, TillTransaction
 
 
 def aud(cents):
@@ -117,3 +119,60 @@ class TillTransactionAdmin(ReadOnlyAdmin):
     @admin.display(description="GST")
     def gst(self, obj):
         return aud(obj.gst_cents)
+
+
+@admin.register(TillTable)
+class TillTableAdmin(OperationsAdmin):
+    # Everyone sees their café's floor plan; café owners and the chain owner edit it.
+    view_roles = ALL
+    add_roles = change_roles = OWNERS
+    location_lookup = "location"
+    list_display = ("label", "location", "zone", "seats", "is_active", "sort_order")
+    list_filter = ("location", "zone", "is_active")
+    search_fields = ("label", "zone")
+    list_editable = ("seats", "is_active", "sort_order")
+    description = "The tables the tills offer for dine-in orders, per café."
+    fieldsets = [
+        ("Table", {"fields": ("location", "label", "zone", "seats", "sort_order", "is_active")}),
+        RECORD_FIELDS,
+    ]
+
+
+class PromotionForm(forms.ModelForm):
+    amount_cents = AUDField(label="Amount off (AUD)", min_value=0, required=False)
+
+    class Meta:
+        model = Promotion
+        fields = "__all__"
+
+
+@admin.register(Promotion)
+class PromotionAdmin(OperationsAdmin):
+    view_roles = OWNERS
+    form = PromotionForm
+    list_display = (
+        "code",
+        "label",
+        "kind",
+        "value",
+        "location",
+        "starts_on",
+        "ends_on",
+        "is_active",
+    )
+    list_filter = ("is_active", "kind", "location")
+    search_fields = ("code", "label")
+    description = (
+        "Codes staff type at the till for a discount. Empty café = every café; "
+        "leave the dates empty for no limit."
+    )
+    fieldsets = [
+        ("Code", {"fields": ("code", "label", "is_active")}),
+        ("Discount", {"fields": ("kind", "percent", "amount_cents")}),
+        ("Where and when", {"fields": ("location", "starts_on", "ends_on")}),
+        RECORD_FIELDS,
+    ]
+
+    @admin.display(description="Off")
+    def value(self, obj):
+        return f"{obj.percent}%" if obj.kind == "pct" else aud(obj.amount_cents)

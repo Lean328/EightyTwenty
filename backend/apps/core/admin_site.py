@@ -19,6 +19,7 @@ NAVIGATION = (
             ("orders.order", "Orders", "bowl"),
             ("pos.cashshift", "Till shifts", "wallet"),
             ("pos.tilltransaction", "Till transactions", "list"),
+            ("pos.promotion", "Promo codes", "tag"),
             ("bookings.booking", "Bookings", "calendar"),
             ("enquiries.enquiry", "Enquiries", "inbox"),
             ("bookings.bookingrule", "Booking rules", "settings"),
@@ -44,6 +45,7 @@ NAVIGATION = (
             ("locations.openinghours", "Opening hours", "clock"),
             ("locations.specialhours", "Special hours", "calendar-off"),
             ("locations.locationimage", "Location photos", "camera"),
+            ("pos.tilltable", "Tables", "grid"),
         ),
     ),
     (

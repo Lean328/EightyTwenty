@@ -539,8 +539,15 @@ class PosSnapshotOut(serializers.Serializer):
         "desc, mods [{id, name, required, max, options [[label, AUD]]}], featured.",
     )
     cateringPackages = serializers.ListField(child=serializers.DictField())
-    tables = serializers.ListField(child=serializers.DictField(), help_text="Not set up yet: [].")
-    promotions = serializers.ListField(child=serializers.DictField(), help_text="Not yet: [].")
+    tables = serializers.ListField(
+        child=serializers.DictField(),
+        help_text="This café's floor plan from BOS → Tables: [{id, seats, zone}].",
+    )
+    promotions = serializers.ListField(
+        child=serializers.DictField(),
+        help_text="Promo codes live today here (BOS → Promo codes): [{code, kind: pct|amt, "
+        "value (percent or AUD), label}].",
+    )
     availability = serializers.DictField()
     stock = serializers.ListField(child=serializers.DictField(), help_text="Not yet: [].")
     stockLog = serializers.ListField(child=serializers.DictField(), help_text="Not yet: [].")

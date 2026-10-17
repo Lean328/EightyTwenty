@@ -142,6 +142,11 @@ staff and can be shown as is. The HTTP status drives the till's `ApiError.kind`:
 - **Sold out:** the snapshot's `availability.soldOut` lists items sold out at every café of this account,
   `branchOff[cafe]` those sold out only here. Changes reach the website, the app and BOS at once.
 
+- **Tables and promo codes** come from BOS: café owners set their floor plan (BOS → Locations → Tables) and
+  the chain owner the promo codes (BOS → Daily operations → Promo codes; a percentage or a dollar amount, for every café or
+  one, with optional dates). The snapshot returns this café's active tables and the codes live today. The code
+  is checked on the till; the order carries the discount as usual (`discounts`).
+
 ## 6. Cash shifts and records
 
 - One open shift per till (`X-Terminal-Id`). The snapshot returns this till's open shift as `currentShift`,
@@ -154,8 +159,8 @@ staff and can be shown as is. The HTTP status drives the till's `ApiError.kind`:
 ## 7. Not connected (by design, for now)
 
 Card terminal, printers and cash drawer stay on the device (`DeviceHub`); the server never moves money. Gift
-cards (Square), promotions, tables set-up, stock, Apple Wallet and tax invoices are not built; the snapshot
-returns empty lists for them (`giftCards`, `promotions`, `tables`, `stock`, `stockLog`).
+cards (Square), stock, Apple Wallet and tax invoices are not built; the snapshot returns empty lists for them
+(`giftCards`, `stock`, `stockLog`).
 
 With `unconnectedDevices` the till refuses card and wallet tenders. Until a terminal SDK is integrated, a café
 using a standalone EFTPOS machine needs a "card taken on the EFTPOS machine" tender in the till that records

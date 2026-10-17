@@ -748,6 +748,12 @@ FROM_TILL_ENQUIRY = {
 }
 
 
+def catering_scope_location(location):
+    return Enquiry.objects.filter(kind="catering").filter(
+        Q(location=location) | Q(location__isnull=True)
+    )
+
+
 def catering_scope(user):
     return Enquiry.objects.filter(kind="catering").filter(
         Q(location__in=till_locations(user)) | Q(location__isnull=True)

@@ -710,3 +710,99 @@ def test_bos_reports_show_sales_from_app_and_till_orders(till, cafe, menu, app_o
     assert b"Sales over time" in page.content and b"$46.90" in page.content
     csv = browser.get(reverse("admin:bos_reports") + "?export=orders").content.decode()
     assert "BRADDON-TILL-1-0001" in csv and "#8020-4471" in csv and "CANCELLED-1" not in csv
+
+
+# ---------------------------------------------------------------- tables, promo codes, dashboard
+
+
+def test_snapshot_tables_and_promo_codes(till, cafe, elsewhere):
+    from apps.pos.models import Promotion, TillTable
+
+    TillTable.objects.create(location=cafe, label="T2", seats=2, zone="Window", sort_order=2)
+    TillTable.objects.create(location=cafe, label="T1", seats=4, zone="Window", sort_order=1)
+    TillTable.objects.create(location=cafe, label="T9", is_active=False)
+    TillTable.objects.create(location=elsewhere, label="C1")
+    today = timezone.localdate()
+    Promotion.objects.create(code="welcome10", label="10% off", kind="pct", percent=10)
+    Promotion.objects.create(code="LOCAL5", label="$5 off", kind="amt", amount_cents=500,
+                             location=cafe)  # fmt: skip
+    Promotion.objects.create(code="CIVIC", label="x", kind="pct", percent=5, location=elsewhere)
+    Promotion.objects.create(code="OLD", label="x", kind="pct", percent=5,
+                             ends_on=today - timedelta(days=1))  # fmt: skip
+    Promotion.objects.create(code="OFF", label="x", kind="pct", percent=5, is_active=False)
+    snap = till.get(f"{BASE}/snapshot?cafe=braddon").json()
+    assert snap["tables"] == [
+        {"id": "T1", "seats": 4, "zone": "Window"},
+        {"id": "T2", "seats": 2, "zone": "Window"},
+    ]
+    assert snap["promotions"] == [
+        {"code": "LOCAL5", "kind": "amt", "value": 5, "label": "$5 off"},
+        {"code": "WELCOME10", "kind": "pct", "value": 10, "label": "10% off"},
+    ]
+
+
+def test_bos_tables_and_promo_codes_pages(cafe, elsewhere):
+    from django.test import Client
+
+    from apps.pos.models import Promotion, TillTable
+
+    manager = UserFactory(role="manager", is_staff=True)
+    StaffAssignment.objects.create(user=manager, location=cafe)
+    TillTable.objects.create(location=elsewhere, label="C1")
+    browser = Client()
+    browser.force_login(manager)
+    added = browser.post(
+        reverse("admin:pos_tilltable_add"),
+        {"location": cafe.pk, "label": "T1", "seats": 4, "zone": "Main", "sort_order": 0,
+         "is_active": "on"},
+    )  # fmt: skip
+    assert added.status_code == 302, added.content[:1500]
+    listing = browser.get(reverse("admin:pos_tilltable_changelist")).content.decode()
+    assert "T1" in listing and "C1" not in listing  # only their café's floor plan
+    assert browser.get(reverse("admin:pos_promotion_add")).status_code == 403  # chain owner only
+    owner = UserFactory(role="owner", is_superuser=True, is_staff=True)
+    browser.force_login(owner)
+    made = browser.post(
+        reverse("admin:pos_promotion_add"),
+        {"code": " local5 ", "label": "$5 off", "is_active": "on", "kind": "amt",
+         "amount_cents": "5.00", "location": ""},
+    )  # fmt: skip
+    assert made.status_code == 302, made.content[:1500]
+    promo = Promotion.objects.get()
+    assert promo.code == "LOCAL5" and promo.amount_cents == 500
+    missing = browser.post(
+        reverse("admin:pos_promotion_add"),
+        {"code": "PCT", "label": "x", "kind": "pct", "location": ""},
+    )
+    assert missing.status_code == 200 and b"Enter the percentage off" in missing.content
+
+
+def test_dashboard_figures_come_from_real_records(till, cafe, menu, regular, app_order):
+    from apps.bookings.models import Booking
+    from apps.enquiries.models import CateringPackage, Enquiry
+    from apps.loyalty import services as loyalty
+
+    card = LoyaltyCard.objects.get(user=regular)
+    card.stamps = 3
+    card.save()
+    loyalty.record_stamp_change(card, 1, location_name="Braddon")  # +2 stamps
+    card.stamps = 0
+    card.save()
+    loyalty.record_stamp_change(card, 3, location_name="Braddon")  # a correction, no stamps
+    today = timezone.localdate()
+    for status, size in [("seated", 4), ("no_show", 2), ("cancelled", 6)]:
+        Booking.objects.create(location=cafe, date=today, time="09:00", party_size=size,
+                               name="G", email="", phone="", status=status)  # fmt: skip
+    package = CateringPackage.objects.create(slug="box", name="Box", price_cents=2000)
+    Enquiry.objects.create(kind="catering", name="A", email="", message="", status="won",
+                           package=package, headcount=10, location=cafe)  # fmt: skip
+    Enquiry.objects.create(kind="catering", name="B", email="", message="", location=cafe)
+    create(till)
+    reports = till.get(f"{BASE}/snapshot?cafe=braddon").json()["reports"]
+    assert reports["loyalty"]["stamps"] == 2
+    assert reports["reservations"] == {"week": 2, "covers": 6, "noShow": 1, "avgParty": 3.0}
+    assert reports["catering"] == {"enquiries": 2, "confirmed": 1, "revenue": 200}
+    assert reports["loyaltyActivity"][0]["what"].endswith("Sophie Nguyen")
+    assert reports["loyaltyActivity"][0]["when"].startswith("Today")
+    assert reports["days"][-1]["sales"] == 35.6  # till order; the app order is not accepted
+    assert reports["salesTodayComparison"] == ""  # nothing sold a week ago to compare with
