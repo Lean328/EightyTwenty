@@ -15,6 +15,7 @@ MANAGER = "manager"
 STAFF = "staff"
 ALL = (CHAIN, MANAGER, STAFF)
 OWNERS = (CHAIN, MANAGER)
+ROLE_NAMES = {CHAIN: "Chain owner", MANAGER: "Café owner", STAFF: "Staff"}
 
 
 def bos_role(user):

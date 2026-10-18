@@ -27,6 +27,19 @@ def change_url(obj):
     return reverse(f"admin:{obj._meta.app_label}_{obj._meta.model_name}_change", args=[obj.pk])
 
 
+def label_activity(events):
+    """Audit rows with a readable action and record name for activity feeds."""
+    events = list(events)
+    for event in events:
+        event.display_action = event.action.replace("admin_", "").replace("_", " ").capitalize()
+        event.display_entity = (
+            event.entity_type.split(".")[-1]
+            .replace("menuitem", "menu item")
+            .replace("sitesettings", "site settings")
+        )
+    return events
+
+
 def dashboard_context(request):
     today = timezone.localdate()
     days = {"7": 7, "14": 14, "30": 30}.get(request.GET.get("period", "7"), 7)
@@ -163,14 +176,7 @@ def dashboard_context(request):
     activity = AuditLog.objects.select_related("actor").order_by("-created_at")
     if ids is not None:  # café owners and staff see their own changes
         activity = activity.filter(actor=request.user)
-    recent_activity = list(activity[:5])
-    for event in recent_activity:
-        event.display_action = event.action.replace("admin_", "").replace("_", " ").capitalize()
-        event.display_entity = (
-            event.entity_type.split(".")[-1]
-            .replace("menuitem", "menu item")
-            .replace("sitesettings", "site settings")
-        )
+    recent_activity = label_activity(activity[:5])
 
     return {
         "today": today,

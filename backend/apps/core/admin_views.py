@@ -14,6 +14,8 @@ from statistics import median
 from urllib.parse import urlencode
 
 import django
+from django import forms
+from django.apps import apps
 from django.conf import settings
 from django.contrib import messages
 from django.core.exceptions import PermissionDenied
@@ -25,11 +27,12 @@ from django.db.models.functions import Coalesce, TruncDate
 from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.template.response import TemplateResponse
-from django.urls import reverse
+from django.urls import NoReverseMatch, reverse
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 from django.views.decorators.http import require_POST
 
+from apps.accounts.models import User
 from apps.bookings.models import Booking, BookingRule
 from apps.bookings.services import TRANSITIONS
 from apps.enquiries.models import Enquiry
@@ -41,7 +44,16 @@ from apps.orders.models import Order, OrderAdjustment, OrderLine, OrderPayment
 from apps.orders.services import CLOSED
 from apps.pos.models import CashShift
 
-from .bos_access import bos_location_ids, bos_locations, in_scope
+from .bos_access import (
+    CHAIN,
+    MANAGER,
+    ROLE_NAMES,
+    STAFF,
+    bos_location_ids,
+    bos_locations,
+    bos_role,
+    in_scope,
+)
 from .charts import column_chart, delta, pct, share_rows
 from .models import AuditLog, SiteSettings
 from .services import audit, snapshot
@@ -1130,6 +1142,120 @@ def system_view(site):
                 ("Django", django.get_version()),
                 ("Python", platform.python_version()),
             ],
+        )
+
+    return view
+
+
+ROLE_ACCESS = {
+    CHAIN: (
+        ("store", "Every café, order, booking and enquiry"),
+        ("utensils", "Menu, prices, photos and catering"),
+        ("users", "Café owners, staff and customer accounts"),
+        ("chart", "Reports, sales and system status"),
+    ),
+    MANAGER: (
+        ("calendar", "Bookings, orders and enquiries at your cafés"),
+        ("clock", "Opening hours, booking rules and café details"),
+        ("users", "Your team's accounts and till PINs"),
+        ("chart", "Reports and sales for your cafés"),
+    ),
+    STAFF: (
+        ("clipboard", "Today's schedule and bookings"),
+        ("toggle", "Sold-out switches on the availability board"),
+        ("utensils", "Menu, prices and photos (view only)"),
+        ("inbox", "Enquiries for your cafés (view only)"),
+    ),
+}
+
+
+class ProfileForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ["first_name", "last_name", "phone"]
+        widgets = {
+            "first_name": forms.TextInput(
+                attrs={"class": "bos-field", "autocomplete": "given-name"}
+            ),
+            "last_name": forms.TextInput(
+                attrs={"class": "bos-field", "autocomplete": "family-name"}
+            ),
+            "phone": forms.TextInput(
+                attrs={"class": "bos-field", "autocomplete": "tel", "inputmode": "tel"}
+            ),
+        }
+
+
+def activity_links(site, request, events):
+    """Point each feed row at its record when the user may open that table."""
+    allowed = {}
+    for event in events:
+        event.url = None
+        if event.entity_type not in allowed:
+            try:
+                model = apps.get_model(event.entity_type)
+            except (LookupError, ValueError):
+                model = None
+            model_admin = site._registry.get(model)
+            allowed[event.entity_type] = bool(
+                model_admin and model_admin.has_view_permission(request)
+            )
+        if allowed[event.entity_type]:
+            app_label, model_name = event.entity_type.split(".")
+            try:
+                event.url = reverse(
+                    f"admin:{app_label}_{model_name}_change", args=[event.entity_id]
+                )
+            except NoReverseMatch:
+                pass
+    return events
+
+
+def profile_view(site):
+    """The signed-in person's own account: details, cafés, access and recent changes."""
+
+    def view(request):
+        from .dashboard import label_activity
+
+        user = request.user
+        form = ProfileForm(request.POST or None, instance=user)
+        if request.method == "POST" and form.is_valid():
+            if form.has_changed():
+                with transaction.atomic():
+                    before = snapshot(User.objects.get(pk=user.pk))
+                    form.save()
+                    audit(request, user, before, "update")
+                messages.success(request, "Your details were saved.")
+            return redirect("admin:bos_profile")
+
+        role = bos_role(user)
+        now = timezone.now()
+        cafes = list(bos_locations(user).order_by("sort_order", "name"))
+        mine = AuditLog.objects.filter(actor=user)
+        counts = mine.aggregate(
+            week=Count("id", filter=Q(created_at__gte=now - timedelta(days=7))),
+            month=Count("id", filter=Q(created_at__gte=now - timedelta(days=30))),
+        )
+        user_admin = site._registry.get(User)
+        return render(
+            request,
+            site,
+            "admin/bos/profile.html",
+            "Your profile",
+            form=form,
+            profile_user=user,
+            role_name=ROLE_NAMES.get(role, user.get_role_display()),
+            all_cafes=role == CHAIN,
+            cafes=cafes,
+            access=ROLE_ACCESS.get(role, ()),
+            counts=counts,
+            has_pin=bool(user.pos_pin),
+            recent=activity_links(
+                site,
+                request,
+                label_activity(mine.select_related("actor").order_by("-created_at")[:8]),
+            ),
+            can_open_account=bool(user_admin and user_admin.has_change_permission(request, user)),
         )
 
     return view

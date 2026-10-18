@@ -5464,6 +5464,233 @@ body.bos-login {
     overflow-wrap: anywhere;
 }
 
+/* Your profile. */
+.bos-profile-hero {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 1.25rem 1.6rem;
+    padding: 1.6rem 1.75rem;
+    border: 1px solid var(--bos-line);
+    border-radius: 1.25rem;
+    background:
+        radial-gradient(120% 140% at 100% 0%, var(--bos-accent-soft) 0%, transparent 55%),
+        var(--bos-surface);
+    box-shadow: var(--bos-shadow);
+    overflow: hidden;
+}
+
+.bos-profile-avatar {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 5.5rem;
+    height: 5.5rem;
+    border-radius: 50%;
+    background: linear-gradient(135deg, var(--bos-green), #00875a);
+    box-shadow: 0 0 0 4px var(--bos-surface), 0 0 0 5px var(--bos-line), var(--bos-shadow);
+    color: #ffffff;
+    font-size: 1.9rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+}
+
+.bos-profile-id {
+    flex: 1 1 18rem;
+    min-width: 0;
+}
+
+.bos-admin .bos-profile-id h1 {
+    margin: 0;
+    color: var(--bos-text);
+    font-size: 1.75rem;
+    font-weight: 750;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    overflow-wrap: anywhere;
+}
+
+.bos-profile-contact {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem 1.1rem;
+    margin: 0.4rem 0 0;
+    color: var(--bos-text-2);
+    font-size: 0.88rem;
+}
+
+.bos-profile-contact span {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.bos-profile-contact .bos-i {
+    color: var(--bos-muted);
+}
+
+.bos-profile-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.85rem;
+}
+
+.bos-profile-chips .bos-i {
+    width: 0.85rem;
+    height: 0.85rem;
+}
+
+.bos-profile-stats {
+    display: flex;
+    gap: 0.65rem;
+    margin: 0;
+}
+
+.bos-profile-stats > div {
+    min-width: 8.5rem;
+    padding: 0.8rem 1rem;
+    border: 1px solid var(--bos-line);
+    border-radius: 0.85rem;
+    background: color-mix(in srgb, var(--bos-surface) 80%, transparent);
+}
+
+.bos-profile-stats dt {
+    color: var(--bos-muted);
+    font-size: 0.75rem;
+}
+
+.bos-profile-stats dd {
+    margin: 0.15rem 0 0;
+    color: var(--bos-text);
+    font-size: 1.5rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+.bos-profile-fields {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1rem 1.1rem;
+}
+
+.bos-profile-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+}
+
+.bos-profile-field > span {
+    color: var(--bos-text-2);
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.bos-profile-field small {
+    color: var(--bos-muted);
+    font-size: 0.75rem;
+}
+
+.bos-admin .bos-profile-field .bos-field {
+    max-width: none;
+}
+
+.bos-profile-field .bos-field[readonly] {
+    background: var(--bos-surface-2);
+    color: var(--bos-text-2);
+    cursor: default;
+}
+
+.bos-profile-field.has-error .bos-field {
+    border-color: var(--bos-danger);
+}
+
+.bos-profile-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1.15rem;
+}
+
+.bos-profile-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.bos-profile-list li {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.55rem 0;
+    border-bottom: 1px solid var(--bos-line);
+    font-size: 0.85rem;
+    list-style: none;
+}
+
+.bos-profile-list li:last-child {
+    border-bottom: 0;
+    padding-bottom: 0;
+}
+
+.bos-profile-list li > a,
+.bos-profile-list li > span:not(.bos-profile-list-icon):not(.bos-chip) {
+    flex: 1;
+    min-width: 0;
+    color: var(--bos-text);
+    font-weight: 550;
+}
+
+.bos-profile-list-icon {
+    display: grid;
+    place-items: center;
+    flex: none;
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: 0.55rem;
+    background: var(--bos-surface-3);
+    color: var(--bos-text-2);
+}
+
+.bos-profile-list-icon.is-accent {
+    background: var(--bos-accent-soft);
+    color: var(--bos-accent-text);
+}
+
+.bos-profile-list-icon .bos-i {
+    width: 1rem;
+    height: 1rem;
+}
+
+@media (max-width: 767px) {
+    .bos-profile-hero {
+        padding: 1.25rem;
+    }
+
+    .bos-profile-avatar {
+        width: 4.25rem;
+        height: 4.25rem;
+        font-size: 1.45rem;
+    }
+
+    .bos-profile-stats {
+        width: 100%;
+    }
+
+    .bos-profile-stats > div {
+        flex: 1;
+        min-width: 0;
+    }
+
+    .bos-profile-fields {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
 /* Locations on the overview. */
 .bos-location-grid {
     display: grid;

@@ -1,0 +1,132 @@
+{% extends "admin/base_site.html" %}
+{% load bos_admin %}
+
+{% block bodyclass %}{{ block.super }} bos-profile-page{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumbs"><a href="{% url 'admin:index' %}">Overview</a> &rsaquo; Your profile</div>{% endblock %}
+{% block content_title %}{% endblock %}
+
+{% block content %}
+<div class="bos-page">
+  <section class="bos-profile-hero">
+    <span class="bos-profile-avatar" aria-hidden="true">{{ profile_user|initials }}</span>
+    <div class="bos-profile-id">
+      <p class="bos-eyebrow">Your profile</p>
+      <h1>{% firstof profile_user.get_full_name profile_user.email %}</h1>
+      <p class="bos-profile-contact">
+        <span>{% icon 'mail' %}{{ profile_user.email }}</span>
+        {% if profile_user.phone %}<span>{% icon 'smartphone' %}{{ profile_user.phone }}</span>{% endif %}
+      </p>
+      <div class="bos-profile-chips">
+        <span class="bos-chip bos-tone-good">{{ role_name }}</span>
+        <span class="bos-chip bos-chip-quiet">{% icon 'map-pin' %}{% if all_cafes %}All cafés{% else %}{{ cafes|length }} café{{ cafes|length|pluralize }}{% endif %}</span>
+        <span class="bos-chip bos-chip-quiet">{% icon 'calendar' %}Joined {{ profile_user.date_joined|date:"j M Y" }}</span>
+      </div>
+    </div>
+    <dl class="bos-profile-stats">
+      <div><dt>Changes this week</dt><dd>{{ counts.week }}</dd></div>
+      <div><dt>Last 30 days</dt><dd>{{ counts.month }}</dd></div>
+    </dl>
+  </section>
+
+  <div class="bos-report-grid">
+    <section class="bos-card bos-span-2">
+      <header class="bos-card-head">
+        <div><h2>Personal details</h2><p class="bos-card-sub">How your name appears to your team and in the activity log</p></div>
+      </header>
+      <form method="post" class="bos-profile-form" novalidate>
+        {% csrf_token %}
+        {% if form.non_field_errors %}<div class="errornote">{{ form.non_field_errors|join:" " }}</div>{% endif %}
+        <div class="bos-profile-fields">
+          {% for field in form %}
+            <label class="bos-profile-field{% if field.errors %} has-error{% endif %}">
+              <span>{{ field.label }}</span>
+              {{ field }}
+              {% for error in field.errors %}<small class="bos-text-bad">{{ error }}</small>{% endfor %}
+            </label>
+          {% endfor %}
+          <label class="bos-profile-field">
+            <span>Sign-in email</span>
+            <input class="bos-field" type="email" value="{{ profile_user.email }}" readonly aria-readonly="true">
+            <small>{% if can_open_account %}Change it from your full account page.{% else %}Ask your chain owner to change it.{% endif %}</small>
+          </label>
+        </div>
+        <div class="bos-profile-actions">
+          <button type="submit" class="bos-btn bos-btn-primary">{% icon 'check' %} Save changes</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="bos-card">
+      <header class="bos-card-head">
+        <div><h2>Sign-in &amp; security</h2><p class="bos-card-sub">Your password and till access</p></div>
+      </header>
+      <dl class="bos-facts">
+        <div><dt>Password</dt><dd>{% if profile_user.has_usable_password %}Set{% else %}Not set{% endif %}</dd></div>
+        <div><dt>Last sign-in</dt><dd>{% if profile_user.last_login %}{{ profile_user.last_login|date:"j M Y, g:i A" }}{% else %}—{% endif %}</dd></div>
+        <div><dt>Till PIN</dt><dd>{% if has_pin %}<span class="bos-chip bos-chip-small bos-tone-good">Set</span>{% else %}<span class="bos-chip bos-chip-small bos-chip-quiet">Not set</span>{% endif %}</dd></div>
+        <div><dt>Account</dt><dd>{% if profile_user.is_active %}Active{% else %}Locked{% endif %}</dd></div>
+      </dl>
+      <div class="bos-profile-actions">
+        {% if profile_user.has_usable_password %}
+          <a class="bos-btn" href="{% url 'admin:password_change' %}">{% icon 'key' %} Change password</a>
+        {% endif %}
+        {% if can_open_account %}
+          <a class="bos-btn bos-btn-ghost" href="{% url 'admin:accounts_user_change' profile_user.pk %}">{% icon 'settings' %} Full account</a>
+        {% endif %}
+      </div>
+      {% if not has_pin %}<p class="bos-card-foot">{% if can_open_account %}Set a 4-digit PIN on your full account page to sign in at a till.{% else %}Ask your café owner for a 4-digit PIN to sign in at a till.{% endif %}</p>{% endif %}
+    </section>
+
+    <section class="bos-card">
+      <header class="bos-card-head">
+        <div><h2>Your cafés</h2><p class="bos-card-sub">{% if all_cafes %}As chain owner you see every café{% else %}The cafés you are assigned to{% endif %}</p></div>
+      </header>
+      {% if cafes %}
+        <ul class="bos-profile-list">
+          {% for cafe in cafes %}
+            <li>
+              <span class="bos-profile-list-icon">{% icon 'store' %}</span>
+              <a href="{% url 'admin:locations_location_change' cafe.pk %}">{{ cafe.name }}</a>
+              {% if not cafe.is_published %}<span class="bos-chip bos-chip-small bos-chip-quiet">Hidden</span>{% elif cafe.status != "open" %}<span class="bos-chip bos-chip-small bos-tone-warn">{{ cafe.get_status_display }}</span>{% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="bos-empty bos-empty-sm"><p>No café assigned yet.</p></div>
+      {% endif %}
+    </section>
+
+    <section class="bos-card">
+      <header class="bos-card-head">
+        <div><h2>What you can do</h2><p class="bos-card-sub">Access that comes with the {{ role_name|lower }} role</p></div>
+      </header>
+      <ul class="bos-profile-list">
+        {% for glyph, label in access %}
+          <li><span class="bos-profile-list-icon is-accent">{% icon glyph %}</span><span>{{ label }}</span></li>
+        {% endfor %}
+      </ul>
+    </section>
+
+    <section class="bos-card">
+      <header class="bos-card-head">
+        <div><h2>Your recent activity</h2><p class="bos-card-sub">Changes you made in the workspace</p></div>
+      </header>
+      {% if recent %}
+        <ol class="bos-feed">
+          {% for event in recent %}
+            <li>
+              <span class="bos-feed-mark bos-tone-{% if 'create' in event.action %}good{% elif 'delete' in event.action %}bad{% else %}info{% endif %}">{{ event.display_action }}</span>
+              <div class="bos-feed-body">
+                {% if event.url %}<a href="{{ event.url }}">{{ event.display_entity|capfirst }}</a>{% else %}<span>{{ event.display_entity|capfirst }}</span>{% endif %}
+                <span class="bos-feed-meta">{{ event.created_at|timesince }} ago</span>
+              </div>
+            </li>
+          {% endfor %}
+        </ol>
+      {% else %}
+        <div class="bos-empty bos-empty-sm"><p>Changes you make will appear here.</p></div>
+      {% endif %}
+    </section>
+  </div>
+</div>
+{% endblock %}

@@ -102,13 +102,14 @@
             <div class="bos-menu" role="menu">
               <div class="bos-menu-head">
                 <strong>{% firstof user.get_full_name user.email %}</strong>
-                <span>{{ user.get_role_display }}{% if user.email %} · {{ user.email }}{% endif %}</span>
+                <span>{% firstof bos_role_name user.get_role_display %}{% if user.email %} · {{ user.email }}{% endif %}</span>
               </div>
               {% comment %}
                 Not named "userlinks": Django's password pages override that
                 block with their own links and theme switcher.
               {% endcomment %}
               {% block bos-userlinks %}
+                <a class="bos-menu-item" role="menuitem" href="{% url 'admin:bos_profile' %}">{% icon 'user' %} My profile</a>
                 {% if user.has_usable_password %}
                   <a class="bos-menu-item" role="menuitem" href="{% url 'admin:password_change' %}">{% icon 'key' %} Change password</a>
                 {% endif %}

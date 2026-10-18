@@ -5,7 +5,7 @@ from django.db import DatabaseError, connection
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
 
-from .bos_access import ALL, CHAIN, OWNERS, bos_role, has_bos_access, scope_filter
+from .bos_access import ALL, CHAIN, OWNERS, ROLE_NAMES, bos_role, has_bos_access, scope_filter
 
 # The sidebar, top to bottom, grouped by the job at hand rather than by Django
 # app. Inline-only link tables (menu item ↔ modifier/dietary) are reached from
@@ -88,6 +88,7 @@ VIEW_ROLES = {
     "bos_availability": ALL,
     "bos_system": (CHAIN,),
     "bos_media_picker": OWNERS,
+    "bos_profile": ALL,
 }
 
 # Which items carry a count of work waiting, and the SQL that feeds it.
@@ -168,6 +169,7 @@ class BOSAdminSite(AdminSite):
             ("availability/", views.availability_view, "bos_availability"),
             ("system/", views.system_view, "bos_system"),
             ("media-picker/", views.media_picker_view, "bos_media_picker"),
+            ("profile/", views.profile_view, "bos_profile"),
         ]
         return [
             path(route, self.admin_view(factory(self)), name=name) for route, factory, name in pages
@@ -237,6 +239,7 @@ class BOSAdminSite(AdminSite):
         role = bos_role(request.user)
         # What the signed-in role may reach, for links drawn outside the menu.
         context["bos_role"] = role
+        context["bos_role_name"] = ROLE_NAMES.get(role, "")
         context["bos_can"] = {
             "reports": role in OWNERS,
             "system": role == CHAIN,
