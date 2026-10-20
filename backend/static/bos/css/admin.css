@@ -6,10 +6,13 @@
    them, so stock tables and forms take the palette without each rule being
    rewritten.
 
-   Palette: crisp neutral surfaces like the cafés' black-and-white signage,
-   with the colour of the food on top — fresh green for actions, tangerine for
-   things that want attention. Every text/background pair used for words meets
-   WCAG AA (4.5:1); the bright tints are only for dots, bars and fills. */
+   Palette: the website's. Cream paper, espresso ink, caramel for links and a
+   terracotta mark for whatever wants attention; Newsreader for page titles and
+   big numbers, Figtree for everything you read in passing. Surfaces are told
+   apart by hairlines rather than shadows. Every text/background pair used for
+   words meets WCAG AA (4.5:1); the lighter tints are only for dots, bars and
+   fills. The "food" names (green, tangerine, ...) are kept from the first
+   palette so every rule that reads them takes the café colours. */
 
 /* Tokens. Selectors carry the attribute so they outrank Django's own
    `html[data-theme="light"], :root` block, which would otherwise win. */
@@ -17,145 +20,151 @@
 :root:not([data-theme]) {
     color-scheme: light;
 
-    --bos-ink: #0e1116;
-    --bos-bone: #ffffff;
-    --bos-green: #22c77a;
-    --bos-tangerine: #ff6b2c;
-    --bos-berry: #e2467c;
-    --bos-violet: #6d4aff;
-    --bos-sky: #2b9bf4;
-    --bos-mango: #ffb020;
+    --bos-ink: #2b1e19;
+    --bos-bone: #fdfbf7;
+    --bos-green: #6e8b4e;
+    --bos-tangerine: #c2562e;
+    --bos-berry: #a8443a;
+    --bos-violet: #b67a4b;
+    --bos-sky: #6f93a3;
+    --bos-mango: #d9a441;
 
-    --bos-bg: #f4f5f7;
-    --bos-surface: #ffffff;
-    --bos-surface-2: #f8f9fa;
-    --bos-surface-3: #eef0f3;
-    --bos-field-bg: #ffffff;
-    --bos-line: #e6e8ec;
-    --bos-line-strong: #d3d7de;
-    --bos-text: #0e1116;
-    --bos-text-2: #464c57;
-    --bos-muted: #737a87;
+    --bos-bg: #f4efe6;
+    --bos-surface: #fdfbf7;
+    --bos-surface-2: #f8f4ec;
+    --bos-surface-3: #efe8dc;
+    --bos-field-bg: #fffefb;
+    --bos-line: #e6dccd;
+    --bos-line-strong: #d3c5b0;
+    --bos-text: #33251f;
+    --bos-text-2: #5b463c;
+    --bos-muted: #7a6259;
 
-    --bos-accent: #00875a;
-    --bos-accent-hover: #007a50;
-    --bos-accent-ink: #ffffff;
-    --bos-accent-soft: #e5f6ee;
-    --bos-accent-text: #007a50;
-    --bos-focus: rgba(0, 135, 90, 0.22);
+    --bos-accent: #4b2e26;
+    --bos-accent-hover: #3a2b24;
+    --bos-accent-ink: #fdfbf7;
+    --bos-accent-soft: #f1e6d8;
+    --bos-accent-text: #8b5827;
+    --bos-focus: rgba(139, 88, 39, 0.24);
+    --bos-mark: #b4431f;
+    --bos-mark-ink: #fff8ee;
 
-    --bos-good-bg: #e5f6ee;
-    --bos-good-fg: #00704a;
-    --bos-warn-bg: #fff1e8;
-    --bos-warn-fg: #b23a0d;
-    --bos-warn-line: #ffd3bd;
-    --bos-bad-bg: #fde8ee;
-    --bos-bad-fg: #b4234f;
-    --bos-info-bg: #efebff;
-    --bos-info-fg: #5434e0;
-    --bos-live-bg: #e3f2fe;
-    --bos-live-fg: #0d6bb8;
-    --bos-quiet-bg: #eef0f3;
-    --bos-quiet-fg: #565d69;
-    --bos-danger: #d0264f;
-    --bos-danger-hover: #b31d42;
-    --bos-danger-ink: #ffffff;
+    --bos-good-bg: #e8eddc;
+    --bos-good-fg: #43592f;
+    --bos-warn-bg: #f8e4d7;
+    --bos-warn-fg: #9c3a1a;
+    --bos-warn-line: #ecc6b0;
+    --bos-bad-bg: #f5dfda;
+    --bos-bad-fg: #8a2e1c;
+    --bos-info-bg: #f1e5d3;
+    --bos-info-fg: #7a4a1e;
+    --bos-live-bg: #e2e9ea;
+    --bos-live-fg: #335560;
+    --bos-quiet-bg: #eee7dc;
+    --bos-quiet-fg: #6a564b;
+    --bos-danger: #9e2f1c;
+    --bos-danger-hover: #85261a;
+    --bos-danger-ink: #fdfbf7;
 
-    --bos-chart: #22c77a;
-    --bos-chart-today: #ff6b2c;
-    --bos-chart-zero: #e3e6ea;
-    --bos-chart-rule: #eceef1;
+    --bos-chart: #c49a6c;
+    --bos-chart-today: #b4431f;
+    --bos-chart-zero: #e9e1d3;
+    --bos-chart-rule: #ece5d9;
 
-    --bos-sidebar: #ffffff;
-    --bos-sidebar-text: #0e1116;
-    --bos-sidebar-link: #464c57;
-    --bos-sidebar-muted: #8a909b;
-    --bos-sidebar-hover: #f3f4f6;
-    --bos-sidebar-active: #007a50;
-    --bos-sidebar-active-bg: #e5f6ee;
-    --bos-sidebar-line: #eceef1;
-    --bos-sidebar-badge-bg: #fff1e8;
-    --bos-sidebar-badge-fg: #b23a0d;
-    --bos-logo-filter: none;
+    --bos-sidebar: #2b1e19;
+    --bos-sidebar-text: #f4ede3;
+    --bos-sidebar-link: #d8c9b8;
+    --bos-sidebar-muted: #a08b7b;
+    --bos-sidebar-hover: rgba(244, 237, 227, 0.07);
+    --bos-sidebar-active: #fff8ee;
+    --bos-sidebar-active-bg: rgba(244, 237, 227, 0.12);
+    --bos-sidebar-line: rgba(244, 237, 227, 0.1);
+    --bos-sidebar-badge-bg: #b4431f;
+    --bos-sidebar-badge-fg: #fff8ee;
+    --bos-logo-filter: invert(1) sepia(0.25) brightness(0.96);
+    --bos-logo-ink: none;
 
-    --bos-scrim: rgba(14, 17, 22, 0.42);
-    --bos-topbar-bg: rgba(244, 245, 247, 0.86);
-    --bos-inset: inset 0 1px 1px rgba(14, 17, 22, 0.03);
-    --bos-shadow-sm: 0 1px 2px rgba(14, 17, 22, 0.05);
-    --bos-shadow: 0 1px 2px rgba(14, 17, 22, 0.04), 0 4px 16px -8px rgba(14, 17, 22, 0.1);
-    --bos-shadow-lg: 0 24px 56px -20px rgba(14, 17, 22, 0.28), 0 2px 6px rgba(14, 17, 22, 0.06);
+    --bos-scrim: rgba(43, 30, 25, 0.45);
+    --bos-topbar-bg: rgba(244, 239, 230, 0.88);
+    --bos-inset: none;
+    --bos-shadow-sm: none;
+    --bos-shadow: none;
+    --bos-shadow-lg: 0 18px 48px -18px rgba(43, 30, 25, 0.32), 0 2px 6px rgba(43, 30, 25, 0.08);
     --bos-glow: none;
 }
 
 :root[data-theme="dark"] {
     color-scheme: dark;
 
-    --bos-ink: #0e1116;
-    --bos-bone: #ffffff;
-    --bos-green: #34d399;
-    --bos-tangerine: #ff8a50;
-    --bos-berry: #f472a0;
-    --bos-violet: #9b85ff;
-    --bos-sky: #5cb5fa;
-    --bos-mango: #ffc04d;
+    --bos-ink: #120d0b;
+    --bos-bone: #f2eae0;
+    --bos-green: #8faa6e;
+    --bos-tangerine: #e07a4f;
+    --bos-berry: #d7766a;
+    --bos-violet: #d2a578;
+    --bos-sky: #8fb3c2;
+    --bos-mango: #e6b85c;
 
-    --bos-bg: #0b0d10;
-    --bos-surface: #121519;
-    --bos-surface-2: #171b20;
-    --bos-surface-3: #1e2329;
-    --bos-field-bg: #0f1215;
-    --bos-line: #232830;
-    --bos-line-strong: #333a45;
-    --bos-text: #eceff3;
-    --bos-text-2: #b4bac4;
-    --bos-muted: #8a919e;
+    --bos-bg: #17110e;
+    --bos-surface: #1f1814;
+    --bos-surface-2: #251d18;
+    --bos-surface-3: #2e241e;
+    --bos-field-bg: #1b1511;
+    --bos-line: #362b24;
+    --bos-line-strong: #4a3c33;
+    --bos-text: #f2eae0;
+    --bos-text-2: #cdbfb1;
+    --bos-muted: #a3917f;
 
-    --bos-accent: #34d399;
-    --bos-accent-hover: #5ee0ad;
-    --bos-accent-ink: #052e1d;
-    --bos-accent-soft: rgba(52, 211, 153, 0.12);
-    --bos-accent-text: #4ade9b;
-    --bos-focus: rgba(52, 211, 153, 0.28);
+    --bos-accent: #e9c89e;
+    --bos-accent-hover: #f0d6b2;
+    --bos-accent-ink: #2b1e19;
+    --bos-accent-soft: rgba(233, 200, 158, 0.12);
+    --bos-accent-text: #e3b98a;
+    --bos-focus: rgba(233, 200, 158, 0.3);
+    --bos-mark: #e07a4f;
+    --bos-mark-ink: #2b0e08;
 
-    --bos-good-bg: rgba(52, 211, 153, 0.13);
-    --bos-good-fg: #6ee7b7;
-    --bos-warn-bg: rgba(255, 138, 80, 0.14);
-    --bos-warn-fg: #ffa77a;
-    --bos-warn-line: rgba(255, 138, 80, 0.34);
-    --bos-bad-bg: rgba(244, 114, 160, 0.14);
-    --bos-bad-fg: #f9a3c1;
-    --bos-info-bg: rgba(155, 133, 255, 0.15);
-    --bos-info-fg: #c2b5ff;
-    --bos-live-bg: rgba(92, 181, 250, 0.14);
-    --bos-live-fg: #9ad0fc;
+    --bos-good-bg: rgba(143, 170, 110, 0.15);
+    --bos-good-fg: #b5cc96;
+    --bos-warn-bg: rgba(224, 122, 79, 0.16);
+    --bos-warn-fg: #f0a07c;
+    --bos-warn-line: rgba(224, 122, 79, 0.36);
+    --bos-bad-bg: rgba(215, 118, 106, 0.16);
+    --bos-bad-fg: #f1a398;
+    --bos-info-bg: rgba(233, 200, 158, 0.14);
+    --bos-info-fg: #e9c89e;
+    --bos-live-bg: rgba(143, 179, 194, 0.15);
+    --bos-live-fg: #a9cad6;
     --bos-quiet-bg: rgba(255, 255, 255, 0.06);
-    --bos-quiet-fg: #aab1bc;
-    --bos-danger: #f4729f;
-    --bos-danger-hover: #f791b5;
-    --bos-danger-ink: #2b0614;
+    --bos-quiet-fg: #bbaa9a;
+    --bos-danger: #e57f6c;
+    --bos-danger-hover: #ec9989;
+    --bos-danger-ink: #2b0e08;
 
-    --bos-chart: #34d399;
-    --bos-chart-today: #ff8a50;
-    --bos-chart-zero: #252b33;
-    --bos-chart-rule: #1d2228;
+    --bos-chart: #c9a27a;
+    --bos-chart-today: #e07a4f;
+    --bos-chart-zero: #2e241e;
+    --bos-chart-rule: #2a211c;
 
-    --bos-sidebar: #0f1215;
-    --bos-sidebar-text: #eceff3;
-    --bos-sidebar-link: #b4bac4;
-    --bos-sidebar-muted: #6f7784;
+    --bos-sidebar: #120d0b;
+    --bos-sidebar-text: #f2eae0;
+    --bos-sidebar-link: #cdbfb1;
+    --bos-sidebar-muted: #8d7b6d;
     --bos-sidebar-hover: rgba(255, 255, 255, 0.05);
-    --bos-sidebar-active: #4ade9b;
-    --bos-sidebar-active-bg: rgba(52, 211, 153, 0.12);
-    --bos-sidebar-line: #1d2228;
-    --bos-sidebar-badge-bg: rgba(255, 138, 80, 0.16);
-    --bos-sidebar-badge-fg: #ffa77a;
-    --bos-logo-filter: invert(1);
+    --bos-sidebar-active: #e9c89e;
+    --bos-sidebar-active-bg: rgba(233, 200, 158, 0.12);
+    --bos-sidebar-line: #2a211c;
+    --bos-sidebar-badge-bg: rgba(224, 122, 79, 0.22);
+    --bos-sidebar-badge-fg: #f0a07c;
+    --bos-logo-filter: invert(1) sepia(0.25) brightness(0.96);
+    --bos-logo-ink: invert(1) sepia(0.25) brightness(0.96);
 
     --bos-scrim: rgba(0, 0, 0, 0.6);
-    --bos-topbar-bg: rgba(11, 13, 16, 0.84);
-    --bos-inset: inset 0 1px 1px rgba(0, 0, 0, 0.2);
-    --bos-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3);
-    --bos-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 8px 24px -14px rgba(0, 0, 0, 0.6);
+    --bos-topbar-bg: rgba(23, 17, 14, 0.86);
+    --bos-inset: none;
+    --bos-shadow-sm: none;
+    --bos-shadow: none;
     --bos-shadow-lg: 0 28px 64px -20px rgba(0, 0, 0, 0.7), 0 2px 6px rgba(0, 0, 0, 0.3);
     --bos-glow: none;
 }
@@ -204,12 +213,14 @@
     --object-tools-hover-bg: var(--bos-accent-hover);
     --font-family-primary: "Figtree", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
     --font-family-monospace: ui-monospace, "Cascadia Mono", "Segoe UI Mono", Menlo, Consolas, monospace;
+    --bos-serif: "Newsreader", Georgia, "Times New Roman", serif;
 
     --bos-field-width: 34rem;
     --bos-field-width-sm: 13rem;
     --bos-control: 2.45rem;
-    --bos-radius: 14px;
-    --bos-radius-sm: 10px;
+    --bos-radius: 10px;
+    --bos-radius-sm: 7px;
+    --bos-radius-pill: 999px;
     --bos-sidebar-width: 16.5rem;
     --bos-sidebar-rail: 4.75rem;
 }
@@ -382,7 +393,7 @@ br.clear {
     display: none;
 }
 
-/* Sidebar. Ink in both themes: it is the brand, not a surface that themes. */
+/* Sidebar. Espresso in both themes: it is the brand, not a surface that themes. */
 .bos-sidebar {
     position: sticky;
     top: 0;
@@ -416,13 +427,13 @@ br.clear {
 }
 
 .bos-brand-tag {
-    padding: 0.12rem 0.45rem;
-    border-radius: 999px;
-    background: var(--bos-accent-soft);
-    color: var(--bos-accent-text);
-    font-size: 0.64rem;
-    font-weight: 700;
-    letter-spacing: 0.08em;
+    align-self: flex-end;
+    margin-bottom: 0.2rem;
+    color: var(--bos-sidebar-muted);
+    font-family: var(--bos-serif);
+    font-size: 0.85rem;
+    font-style: italic;
+    font-weight: 400;
 }
 
 .bos-brand-tile {
@@ -458,12 +469,12 @@ br.clear {
 }
 
 .bos-nav-title {
-    margin: 1rem 0.65rem 0.35rem;
+    margin: 1.1rem 0.65rem 0.3rem;
     color: var(--bos-sidebar-muted);
-    font-size: 0.68rem;
-    font-weight: 600;
-    letter-spacing: 0.09em;
-    text-transform: uppercase;
+    font-family: var(--bos-serif);
+    font-size: 0.9rem;
+    font-style: italic;
+    font-weight: 400;
     white-space: nowrap;
 }
 
@@ -474,9 +485,9 @@ br.clear {
     align-items: center;
     gap: 0.7rem;
     width: 100%;
-    padding: 0.48rem 0.65rem;
+    padding: 0.45rem 0.65rem;
     border: 0;
-    border-radius: 0.6rem;
+    border-radius: var(--bos-radius-sm);
     background: transparent;
     color: var(--bos-sidebar-link);
     font: inherit;
@@ -490,9 +501,9 @@ br.clear {
 
 .bos-nav-link .bos-i,
 .bos-collapse .bos-i {
-    width: 1.15rem;
-    height: 1.15rem;
-    opacity: 0.8;
+    width: 1.1rem;
+    height: 1.1rem;
+    opacity: 0.6;
 }
 
 .bos-admin a.bos-nav-link:hover,
@@ -518,7 +529,7 @@ br.clear {
     bottom: 0.45rem;
     width: 3px;
     border-radius: 0 3px 3px 0;
-    background: var(--bos-sidebar-active);
+    background: var(--bos-tangerine);
 }
 
 .bos-nav-text {
@@ -600,7 +611,7 @@ br.clear {
         height: 0.55rem;
         padding: 0;
         font-size: 0;
-        background: var(--bos-sidebar-badge-fg);
+        background: var(--bos-tangerine);
     }
 
     .bos-nav-collapsed .bos-collapse .bos-i {
@@ -843,11 +854,13 @@ br.clear {
     width: 1.9rem;
     height: 1.9rem;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--bos-green), #00875a);
-    color: #ffffff;
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.03em;
+    background: var(--bos-accent-soft);
+    color: var(--bos-accent-text);
+    box-shadow: inset 0 0 0 1px var(--bos-line-strong);
+    font-family: var(--bos-serif);
+    font-size: 0.8rem;
+    font-weight: 500;
+    letter-spacing: 0.02em;
 }
 
 .bos-menu {
@@ -858,7 +871,7 @@ br.clear {
     width: 16.5rem;
     padding: 0.35rem;
     border: 1px solid var(--bos-line);
-    border-radius: 0.85rem;
+    border-radius: var(--bos-radius);
     background: var(--bos-surface);
     box-shadow: var(--bos-shadow-lg);
     animation: bos-pop 0.14s ease-out;
@@ -995,7 +1008,7 @@ br.clear {
     align-items: center;
     gap: 0.75rem;
     padding: 0.6rem 0.75rem;
-    border-radius: 0.6rem;
+    border-radius: var(--bos-radius-sm);
     color: var(--bos-text);
 }
 
@@ -1045,7 +1058,7 @@ br.clear {
     margin: 0;
     padding: 0.75rem 0.85rem 0.75rem 1rem;
     border: 1px solid var(--bos-line);
-    border-radius: 0.8rem;
+    border-radius: var(--bos-radius);
     background: var(--bos-info-bg);
     background-image: none;
     color: var(--bos-info-fg);
@@ -1116,9 +1129,9 @@ br.clear {
     gap: 0.5rem;
     height: var(--bos-control);
     margin: 0;
-    padding: 0 1rem;
+    padding: 0 1.1rem;
     border: 1px solid var(--bos-line-strong);
-    border-radius: var(--bos-radius-sm);
+    border-radius: var(--bos-radius-pill);
     background: var(--bos-surface);
     color: var(--bos-text);
     font: inherit;
@@ -1164,7 +1177,7 @@ br.clear {
     border-color: transparent;
     background: var(--bos-accent);
     color: var(--bos-accent-ink);
-    box-shadow: inset 0 -1px 0 rgba(0, 0, 0, 0.14), var(--bos-shadow-sm);
+    box-shadow: none;
 }
 
 .bos-btn-primary:hover,
@@ -1232,9 +1245,8 @@ br.clear {
 
 .bos-btn-sm {
     height: 2rem;
-    padding: 0 0.75rem;
+    padding: 0 0.85rem;
     font-size: 0.8rem;
-    border-radius: 0.55rem;
 }
 
 .bos-btn-block {
@@ -1290,7 +1302,7 @@ br.clear {
 }
 
 .bos-admin .object-tools a {
-    border-radius: var(--bos-radius-sm);
+    border-radius: var(--bos-radius-pill);
     background-image: none;
     padding: 0 1rem;
 }
@@ -1353,7 +1365,7 @@ br.clear {
     height: var(--bos-control);
     padding: 0 0.75rem;
     border: 1px solid var(--bos-line-strong);
-    border-radius: 0.6rem;
+    border-radius: var(--bos-radius-sm);
     background-color: var(--bos-field-bg);
     color: var(--bos-text);
     font: inherit;
@@ -1479,8 +1491,9 @@ textarea.bos-field {
     border-bottom: 1px solid var(--bos-line);
     background: none;
     color: var(--bos-text);
-    font-size: 0.95rem;
-    font-weight: 650;
+    font-family: var(--bos-serif);
+    font-size: 1.15rem;
+    font-weight: 500;
     text-align: left;
     text-transform: none;
     letter-spacing: -0.005em;
@@ -1612,7 +1625,7 @@ textarea.bos-field {
     margin: 0 0 1.25rem;
     padding: 0.8rem 1rem;
     border: 1px solid transparent;
-    border-radius: 0.8rem;
+    border-radius: var(--bos-radius-sm);
     background: var(--bos-bad-bg);
     color: var(--bos-bad-fg);
     font-size: 0.86rem;
@@ -1699,7 +1712,7 @@ textarea.bos-field {
     padding: 0.3rem;
     overflow-x: auto;
     border: 1px solid var(--bos-line);
-    border-radius: 0.85rem;
+    border-radius: var(--bos-radius);
     background: color-mix(in srgb, var(--bos-surface) 92%, transparent);
     backdrop-filter: blur(10px);
     -webkit-backdrop-filter: blur(10px);
@@ -1715,7 +1728,7 @@ textarea.bos-field {
     flex: none;
     padding: 0.5rem 0.95rem;
     border: 0;
-    border-radius: 0.6rem;
+    border-radius: var(--bos-radius-sm);
     background: none;
     color: var(--bos-text-2);
     font: inherit;
@@ -1914,7 +1927,7 @@ textarea.bos-field {
     height: var(--bos-control);
     padding: 0 0.6rem 0 0.8rem;
     border: 1px solid var(--bos-line-strong);
-    border-radius: 0.6rem;
+    border-radius: var(--bos-radius-sm);
     background: var(--bos-field-bg);
     color: var(--bos-text);
     font: inherit;
@@ -1980,7 +1993,7 @@ textarea.bos-field {
     max-height: min(20rem, 60vh);
     padding: 0.3rem;
     border: 1px solid var(--bos-line);
-    border-radius: 0.8rem;
+    border-radius: var(--bos-radius);
     background: var(--bos-surface);
     box-shadow: var(--bos-shadow-lg);
     animation: bos-pop 0.12s ease-out;
@@ -2133,7 +2146,7 @@ input.bos-select-search:focus {
     align-items: center;
     height: var(--bos-control);
     border: 1px solid var(--bos-line-strong);
-    border-radius: 0.6rem;
+    border-radius: var(--bos-radius-sm);
     background: var(--bos-field-bg);
     box-shadow: var(--bos-inset);
 }
@@ -2185,7 +2198,7 @@ input.bos-select-search:focus {
 .bos-admin .select2-container--admin-autocomplete .select2-dropdown {
     overflow: hidden;
     border: 1px solid var(--bos-line);
-    border-radius: 0.8rem;
+    border-radius: var(--bos-radius);
     background: var(--bos-surface);
     box-shadow: var(--bos-shadow-lg);
     color: var(--bos-text);
@@ -2286,7 +2299,7 @@ input.bos-select-search:focus {
 .bos-admin .selector-available-title,
 .bos-admin .selector-chosen-title {
     border: 1px solid var(--bos-line);
-    border-radius: 0.6rem 0.6rem 0 0;
+    border-radius: var(--bos-radius-sm) var(--bos-radius-sm) 0 0;
     background: var(--bos-surface-2);
     color: var(--bos-text);
 }
@@ -2309,7 +2322,7 @@ input.bos-select-search:focus {
 
 .bos-admin .selector-chooser {
     background: var(--bos-surface-2);
-    border-radius: 0.6rem;
+    border-radius: var(--bos-radius-sm);
 }
 
 /* Change list: one card holding search, actions, table and pages; filters in
@@ -2622,6 +2635,7 @@ input.bos-select-search:focus {
     border: 0;
     background: none;
     color: var(--bos-muted);
+    font-family: var(--font-family-primary);
     font-size: 0.8rem;
     font-weight: 600;
     letter-spacing: 0;
@@ -2836,23 +2850,18 @@ input.bos-select-search:focus {
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    padding: 0.2rem 0.6rem;
-    border-radius: 999px;
+    padding: 0.14rem 0.5rem;
+    border-radius: 4px;
     background: var(--bos-quiet-bg);
     color: var(--bos-quiet-fg);
-    font-size: 0.74rem;
+    font-size: 0.73rem;
     font-weight: 600;
     line-height: 1.4;
     white-space: nowrap;
 }
 
 .bos-chip::before {
-    content: "";
-    width: 0.4rem;
-    height: 0.4rem;
-    border-radius: 50%;
-    background: currentColor;
-    opacity: 0.85;
+    display: none;
 }
 
 .bos-tag::before {
@@ -3012,50 +3021,31 @@ input.bos-select-search:focus {
 }
 
 /* Overview. */
-/* The overview banner: the greeting on a clean card, real food on the right. */
+/* The overview opens like a page of the menu: the day in Newsreader, what is
+   waiting underneath, the filters to the right, a hairline below. */
 .bos-hero {
-    position: relative;
     display: flex;
     flex-wrap: wrap;
     align-items: flex-end;
     justify-content: space-between;
     gap: 1.25rem;
-    min-height: 12rem;
-    padding: 1.75rem 1.85rem;
-    border: 1px solid var(--bos-line);
-    border-radius: 1.25rem;
-    background: var(--bos-surface);
-    box-shadow: var(--bos-shadow);
-    overflow: hidden;
-    isolation: isolate;
-}
-
-.bos-hero::before {
-    content: "";
-    position: absolute;
-    inset: 0 0 0 40%;
-    z-index: -2;
-    background: url("../img/photo-hero.webp") center 45% / cover no-repeat;
-}
-
-.bos-hero::after {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    background: linear-gradient(90deg, var(--bos-surface) 38%, color-mix(in srgb, var(--bos-surface) 72%, transparent) 52%, transparent 80%);
+    padding: 0.5rem 0 1.4rem;
+    border-bottom: 1px solid var(--bos-line-strong);
 }
 
 .bos-hero-text {
-    max-width: 36rem;
+    max-width: 40rem;
 }
 
 .bos-admin .bos-hero h1 {
     margin: 0;
     color: var(--bos-text);
-    font-size: 2rem;
-    font-weight: 750;
-    letter-spacing: -0.03em;
+    font-size: 2.75rem;
+}
+
+.bos-hero .bos-lead {
+    margin-top: 0.55rem;
+    font-size: 0.95rem;
 }
 
 .bos-hero .bos-lead strong {
@@ -3069,12 +3059,8 @@ input.bos-select-search:focus {
 }
 
 @media (max-width: 767px) {
-    .bos-hero::before {
-        inset: 0;
-    }
-
-    .bos-hero::after {
-        background: color-mix(in srgb, var(--bos-surface) 86%, transparent);
+    .bos-admin .bos-hero h1 {
+        font-size: 2.1rem;
     }
 }
 
@@ -3090,155 +3076,104 @@ input.bos-select-search:focus {
     font-size: 1rem;
 }
 
-.bos-todo-grid {
+/* Needs attention and the key figures: one ruled strip each, a big number per
+   cell, the way a café's board lists the day. Lines between cells are drawn
+   by each cell's top and left edge and clipped by the strip, so they stay
+   inside whatever way the cells wrap. */
+.bos-todo-grid,
+.bos-stats {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(14.5rem, 1fr));
-    gap: 0.75rem;
-}
-
-.bos-admin a.bos-todo {
-    position: relative;
-    display: flex;
-    align-items: center;
-    gap: 0.85rem;
-    padding: 0.95rem 1rem;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
     border: 1px solid var(--bos-line);
     border-radius: var(--bos-radius);
     background: var(--bos-surface);
+    overflow: hidden;
+}
+
+.bos-stats {
+    grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr));
+}
+
+.bos-admin a.bos-todo,
+.bos-stat {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    min-width: 0;
+    padding: 1rem 1.2rem 1.1rem;
     color: var(--bos-text);
-    box-shadow: var(--bos-shadow);
-    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: -1px 0 0 var(--bos-line), 0 -1px 0 var(--bos-line);
+    transition: background-color 0.15s ease;
 }
 
-.bos-admin a.bos-todo:hover {
-    transform: translateY(-1px);
-    border-color: var(--bos-line-strong);
-    color: var(--bos-text);
-}
-
-.bos-todo-icon {
-    display: grid;
-    place-items: center;
-    flex: none;
-    width: 2.5rem;
-    height: 2.5rem;
-    border-radius: 0.75rem;
-    background: var(--bos-accent-soft);
-    color: var(--bos-accent-text);
-}
-
-.bos-todo-icon .bos-i {
-    width: 1.2rem;
-    height: 1.2rem;
-}
-
-.bos-todo.is-urgent {
-    border-color: var(--bos-warn-line);
-    background: linear-gradient(180deg, color-mix(in srgb, var(--bos-warn-bg) 55%, var(--bos-surface)), var(--bos-surface));
-}
-
-.bos-todo.is-urgent .bos-todo-icon {
-    background: var(--bos-warn-bg);
-    color: var(--bos-warn-fg);
-}
-
-.bos-todo.is-urgent .bos-todo-note {
-    color: var(--bos-warn-fg);
-}
-
-.bos-todo.is-clear .bos-todo-icon {
+.bos-admin a.bos-todo:hover,
+.bos-admin a.bos-stat:hover {
     background: var(--bos-surface-2);
-    color: var(--bos-muted);
-}
-
-.bos-todo.is-clear .bos-todo-count {
-    color: var(--bos-muted);
+    color: var(--bos-text);
 }
 
 .bos-todo-body {
     display: flex;
     flex-direction: column;
-    flex: 1;
     min-width: 0;
 }
 
 .bos-todo-label {
     font-weight: 600;
-    font-size: 0.87rem;
+    font-size: 0.86rem;
     line-height: 1.35;
 }
 
 .bos-todo-note {
     color: var(--bos-muted);
     font-size: 0.76rem;
+    line-height: 1.4;
 }
 
-.bos-todo-count {
-    font-size: 1.55rem;
-    font-weight: 650;
+.bos-todo-count,
+.bos-stat-value {
+    font-family: var(--bos-serif);
+    font-optical-sizing: auto;
+    font-variant-numeric: lining-nums tabular-nums;
+    font-weight: 500;
     letter-spacing: -0.02em;
     line-height: 1;
 }
 
-.bos-todo-go {
-    color: var(--bos-muted);
-    width: 1rem;
-    height: 1rem;
+.bos-todo-count {
+    font-size: 2.4rem;
 }
 
-.bos-stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(13.5rem, 1fr));
-    gap: 0.75rem;
+.bos-todo.is-urgent .bos-todo-count {
+    color: var(--bos-mark);
 }
 
-@media (min-width: 1180px) {
-    .bos-dash .bos-stats {
-        grid-template-columns: repeat(3, minmax(0, 1fr));
-    }
-}
-
-.bos-stat {
-    padding: 1rem 1.15rem 1.05rem;
-    border: 1px solid var(--bos-line);
-    border-radius: var(--bos-radius);
-    background: var(--bos-surface);
-    box-shadow: var(--bos-shadow);
-    min-width: 0;
+.bos-todo.is-clear .bos-todo-count {
+    color: var(--bos-line-strong);
 }
 
 .bos-stat-label {
-    display: flex;
-    align-items: center;
-    gap: 0.45rem;
     margin: 0;
     color: var(--bos-text-2);
-    font-size: 0.79rem;
+    font-size: 0.8rem;
     font-weight: 550;
-}
-
-.bos-stat-label .bos-i {
-    color: var(--bos-accent-text);
-    width: 1rem;
-    height: 1rem;
 }
 
 .bos-stat-value {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
-    gap: 0.45rem;
-    margin: 0.45rem 0 0.2rem;
+    gap: 0.5rem;
+    margin: 0.2rem 0 0;
     color: var(--bos-text);
-    font-size: 1.85rem;
-    font-weight: 650;
-    letter-spacing: -0.025em;
-    line-height: 1.1;
+    font-size: 2.4rem;
 }
 
 .bos-stat-value small {
     margin-left: -0.3rem;
     color: var(--bos-muted);
+    font-family: var(--font-family-primary);
     font-size: 0.9rem;
     font-weight: 550;
     letter-spacing: 0;
@@ -3254,33 +3189,28 @@ input.bos-select-search:focus {
 .bos-delta {
     display: inline-flex;
     align-items: center;
-    gap: 0.2rem;
-    padding: 0.12rem 0.45rem;
-    border-radius: 999px;
-    font-size: 0.72rem;
+    gap: 0.15rem;
+    font-family: var(--font-family-primary);
+    font-size: 0.78rem;
     font-weight: 650;
     letter-spacing: 0;
     line-height: 1.4;
-    vertical-align: middle;
 }
 
 .bos-delta .bos-i {
-    width: 0.85rem;
-    height: 0.85rem;
+    width: 0.9rem;
+    height: 0.9rem;
 }
 
 .bos-delta-up {
-    background: var(--bos-good-bg);
     color: var(--bos-good-fg);
 }
 
 .bos-delta-down {
-    background: var(--bos-bad-bg);
     color: var(--bos-bad-fg);
 }
 
 .bos-delta-flat {
-    background: var(--bos-quiet-bg);
     color: var(--bos-quiet-fg);
 }
 
@@ -3393,7 +3323,7 @@ input.bos-select-search:focus {
 
 .bos-mini-stats > div {
     padding: 0.75rem 0.85rem;
-    border-radius: 0.75rem;
+    border-radius: var(--bos-radius-sm);
     background: var(--bos-surface-2);
 }
 
@@ -3406,8 +3336,9 @@ input.bos-select-search:focus {
 .bos-mini-stats dd {
     margin: 0.2rem 0 0;
     color: var(--bos-text);
-    font-size: 1.3rem;
-    font-weight: 650;
+    font-family: var(--bos-serif);
+    font-size: 1.55rem;
+    font-weight: 500;
     letter-spacing: -0.02em;
 }
 
@@ -3687,7 +3618,7 @@ input.bos-select-search:focus {
     width: 14rem;
     max-width: 100%;
     aspect-ratio: 1;
-    border-radius: 0.9rem;
+    border-radius: var(--bos-radius);
     overflow: hidden;
     background: var(--bos-surface-2);
     box-shadow: 0 0 0 1px var(--bos-line), var(--bos-shadow);
@@ -3724,7 +3655,7 @@ input.bos-select-search:focus {
     max-width: 34rem;
     padding: 0.85rem 1rem;
     border: 1px solid var(--bos-line);
-    border-radius: 0.8rem;
+    border-radius: var(--bos-radius);
     background: var(--bos-surface-2);
 }
 
@@ -3764,7 +3695,7 @@ input.bos-select-search:focus {
 .bos-lightbox img {
     max-width: 92vw;
     max-height: 84vh;
-    border-radius: 0.6rem;
+    border-radius: var(--bos-radius-sm);
     box-shadow: 0 30px 80px -20px rgba(0, 0, 0, 0.8);
     background: #fff;
 }
@@ -3821,69 +3752,53 @@ body.bos-login {
     display: flex;
     flex-direction: column;
     justify-content: space-between;
-    margin: 0.75rem 0 0.75rem 0.75rem;
-    padding: 2.25rem 2.5rem 2.5rem;
-    border-radius: 1.5rem;
+    padding: 2.5rem 3rem 3rem;
     background:
-        linear-gradient(180deg, rgba(14, 17, 22, 0.35) 0%, rgba(14, 17, 22, 0) 30%, rgba(14, 17, 22, 0.15) 55%, rgba(14, 17, 22, 0.82) 100%),
+        linear-gradient(180deg, rgba(43, 30, 25, 0.45) 0%, rgba(43, 30, 25, 0) 28%, rgba(43, 30, 25, 0.1) 55%, rgba(43, 30, 25, 0.86) 100%),
         url("../img/photo-login.webp") center 35% / cover no-repeat;
-    color: #ffffff;
+    color: #fff8ee;
     overflow: hidden;
 }
 
 .bos-login-brand {
     display: flex;
-    align-items: center;
+    align-items: flex-end;
     gap: 0.75rem;
 }
 
 .bos-login-brand img {
     height: 3rem;
     width: auto;
-    filter: invert(1);
+    filter: invert(1) sepia(0.2) brightness(0.98);
 }
 
 .bos-login-brand span {
-    padding: 0.2rem 0.6rem;
-    border: 1px solid rgba(255, 255, 255, 0.4);
-    border-radius: 999px;
-    background: rgba(255, 255, 255, 0.12);
-    backdrop-filter: blur(8px);
-    font-size: 0.7rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
+    margin-bottom: 0.2rem;
+    color: rgba(255, 248, 238, 0.8);
+    font-family: var(--bos-serif);
+    font-size: 1rem;
+    font-style: italic;
 }
 
 .bos-login-copy {
     position: relative;
-    max-width: 32rem;
-}
-
-.bos-login-eyebrow {
-    display: inline-flex;
-    margin: 0 0 0.9rem;
-    padding: 0.25rem 0.7rem;
-    border-radius: 999px;
-    background: var(--bos-tangerine);
-    color: #1a0b03;
-    font-size: 0.72rem;
-    font-weight: 700;
-    letter-spacing: 0.06em;
-    text-transform: uppercase;
+    max-width: 30rem;
 }
 
 .bos-admin .bos-login-copy h2 {
     margin: 0;
-    color: #ffffff;
-    font-size: 2.1rem;
-    font-weight: 750;
-    line-height: 1.15;
-    letter-spacing: -0.03em;
+    color: #fff8ee;
+    font-family: var(--bos-serif);
+    font-size: 3rem;
+    font-style: italic;
+    font-weight: 400;
+    line-height: 1.05;
+    letter-spacing: -0.015em;
 }
 
 .bos-login-tagline {
-    margin: 0.9rem 0 0;
-    color: rgba(255, 255, 255, 0.82);
+    margin: 1rem 0 0;
+    color: rgba(255, 248, 238, 0.82);
     font-size: 0.95rem;
 }
 
@@ -3979,7 +3894,7 @@ body.bos-login {
     width: 100%;
     height: 2.9rem;
     padding: 0 2.9rem 0 2.6rem;
-    border-radius: 0.75rem;
+    border-radius: var(--bos-radius-sm);
     font-size: 0.95rem;
 }
 
@@ -4433,24 +4348,47 @@ body.bos-login {
    pages (reports, schedule, availability board, system status).
    ------------------------------------------------------------------------ */
 
-/* Type: one family, weight and tight tracking do the work a serif used to. */
+/* Type: Newsreader, as on the website, for the names of pages and cards and
+   for the figures people come to read; Figtree for everything else. */
 .bos-admin #content > h1,
-.bos-page-head h1 {
-    font-weight: 750;
-    letter-spacing: -0.03em;
+.bos-page-head h1,
+.bos-admin .bos-hero h1 {
+    font-family: var(--bos-serif);
+    font-weight: 500;
+    font-optical-sizing: auto;
+    letter-spacing: -0.015em;
+    line-height: 1.1;
 }
 
 .bos-admin #content > h1 {
-    font-size: 1.75rem;
+    font-size: 2.1rem;
 }
 
 .bos-page-head h1 {
-    font-size: 2rem;
+    font-size: 2.3rem;
+}
+
+.bos-card-head h2,
+.bos-section-head h2 {
+    font-family: var(--bos-serif);
+    font-weight: 500;
+    letter-spacing: -0.005em;
+}
+
+.bos-card-head h2,
+.bos-section-head h2 {
+    font-size: 1.22rem;
+    line-height: 1.25;
 }
 
 .bos-eyebrow {
-    color: var(--bos-accent-text);
-    letter-spacing: 0.08em;
+    color: var(--bos-mark);
+    font-family: var(--bos-serif);
+    font-size: 1rem;
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: 0;
+    text-transform: none;
 }
 
 .bos-sr-only {
@@ -4467,8 +4405,7 @@ body.bos-login {
 
 .bos-btn-xs {
     height: 1.85rem;
-    padding: 0 0.65rem;
-    border-radius: 0.5rem;
+    padding: 0 0.7rem;
     font-size: 0.76rem;
 }
 
@@ -4530,14 +4467,14 @@ body.bos-login {
     gap: 0.2rem;
     padding: 0.25rem;
     border: 1px solid var(--bos-line);
-    border-radius: 0.8rem;
+    border-radius: var(--bos-radius);
     background: var(--bos-surface);
     box-shadow: var(--bos-shadow-sm);
 }
 
 .bos-admin .bos-segment a {
     padding: 0.4rem 0.85rem;
-    border-radius: 0.6rem;
+    border-radius: var(--bos-radius-sm);
     color: var(--bos-text-2);
     font-size: 0.82rem;
     font-weight: 600;
@@ -4592,52 +4529,21 @@ body.bos-login {
     color: inherit;
 }
 
-/* Tinted icon chips: the food colours, used for decoration only. */
+/* Tinted icon chips: the café colours, used for decoration only. */
 .bos-tint-green { background: color-mix(in srgb, var(--bos-green) 16%, transparent); color: var(--bos-good-fg); }
 .bos-tint-orange { background: color-mix(in srgb, var(--bos-tangerine) 16%, transparent); color: var(--bos-warn-fg); }
-.bos-tint-violet { background: color-mix(in srgb, var(--bos-violet) 14%, transparent); color: var(--bos-info-fg); }
+.bos-tint-violet { background: color-mix(in srgb, var(--bos-violet) 16%, transparent); color: var(--bos-info-fg); }
 .bos-tint-berry { background: color-mix(in srgb, var(--bos-berry) 14%, transparent); color: var(--bos-bad-fg); }
-.bos-tint-sky { background: color-mix(in srgb, var(--bos-sky) 15%, transparent); color: var(--bos-live-fg); }
+.bos-tint-sky { background: color-mix(in srgb, var(--bos-sky) 16%, transparent); color: var(--bos-live-fg); }
 
-/* Overview figures link into the matching list; icons take one tint each. */
 .bos-admin a.bos-stat {
-    display: block;
     color: inherit;
-    transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.bos-admin a.bos-stat:hover {
-    transform: translateY(-2px);
-    border-color: var(--bos-line-strong);
-    box-shadow: var(--bos-shadow-lg);
-    color: inherit;
-}
-
-.bos-stat-label .bos-i {
-    width: 1.9rem;
-    height: 1.9rem;
-    padding: 0.42rem;
-    border-radius: 0.6rem;
-}
-
-.bos-stat:nth-child(1) .bos-stat-label .bos-i { background: color-mix(in srgb, var(--bos-green) 16%, transparent); color: var(--bos-good-fg); }
-.bos-stat:nth-child(2) .bos-stat-label .bos-i { background: color-mix(in srgb, var(--bos-tangerine) 16%, transparent); color: var(--bos-warn-fg); }
-.bos-stat:nth-child(3) .bos-stat-label .bos-i { background: color-mix(in srgb, var(--bos-violet) 14%, transparent); color: var(--bos-info-fg); }
-.bos-stat:nth-child(4) .bos-stat-label .bos-i { background: color-mix(in srgb, var(--bos-sky) 15%, transparent); color: var(--bos-live-fg); }
-
-.bos-stat-value {
-    font-weight: 750;
-    letter-spacing: -0.03em;
 }
 
 @media (min-width: 1180px) {
     .bos-dash .bos-stats {
         grid-template-columns: repeat(4, minmax(0, 1fr));
     }
-}
-
-.bos-todo-count {
-    font-weight: 750;
 }
 
 .bos-col.is-today .bos-col-bar:not(.is-zero) {
@@ -4669,22 +4575,26 @@ body.bos-login {
     align-content: center;
     flex: none;
     width: 3rem;
-    height: 3rem;
-    border-radius: 0.85rem;
-    background: var(--bos-accent);
-    color: var(--bos-accent-ink);
-    font-size: 1.25rem;
-    font-weight: 750;
+    height: 3.2rem;
+    border: 1px solid var(--bos-line-strong);
+    border-top: 4px solid var(--bos-mark);
+    border-radius: 4px;
+    background: var(--bos-surface);
+    color: var(--bos-text);
+    font-family: var(--bos-serif);
+    font-size: 1.35rem;
+    font-weight: 500;
     line-height: 1;
 }
 
 .bos-day-badge small {
     margin-top: 0.15rem;
-    font-size: 0.58rem;
-    font-weight: 700;
-    letter-spacing: 0.1em;
+    color: var(--bos-muted);
+    font-family: var(--font-family-primary);
+    font-size: 0.6rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
     text-transform: uppercase;
-    opacity: 0.85;
 }
 
 .bos-schedule {
@@ -4748,11 +4658,14 @@ body.bos-login {
     white-space: nowrap;
 }
 
-/* Ranked bars. */
+/* Ranked bars. One grid for the list and each row a subgrid of it, so the
+   value column is as wide as the widest figure ("$118,838 67%") and every
+   track starts and ends in line. */
 .bos-bars {
-    display: flex;
-    flex-direction: column;
-    gap: 0.7rem;
+    display: grid;
+    grid-template-columns: minmax(4rem, 6.5rem) minmax(3rem, 1fr) auto;
+    column-gap: 0.75rem;
+    row-gap: 0.7rem;
     margin: 0;
     padding: 0;
     list-style: none;
@@ -4760,9 +4673,9 @@ body.bos-login {
 
 .bos-bars li {
     display: grid;
-    grid-template-columns: 6.5rem minmax(0, 1fr) 3.6rem;
+    grid-column: 1 / -1;
+    grid-template-columns: subgrid;
     align-items: center;
-    gap: 0.75rem;
     list-style: none;
     padding: 0;
     font-size: 0.84rem;
@@ -4781,6 +4694,7 @@ body.bos-login {
     justify-content: flex-end;
     gap: 0.3rem;
     font-variant-numeric: tabular-nums;
+    white-space: nowrap;
 }
 
 .bos-bars strong small {
@@ -4792,8 +4706,8 @@ body.bos-login {
 }
 
 .bos-bars-track {
-    height: 0.55rem;
-    border-radius: 999px;
+    height: 0.5rem;
+    border-radius: 2px;
     background: var(--bos-surface-3);
     overflow: hidden;
 }
@@ -4828,26 +4742,17 @@ body.bos-login {
 .bos-kpis {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(12.5rem, 1fr));
-    gap: 0.75rem;
+    border: 1px solid var(--bos-line);
+    border-radius: var(--bos-radius);
+    background: var(--bos-surface);
+    overflow: hidden;
 }
 
 .bos-kpi {
     position: relative;
     min-width: 0;
-    padding: 1rem 1.1rem 1.05rem;
-    border: 1px solid var(--bos-line);
-    border-radius: var(--bos-radius);
-    background: var(--bos-surface);
-    box-shadow: var(--bos-shadow);
-}
-
-.bos-kpi-icon {
-    display: grid;
-    place-items: center;
-    width: 2.1rem;
-    height: 2.1rem;
-    margin-bottom: 0.7rem;
-    border-radius: 0.65rem;
+    padding: 1rem 1.2rem 1.1rem;
+    box-shadow: -1px 0 0 var(--bos-line), 0 -1px 0 var(--bos-line);
 }
 
 .bos-kpi-label {
@@ -4861,17 +4766,21 @@ body.bos-login {
     display: flex;
     flex-wrap: wrap;
     align-items: baseline;
-    gap: 0.35rem;
-    margin: 0.25rem 0 0.15rem;
+    gap: 0.5rem;
+    margin: 0.35rem 0 0.25rem;
     color: var(--bos-text);
-    font-size: 1.9rem;
-    font-weight: 750;
-    letter-spacing: -0.03em;
-    line-height: 1.1;
+    font-family: var(--bos-serif);
+    font-optical-sizing: auto;
+    font-size: 2.2rem;
+    font-variant-numeric: lining-nums tabular-nums;
+    font-weight: 500;
+    letter-spacing: -0.02em;
+    line-height: 1.05;
 }
 
 .bos-kpi-value small {
     color: var(--bos-muted);
+    font-family: var(--font-family-primary);
     font-size: 0.9rem;
     font-weight: 600;
     letter-spacing: 0;
@@ -4946,10 +4855,10 @@ body.bos-login {
     text-align: center;
 }
 
-.bos-heat-1 { background: color-mix(in srgb, var(--bos-green) 20%, var(--bos-surface)) !important; }
-.bos-heat-2 { background: color-mix(in srgb, var(--bos-green) 42%, var(--bos-surface)) !important; }
-.bos-heat-3 { background: color-mix(in srgb, var(--bos-green) 70%, var(--bos-surface)) !important; color: #052e1d !important; }
-.bos-heat-4 { background: var(--bos-green) !important; color: #052e1d !important; }
+.bos-heat-1 { background: color-mix(in srgb, var(--bos-chart) 22%, var(--bos-surface)) !important; }
+.bos-heat-2 { background: color-mix(in srgb, var(--bos-chart) 45%, var(--bos-surface)) !important; }
+.bos-heat-3 { background: color-mix(in srgb, var(--bos-chart) 72%, var(--bos-surface)) !important; color: #2b1e19 !important; }
+.bos-heat-4 { background: var(--bos-chart) !important; color: #2b1e19 !important; }
 
 .bos-heat-legend {
     display: flex;
@@ -5115,7 +5024,7 @@ body.bos-login {
     padding: 0.55rem 0.65rem;
     border: 1px solid var(--bos-line);
     border-left: 3px solid var(--bos-line-strong);
-    border-radius: 0.7rem;
+    border-radius: var(--bos-radius-sm);
     background: var(--bos-surface-2);
     list-style: none;
 }
@@ -5281,11 +5190,11 @@ body.bos-login {
     border-bottom: 1px solid var(--bos-line);
     background: var(--bos-surface-2);
     color: var(--bos-accent-text);
-    font-size: 0.7rem;
-    font-weight: 750;
-    letter-spacing: 0.08em;
+    font-family: var(--bos-serif);
+    font-size: 0.95rem;
+    font-style: italic;
+    font-weight: 400;
     text-align: left;
-    text-transform: uppercase;
 }
 
 .bos-matrix tbody tr:hover td,
@@ -5333,8 +5242,8 @@ body.bos-login {
 }
 
 .bos-cell.is-off {
-    background: var(--bos-tangerine);
-    color: #1a0b03;
+    background: var(--bos-mark);
+    color: var(--bos-mark-ink);
 }
 
 .bos-cell.is-off:hover {
@@ -5416,8 +5325,9 @@ body.bos-login {
 .bos-check-value {
     min-width: 2.5rem;
     color: var(--bos-text);
-    font-size: 1.15rem;
-    font-weight: 750;
+    font-family: var(--bos-serif);
+    font-size: 1.4rem;
+    font-weight: 500;
     text-align: right;
     font-variant-numeric: tabular-nums;
 }
@@ -5473,11 +5383,9 @@ body.bos-login {
     gap: 1.25rem 1.6rem;
     padding: 1.6rem 1.75rem;
     border: 1px solid var(--bos-line);
-    border-radius: 1.25rem;
-    background:
-        radial-gradient(120% 140% at 100% 0%, var(--bos-accent-soft) 0%, transparent 55%),
-        var(--bos-surface);
-    box-shadow: var(--bos-shadow);
+    border-radius: var(--bos-radius);
+    background: var(--bos-surface);
+    box-shadow: none;
     overflow: hidden;
 }
 
@@ -5488,11 +5396,12 @@ body.bos-login {
     width: 5.5rem;
     height: 5.5rem;
     border-radius: 50%;
-    background: linear-gradient(135deg, var(--bos-green), #00875a);
-    box-shadow: 0 0 0 4px var(--bos-surface), 0 0 0 5px var(--bos-line), var(--bos-shadow);
-    color: #ffffff;
-    font-size: 1.9rem;
-    font-weight: 700;
+    background: var(--bos-accent-soft);
+    box-shadow: inset 0 0 0 1px var(--bos-line-strong);
+    color: var(--bos-accent-text);
+    font-family: var(--bos-serif);
+    font-size: 2.1rem;
+    font-weight: 500;
     letter-spacing: 0.02em;
 }
 
@@ -5504,10 +5413,11 @@ body.bos-login {
 .bos-admin .bos-profile-id h1 {
     margin: 0;
     color: var(--bos-text);
-    font-size: 1.75rem;
-    font-weight: 750;
-    line-height: 1.2;
-    letter-spacing: -0.02em;
+    font-family: var(--bos-serif);
+    font-size: 2.1rem;
+    font-weight: 500;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
     overflow-wrap: anywhere;
 }
 
@@ -5554,8 +5464,8 @@ body.bos-login {
     min-width: 8.5rem;
     padding: 0.8rem 1rem;
     border: 1px solid var(--bos-line);
-    border-radius: 0.85rem;
-    background: color-mix(in srgb, var(--bos-surface) 80%, transparent);
+    border-radius: var(--bos-radius-sm);
+    background: var(--bos-surface-2);
 }
 
 .bos-profile-stats dt {
@@ -5566,8 +5476,9 @@ body.bos-login {
 .bos-profile-stats dd {
     margin: 0.15rem 0 0;
     color: var(--bos-text);
-    font-size: 1.5rem;
-    font-weight: 700;
+    font-family: var(--bos-serif);
+    font-size: 1.7rem;
+    font-weight: 500;
     letter-spacing: -0.02em;
 }
 
@@ -5695,7 +5606,7 @@ body.bos-login {
 .bos-location-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
-    gap: 0.65rem;
+    column-gap: 2rem;
 }
 
 .bos-admin a.bos-location {
@@ -5703,28 +5614,16 @@ body.bos-login {
     align-items: center;
     gap: 0.75rem;
     min-width: 0;
-    padding: 0.8rem 0.9rem;
-    border: 1px solid var(--bos-line);
-    border-radius: 0.85rem;
-    background: var(--bos-surface-2);
+    padding: 0.7rem 0;
+    border-top: 1px solid var(--bos-line);
     color: var(--bos-text);
-    transition: border-color 0.15s ease, background-color 0.15s ease;
 }
 
 .bos-admin a.bos-location:hover {
-    border-color: var(--bos-line-strong);
-    background: var(--bos-surface);
     color: var(--bos-text);
 }
 
-.bos-location-pin {
-    display: grid;
-    place-items: center;
-    flex: none;
-    width: 2.25rem;
-    height: 2.25rem;
-    border-radius: 0.7rem;
-    background: var(--bos-accent-soft);
+.bos-admin a.bos-location:hover strong {
     color: var(--bos-accent-text);
 }
 
@@ -5772,7 +5671,7 @@ body.bos-login {
     margin: 0 0 1.25rem;
     padding: 0.8rem 1rem;
     border: 1px solid color-mix(in srgb, var(--bos-accent) 20%, transparent);
-    border-radius: 0.8rem;
+    border-radius: var(--bos-radius);
     background: var(--bos-accent-soft);
     color: var(--bos-text-2);
     font-size: 0.85rem;
@@ -5808,7 +5707,7 @@ body.bos-login {
     padding: 0.85rem 1rem;
     overflow: auto;
     border: 1px solid var(--bos-line);
-    border-radius: 0.7rem;
+    border-radius: var(--bos-radius-sm);
     background: var(--bos-surface-2);
     color: var(--bos-text);
     white-space: pre-wrap;
@@ -5834,7 +5733,7 @@ body.bos-login {
 }
 
 .bos-preview-image {
-    border-radius: 0.7rem;
+    border-radius: var(--bos-radius-sm);
 }
 
 /* Sign-in. */
@@ -5846,7 +5745,7 @@ body.bos-login,
 .bos-login-mobile-logo {
     height: 2.4rem;
     width: auto;
-    filter: var(--bos-logo-filter);
+    filter: var(--bos-logo-ink);
 }
 
 @media (max-width: 960px) {
@@ -5860,8 +5759,11 @@ body.bos-login,
 }
 
 .bos-admin .bos-login-card h1 {
-    font-weight: 750;
-    letter-spacing: -0.03em;
+    font-family: var(--bos-serif);
+    font-size: 2.6rem;
+    font-weight: 500;
+    line-height: 1.1;
+    letter-spacing: -0.015em;
 }
 
 .bos-login-card .bos-eyebrow {
@@ -5892,7 +5794,7 @@ body.bos-login,
     }
 
     .bos-page-head h1 {
-        font-size: 1.5rem;
+        font-size: 1.9rem;
     }
 
     .bos-slot {
@@ -5933,10 +5835,27 @@ body.bos-login,
     }
 }
 
-@media (max-width: 420px) {
+@media (max-width: 600px) {
+    .bos-todo-grid,
     .bos-stats,
-    .bos-dash .bos-stats {
-        grid-template-columns: minmax(0, 1fr);
+    .bos-dash .bos-stats,
+    .bos-kpis {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .bos-admin a.bos-todo,
+    .bos-stat,
+    .bos-kpi {
+        padding: 0.85rem 0.9rem 0.95rem;
+    }
+
+    .bos-todo-count,
+    .bos-stat-value {
+        font-size: 2rem;
+    }
+
+    .bos-kpi-value {
+        font-size: 1.6rem;
     }
 }
 
@@ -5958,40 +5877,46 @@ body.bos-login,
    bulk-action bar, sticky list headers, empty lists and error pages.
    ------------------------------------------------------------------------ */
 
-/* Yes / No in lists and readonly fields (replaces Django's round icons). */
+/* Yes / No in lists and readonly fields (replaces Django's round icons):
+   a tick and the word for yes, the word alone and quieter for no, so a column
+   of them reads at a glance without a row of coloured pills. */
 .bos-bool {
     display: inline-flex;
     align-items: center;
-    gap: 0.3rem;
-    padding: 0.12rem 0.5rem 0.12rem 0.4rem;
-    border-radius: 999px;
-    font-size: 0.72rem;
-    font-weight: 650;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    font-weight: 600;
     line-height: 1.4;
     white-space: nowrap;
 }
 
 .bos-bool::before {
     content: "";
-    width: 0.42rem;
-    height: 0.42rem;
-    border-radius: 50%;
-    background: currentColor;
+    width: 0.32rem;
+    height: 0.6rem;
+    margin: -0.15rem 0.05rem 0 0.1rem;
+    border-right: 2px solid currentColor;
+    border-bottom: 2px solid currentColor;
+    transform: rotate(40deg);
 }
 
 .bos-bool.is-yes {
-    background: var(--bos-good-bg);
     color: var(--bos-good-fg);
 }
 
 .bos-bool.is-no {
-    background: var(--bos-quiet-bg);
-    color: var(--bos-quiet-fg);
+    color: var(--bos-muted);
+    font-weight: 500;
 }
 
 .bos-bool.is-no::before {
-    background: transparent;
-    box-shadow: inset 0 0 0 1.5px currentColor;
+    width: 0.55rem;
+    height: 0;
+    margin: 0 0.05rem;
+    border-right: 0;
+    border-bottom: 1.5px solid currentColor;
+    transform: none;
+    opacity: 0.6;
 }
 
 .bos-bool.is-unknown {
@@ -6020,7 +5945,7 @@ body.bos-login,
 }
 
 :root[data-theme="dark"] .bos-tip {
-    background: #eceff3;
+    background: var(--bos-bone);
     color: var(--bos-ink);
 }
 
@@ -6064,7 +5989,7 @@ body.bos-login,
         max-width: calc(100vw - 2rem);
         padding: 0.55rem 0.6rem 0.55rem 1rem;
         border: 1px solid var(--bos-line);
-        border-radius: 0.95rem;
+        border-radius: var(--bos-radius);
         background: var(--bos-surface);
         box-shadow: var(--bos-shadow-lg);
         transform: translate(-50%, 1.5rem);
@@ -6206,7 +6131,7 @@ body.bos-login,
     height: 7rem;
     padding: 0;
     border: 1px solid var(--bos-line);
-    border-radius: 0.75rem;
+    border-radius: var(--bos-radius-sm);
     background: var(--bos-surface-2);
     color: var(--bos-muted);
     overflow: hidden;
@@ -6348,7 +6273,7 @@ body.bos-login,
     gap: 0.35rem;
     padding: 0.35rem;
     border: 1px solid var(--bos-line);
-    border-radius: 0.75rem;
+    border-radius: var(--bos-radius-sm);
     background: var(--bos-surface);
     color: var(--bos-text);
     text-align: left;
@@ -6424,11 +6349,9 @@ body.bos-login,
     gap: 1rem 1.5rem;
     padding: 1.4rem 1.6rem;
     border: 1px solid var(--bos-line);
-    border-radius: 1.25rem;
-    background:
-        radial-gradient(120% 140% at 100% 0%, var(--bos-accent-soft) 0%, transparent 55%),
-        var(--bos-surface);
-    box-shadow: var(--bos-shadow);
+    border-radius: var(--bos-radius);
+    background: var(--bos-surface);
+    box-shadow: none;
 }
 
 .bos-record-id {
@@ -6442,10 +6365,11 @@ body.bos-login,
     border: 0;
     background: none;
     color: var(--bos-text);
-    font-size: 1.6rem;
-    font-weight: 750;
-    line-height: 1.2;
-    letter-spacing: -0.02em;
+    font-family: var(--bos-serif);
+    font-size: 2rem;
+    font-weight: 500;
+    line-height: 1.15;
+    letter-spacing: -0.015em;
     text-transform: none;
     overflow-wrap: anywhere;
 }
@@ -6485,8 +6409,8 @@ body.bos-login,
     min-width: 9.5rem;
     padding: 0.85rem 1.1rem;
     border: 1px solid var(--bos-line);
-    border-radius: 0.9rem;
-    background: color-mix(in srgb, var(--bos-surface) 80%, transparent);
+    border-radius: var(--bos-radius-sm);
+    background: var(--bos-surface-2);
 }
 
 .bos-record-stat span,
@@ -6497,8 +6421,9 @@ body.bos-login,
 
 .bos-record-stat strong {
     color: var(--bos-text);
-    font-size: 1.6rem;
-    font-weight: 750;
+    font-family: var(--bos-serif);
+    font-size: 1.85rem;
+    font-weight: 500;
     letter-spacing: -0.02em;
     line-height: 1.25;
 }
@@ -6695,8 +6620,9 @@ body.bos-login,
 .bos-record-big {
     margin: 0;
     color: var(--bos-text);
-    font-size: 1.9rem;
-    font-weight: 750;
+    font-family: var(--bos-serif);
+    font-size: 2.1rem;
+    font-weight: 500;
     letter-spacing: -0.02em;
 }
 

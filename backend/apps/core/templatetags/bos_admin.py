@@ -1,6 +1,5 @@
 from django import template
 from django.templatetags.static import static
-from django.utils import timezone
 from django.utils.html import format_html
 
 register = template.Library()
@@ -62,16 +61,6 @@ def initials(user):
     if first or last:
         return ((first[:1] + last[:1]) if first and last else (first or last)[:2]).upper()
     return (getattr(user, "email", "") or "?")[:2].upper()
-
-
-@register.simple_tag
-def greeting():
-    hour = timezone.localtime().hour
-    if hour < 12:
-        return "Good morning"
-    if hour < 17:
-        return "Good afternoon"
-    return "Good evening"
 
 
 @register.filter

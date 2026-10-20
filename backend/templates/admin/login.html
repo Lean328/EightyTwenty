@@ -17,12 +17,11 @@
   <section class="bos-login-art" aria-hidden="true">
     <div class="bos-login-brand">
       <img src="{% static 'bos/img/logo-wordmark.webp' %}" alt="">
-      <span>BOS</span>
+      <span>back office</span>
     </div>
     <div class="bos-login-copy">
-      <p class="bos-login-eyebrow">Wholesome food · great coffee</p>
-      <h2>Run every café from one bright, simple workspace.</h2>
-      <p class="bos-login-tagline">Bookings, menus, availability and the website — Braddon to Gungahlin.</p>
+      <h2>Wholesome food, great coffee.</h2>
+      <p class="bos-login-tagline">Bookings, orders, menus and the website for every EightyTwenty café, Braddon to Gungahlin.</p>
     </div>
   </section>
 
@@ -37,8 +36,8 @@
 
     <div class="bos-login-card">
       <p class="bos-eyebrow">Team sign-in</p>
-      <h1>Welcome back</h1>
-      <p class="bos-login-lead">Sign in to look after today's bookings, menu and locations.</p>
+      <h1>Sign in</h1>
+      <p class="bos-login-lead">Use the email address your café gave you.</p>
 
       {% if user.is_authenticated %}
         <div class="bos-alert bos-alert-warn" role="alert">
@@ -85,7 +84,7 @@
         <input type="hidden" name="next" value="{{ next }}">
 
         <button type="submit" class="bos-btn bos-btn-primary bos-btn-block">
-          Sign in {% icon 'arrow-right' %}
+          Sign in
         </button>
       </form>
 

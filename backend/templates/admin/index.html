@@ -12,8 +12,8 @@
 
   <header class="bos-hero">
     <div class="bos-hero-text">
-      <p class="bos-eyebrow">{{ today|date:"l, j F Y" }} · Canberra</p>
-      <h1>{% greeting %}, {% firstof user.first_name "there" %}</h1>
+      <p class="bos-eyebrow">{% if selected_location %}{{ selected_location.name }}{% else %}EightyTwenty{% endif %} · Canberra</p>
+      <h1>{{ today|date:"l j F" }}</h1>
       <p class="bos-lead">
         {% if waiting_sentence %}
           {{ waiting_sentence }}{% if selected_location %} at {{ selected_location.name }}{% endif %}.
@@ -42,50 +42,40 @@
     </div>
     <div class="bos-todo-grid">
       <a class="bos-todo{% if waiting_orders %} is-urgent{% else %} is-clear{% endif %}" href="{{ waiting_orders_url }}">
-        <span class="bos-todo-icon">{% if waiting_orders %}{% icon 'bowl' %}{% else %}{% icon 'check' %}{% endif %}</span>
+        <span class="bos-todo-count">{{ waiting_orders }}</span>
         <span class="bos-todo-body">
           <span class="bos-todo-label">App orders</span>
           <span class="bos-todo-note">{% if waiting_orders %}Waiting to be accepted{% else %}No order waiting{% endif %}</span>
         </span>
-        <span class="bos-todo-count">{{ waiting_orders }}</span>
-        {% icon 'chevron-right' 'bos-todo-go' %}
       </a>
       <a class="bos-todo{% if awaiting_count %} is-urgent{% else %} is-clear{% endif %}" href="{{ pending_bookings_url }}">
-        <span class="bos-todo-icon">{% if awaiting_count %}{% icon 'calendar' %}{% else %}{% icon 'check' %}{% endif %}</span>
+        <span class="bos-todo-count">{{ awaiting_count }}</span>
         <span class="bos-todo-body">
           <span class="bos-todo-label">Booking requests</span>
           <span class="bos-todo-note">{% if awaiting_count %}Waiting to be confirmed or declined{% else %}Nothing waiting{% endif %}</span>
         </span>
-        <span class="bos-todo-count">{{ awaiting_count }}</span>
-        {% icon 'chevron-right' 'bos-todo-go' %}
       </a>
       <a class="bos-todo{% if new_enquiry_count %} is-urgent{% else %} is-clear{% endif %}" href="{{ new_enquiries_url }}">
-        <span class="bos-todo-icon">{% if new_enquiry_count %}{% icon 'inbox' %}{% else %}{% icon 'check' %}{% endif %}</span>
+        <span class="bos-todo-count">{{ new_enquiry_count }}</span>
         <span class="bos-todo-body">
           <span class="bos-todo-label">New enquiries</span>
           <span class="bos-todo-note">{% if new_enquiry_count %}Catering, wholesale & contact{% else %}Inbox is clear{% endif %}</span>
         </span>
-        <span class="bos-todo-count">{{ new_enquiry_count }}</span>
-        {% icon 'chevron-right' 'bos-todo-go' %}
       </a>
       <a class="bos-todo{% if not unavailable_count %} is-clear{% endif %}" href="{{ unavailable_url }}">
-        <span class="bos-todo-icon">{% if unavailable_count %}{% icon 'utensils' %}{% else %}{% icon 'check' %}{% endif %}</span>
+        <span class="bos-todo-count">{{ unavailable_count }}</span>
         <span class="bos-todo-body">
           <span class="bos-todo-label">Unavailable items</span>
           <span class="bos-todo-note">{% if unavailable_count %}Published but marked unavailable{% else %}Every published item is on{% endif %}</span>
         </span>
-        <span class="bos-todo-count">{{ unavailable_count }}</span>
-        {% icon 'chevron-right' 'bos-todo-go' %}
       </a>
       {% if bos_can.chain %}
       <a class="bos-todo{% if failed_emails %} is-urgent{% else %} is-clear{% endif %}" href="{% url 'admin:notifications_emailmessage_changelist' %}?status__exact=failed">
-        <span class="bos-todo-icon">{% if failed_emails %}{% icon 'mail' %}{% else %}{% icon 'check' %}{% endif %}</span>
+        <span class="bos-todo-count">{{ failed_emails }}</span>
         <span class="bos-todo-body">
           <span class="bos-todo-label">Failed emails</span>
           <span class="bos-todo-note">{% if failed_emails %}Guests may not have been notified{% else %}All emails delivered{% endif %}</span>
         </span>
-        <span class="bos-todo-count">{{ failed_emails }}</span>
-        {% icon 'chevron-right' 'bos-todo-go' %}
       </a>
       {% endif %}
     </div>
@@ -93,24 +83,24 @@
 
   <section class="bos-stats" aria-label="Key figures">
     <a class="bos-stat" href="{{ today_bookings_url }}">
-      <p class="bos-stat-label">{% icon 'calendar' %} Today's bookings</p>
+      <p class="bos-stat-label">Today's bookings</p>
       <p class="bos-stat-value">{{ totals.today_bookings }}</p>
       <p class="bos-stat-note">{{ totals.today_covers|default:0 }} guest{{ totals.today_covers|default:0|pluralize }} expected</p>
     </a>
     <a class="bos-stat" href="{{ booking_list_url }}">
-      <p class="bos-stat-label">{% icon 'chart' %} Bookings · last {{ period }} days</p>
+      <p class="bos-stat-label">Bookings · last {{ period }} days</p>
       <p class="bos-stat-value">{{ totals.period_bookings }}
         {% if trend_delta %}<span class="bos-delta bos-delta-{{ trend_delta.direction }}" title="Compared with the previous {{ period }} days">{% if trend_delta.direction == "up" %}{% icon 'trend-up' %}{% elif trend_delta.direction == "down" %}{% icon 'trend-down' %}{% endif %}{{ trend_delta.pct }}%</span>{% endif %}
       </p>
       <p class="bos-stat-note">{{ comparison }}</p>
     </a>
     <a class="bos-stat" href="{{ enquiry_list_url }}">
-      <p class="bos-stat-label">{% icon 'message' %} Enquiries · last {{ period }} days</p>
+      <p class="bos-stat-label">Enquiries · last {{ period }} days</p>
       <p class="bos-stat-value">{{ total_enquiries }}</p>
       <p class="bos-stat-note">Catering, wholesale & general contact</p>
     </a>
     <a class="bos-stat" href="{% url 'admin:menu_menuitem_changelist' %}?is_published__exact=1">
-      <p class="bos-stat-label">{% icon 'utensils' %} Menu items live</p>
+      <p class="bos-stat-label">Menu items live</p>
       <p class="bos-stat-value">{{ menu_count }}</p>
       <p class="bos-stat-note">{{ published_location_count }} published location{{ published_location_count|pluralize }}</p>
     </a>
@@ -251,7 +241,6 @@
       <div class="bos-location-grid">
         {% for branch in branches %}
           <a class="bos-location" href="{{ branch.url }}">
-            <span class="bos-location-pin">{% icon 'map-pin' %}</span>
             <span class="bos-location-body">
               <strong>{{ branch.name }}</strong>
               <small>{{ branch.bookings }} booking{{ branch.bookings|pluralize }} today · {{ branch.unavailable }} unavailable</small>

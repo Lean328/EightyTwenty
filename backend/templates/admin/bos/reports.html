@@ -44,25 +44,21 @@
 
   <section class="bos-kpis" aria-label="Sales figures">
     <article class="bos-kpi">
-      <span class="bos-kpi-icon bos-tint-green">{% icon 'wallet' %}</span>
       <p class="bos-kpi-label">Sales</p>
       <p class="bos-kpi-value">{{ m.total|aud }}{% include "admin/includes/bos_delta.html" with value=m.total_delta %}</p>
       <p class="bos-kpi-note">App and till orders, GST incl.</p>
     </article>
     <article class="bos-kpi">
-      <span class="bos-kpi-icon bos-tint-orange">{% icon 'bowl' %}</span>
       <p class="bos-kpi-label">Orders</p>
       <p class="bos-kpi-value">{{ m.orders }}{% include "admin/includes/bos_delta.html" with value=m.orders_delta %}</p>
       <p class="bos-kpi-note">{% if m.avg %}{{ m.avg|aud }} per order{% else %}Accepted orders only{% endif %}</p>
     </article>
     <article class="bos-kpi">
-      <span class="bos-kpi-icon bos-tint-berry">{% icon 'history' %}</span>
       <p class="bos-kpi-label">Refunded</p>
       <p class="bos-kpi-value">{{ m.returned|aud }}</p>
       <p class="bos-kpi-note">Refunds, voids and cancellations at the tills</p>
     </article>
     <article class="bos-kpi">
-      <span class="bos-kpi-icon bos-tint-violet">{% icon 'list' %}</span>
       <p class="bos-kpi-label">Cash variance</p>
       <p class="bos-kpi-value">{{ m.variance|aud }}</p>
       <p class="bos-kpi-note">{{ m.shifts }} till shift{{ m.shifts|pluralize }} closed · counted − expected</p>
@@ -113,31 +109,26 @@
 
   <section class="bos-kpis" aria-label="Booking figures">
     <article class="bos-kpi">
-      <span class="bos-kpi-icon bos-tint-green">{% icon 'calendar' %}</span>
       <p class="bos-kpi-label">Bookings</p>
       <p class="bos-kpi-value">{{ b.total }}{% include "admin/includes/bos_delta.html" with value=b.total_delta %}</p>
       <p class="bos-kpi-note">{{ b.previous_total }} in the previous period</p>
     </article>
     <article class="bos-kpi">
-      <span class="bos-kpi-icon bos-tint-orange">{% icon 'party' %}</span>
       <p class="bos-kpi-label">Guests booked</p>
       <p class="bos-kpi-value">{{ b.guests }}{% include "admin/includes/bos_delta.html" with value=b.guests_delta %}</p>
       <p class="bos-kpi-note">{% if b.avg_party %}{{ b.avg_party }} guests per booking{% else %}Excludes declined & cancelled{% endif %}</p>
     </article>
     <article class="bos-kpi">
-      <span class="bos-kpi-icon bos-tint-violet">{% icon 'hourglass' %}</span>
       <p class="bos-kpi-label">Booked ahead (median)</p>
       <p class="bos-kpi-value">{% if b.median_lead is not None %}{{ b.median_lead|floatformat:"-1" }}<small> day{{ b.median_lead|pluralize }}</small>{% else %}—{% endif %}</p>
       <p class="bos-kpi-note">From request to reservation date</p>
     </article>
     <article class="bos-kpi">
-      <span class="bos-kpi-icon bos-tint-berry">{% icon 'user-check' %}</span>
       <p class="bos-kpi-label">No-show rate</p>
       <p class="bos-kpi-value">{% if b.no_show_rate is not None %}{{ b.no_show_rate }}<small>%</small>{% else %}—{% endif %}</p>
       <p class="bos-kpi-note">{% if b.no_show_rate is not None %}Of bookings marked seated or no-show{% else %}Mark guests seated / no-show to track{% endif %}</p>
     </article>
     <article class="bos-kpi">
-      <span class="bos-kpi-icon bos-tint-sky">{% icon 'inbox' %}</span>
       <p class="bos-kpi-label">Enquiries</p>
       <p class="bos-kpi-value">{{ e.total }}{% include "admin/includes/bos_delta.html" with value=e.total_delta %}</p>
       <p class="bos-kpi-note">{{ e.open }} still open{% if e.win_rate is not None %} · {{ e.win_rate }}% won{% endif %}</p>

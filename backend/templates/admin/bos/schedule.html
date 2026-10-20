@@ -44,7 +44,6 @@
     {% for card in cards %}
       <section class="bos-card bos-card-flush bos-service{% if not card.count %} is-quiet{% endif %}">
         <header class="bos-service-head">
-          <span class="bos-location-pin">{% icon 'map-pin' %}</span>
           <div>
             <h2>{{ card.location.name }}</h2>
             <p class="bos-card-sub">{{ card.count }} booking{{ card.count|pluralize }} · {{ card.guests }} guest{{ card.guests|pluralize }}{% if card.rule %} · {{ card.rule.max_covers_per_slot }} per {{ card.rule.slot_minutes }}-min slot{% endif %}</p>
