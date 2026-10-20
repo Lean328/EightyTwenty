@@ -1,7 +1,9 @@
 from django.contrib import admin
 from django.utils import timezone
+from django.utils.dateformat import format as date_format
 from django.utils.html import format_html
 
+from apps.core import admin_summary as ui
 from apps.core.admin_base import RECORD_FIELDS, OperationsAdmin
 from apps.core.admin_forms import AUDField
 from apps.core.bos_access import ALL, OWNERS
@@ -11,6 +13,25 @@ from apps.media.admin import ImageUploadForm, attach_upload, preview
 from .models import CateringPackage, Enquiry
 
 OPEN_STATUSES = {"new", "in_progress", "quoted"}
+# Extra answers the app and the tills send with a catering enquiry (Enquiry.payload).
+PAYLOAD_LABELS = {
+    "occasion": "Occasion",
+    "time": "Time",
+    "eventLocation": "Event location",
+    "fulfil": "Pickup or delivery",
+    "address": "Address",
+    "contact": "On-the-day contact",
+    "dietary": "Dietary needs",
+    "quote": "Quoted (AUD)",
+}
+SOURCES = {"app": "the app", "pos": "a till", "web": "the website"}
+
+
+def waited(obj):
+    """How long an enquiry has waited, and its tone: anything over two days is flagged."""
+    age = timezone.now() - obj.created_at
+    text = f"{age.days}d" if age.days else f"{age.seconds // 3600}h"
+    return text, "bad" if age.days >= 2 else "warn" if age.days >= 1 else "quiet"
 
 
 class CateringForm(ImageUploadForm):
@@ -70,21 +91,78 @@ class EnquiryAdmin(OperationsAdmin):
     search_fields = ("reference", "name", "email", "company")
     ordering = ("-created_at",)
     autocomplete_fields = ("assigned_to",)
-    description = (
-        "Assign an owner, record follow-up notes and keep the enquiry's progress up to date."
-    )
-    fieldsets = [
-        ("Follow-up", {"fields": ("status", "assigned_to", "internal_notes")}),
-        (
-            "Customer enquiry",
-            {"fields": ("reference", "kind", "name", "email", "phone", "company", "message")},
-        ),
-        (
-            "Event details",
-            {"fields": ("location", "event_date", "headcount", "package", "payload")},
-        ),
-        RECORD_FIELDS,
-    ]
+    change_form_template = "admin/bos_enquiry_form.html"
+    # What the customer sent shows as a summary (summary() below); only follow-up is a form.
+    fieldsets = [("Follow-up", {"fields": ("status", "assigned_to", "internal_notes")})]
+
+    def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
+        obj = self.get_object(request, object_id) if object_id else None
+        context = {"summary": self.summary(request, obj) if obj else None}
+        return super().changeform_view(
+            request, object_id, form_url, {**context, **(extra_context or {})}
+        )
+
+    def summary(self, request, obj):
+        payload = obj.payload or {}
+        source = SOURCES.get(payload.get("source"), "the website")
+        extra = []
+        for key, value in payload.items():
+            if key == "source" or value in ("", None, [], 0):
+                continue
+            if isinstance(value, list):
+                value = ", ".join(str(item) for item in value)
+            label = PAYLOAD_LABELS.get(key, key.replace("_", " ").capitalize())
+            extra.append((label, str(value).capitalize() if key == "fulfil" else value))
+        details = ui.facts(
+            ("Café", obj.location.name if obj.location else ""),
+            ("Event date", date_format(obj.event_date, "D j M Y") if obj.event_date else ""),
+            ("Guests", obj.headcount),
+            ("Package", obj.package.name if obj.package else ""),
+            *extra,
+        )
+        return {
+            "hero": {
+                "eyebrow": f"{obj.get_kind_display()} enquiry · {obj.reference}",
+                "title": obj.name,
+                "chips": [
+                    status_badge(obj.status),
+                    ui.tag(obj.get_kind_display()),
+                    *(
+                        [ui.tag("Waiting " + waited(obj)[0], waited(obj)[1])]
+                        if obj.status in OPEN_STATUSES
+                        else []
+                    ),
+                ],
+                "meta": [
+                    *([{"icon": "store", "text": obj.company}] if obj.company else []),
+                    {"icon": "calendar", "text": f"Received {ui.moment(obj.created_at)}"},
+                ],
+                "stat": {
+                    "label": "Event",
+                    "value": date_format(obj.event_date, "j M"),
+                    "sub": f"{obj.headcount} guests" if obj.headcount else "",
+                }
+                if obj.event_date
+                else None,
+            },
+            "message": obj.message,
+            "contact": ui.contact(
+                obj.phone, obj.email, f"Re: your EightyTwenty enquiry {obj.reference}"
+            ),
+            "details_title": "Event" if obj.kind == "catering" else "Details",
+            "details": details or ui.facts(("Type", obj.get_kind_display())),
+            "people": ui.facts(
+                ("Name", obj.name),
+                ("Company", obj.company),
+                ("Email", obj.email, f"mailto:{obj.email}" if obj.email else ""),
+                ("Phone", obj.phone, ui.tel(obj.phone)),
+                ("Assigned to", ui.person(obj.assigned_to)),
+            ),
+            "timeline": ui.timeline(
+                [ui.step(obj.created_at, f"Sent from {source}", obj.name, "warn")],
+                ui.audit_steps(obj),
+            ),
+        }
 
     def has_add_permission(self, request):
         return False
@@ -116,7 +194,4 @@ class EnquiryAdmin(OperationsAdmin):
         """How long an open enquiry has waited; anything over two days is flagged."""
         if obj.status not in OPEN_STATUSES:
             return "—"
-        age = timezone.now() - obj.created_at
-        text = f"{age.days}d" if age.days else f"{age.seconds // 3600}h"
-        tone = "bad" if age.days >= 2 else "warn" if age.days >= 1 else "quiet"
-        return format_html('<span class="bos-tag bos-tone-{}">{}</span>', tone, text)
+        return ui.tag(*waited(obj))

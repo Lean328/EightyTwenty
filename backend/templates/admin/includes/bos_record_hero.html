@@ -1,0 +1,22 @@
+{% load bos_admin %}
+<section class="bos-record-hero">
+  <div class="bos-record-id">
+    <p class="bos-eyebrow">{{ hero.eyebrow }}</p>
+    <h2>{{ hero.title }}</h2>
+    {% if hero.chips %}<div class="bos-record-chips">{% for item in hero.chips %}{{ item }}{% endfor %}</div>{% endif %}
+    {% if hero.meta %}
+      <p class="bos-record-meta">
+        {% for item in hero.meta %}
+          {% if item.href %}<a href="{{ item.href }}">{% icon item.icon %}{{ item.text }}</a>{% else %}<span>{% icon item.icon %}{{ item.text }}</span>{% endif %}
+        {% endfor %}
+      </p>
+    {% endif %}
+  </div>
+  {% if hero.stat %}
+    <div class="bos-record-stat">
+      <span>{{ hero.stat.label }}</span>
+      <strong>{{ hero.stat.value }}</strong>
+      {% if hero.stat.sub %}<small>{{ hero.stat.sub }}</small>{% endif %}
+    </div>
+  {% endif %}
+</section>

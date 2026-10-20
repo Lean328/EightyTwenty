@@ -2,13 +2,20 @@ from django import forms
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.contrib.auth.forms import AdminUserCreationForm, UserChangeForm
+from django.db.models import Count, Sum
 from django.template.loader import render_to_string
+from django.utils.dateformat import format as date_format
 
+from apps.bookings.models import Booking
+from apps.core import admin_summary as ui
 from apps.core.admin_base import RECORD_FIELDS, OperationsAdmin, OperationsInline
 from apps.core.admin_widgets import BOS_FORMFIELD_OVERRIDES
 from apps.core.bos_access import CHAIN, MANAGER, OWNERS, bos_location_ids, bos_locations, bos_role
 from apps.core.services import audit, snapshot
+from apps.enquiries.models import Enquiry
 from apps.locations.models import Location
+from apps.loyalty.models import STAMPS_PER_REWARD, GiftCard, LoyaltyCard
+from apps.orders.models import Order
 from apps.pos import pins
 
 from .models import CustomerProfile, StaffAssignment, User
@@ -129,9 +136,61 @@ class AssignmentInline(OperationsInline):
         return qs if ids is None else qs.filter(location__in=ids)
 
 
+def customer_summary(user):
+    """What a customer has with us: coffee card, gift card, orders, bookings and enquiries."""
+    card = LoyaltyCard.objects.filter(user=user).first()
+    gift = GiftCard.objects.filter(user=user).first()
+    profile = CustomerProfile.objects.filter(user=user).select_related("preferred_location").first()
+    orders = Order.objects.filter(customer=user, channel=Order.Channel.APP)
+    done = orders.filter(status=Order.Status.COMPLETED).aggregate(
+        spent=Sum("total_cents"), count=Count("id")
+    )
+    name = user.get_full_name() or user.email
+    return {
+        "hero": {
+            "eyebrow": "Customer",
+            "title": name,
+            "chips": [
+                ui.chip("Can sign in", "good") if user.is_active else ui.chip("Locked", "bad"),
+                ui.tag("Email verified" if user.email_verified else "Email not verified"),
+                *([ui.tag("Gets offers", "info")] if user.marketing_opt_in else []),
+            ],
+            "meta": [
+                *ui.contact(user.phone, user.email),
+                {"icon": "calendar", "text": f"Joined {date_format(user.date_joined, 'j M Y')}"},
+            ],
+            "stat": {
+                "label": "Spent in the app",
+                "value": ui.aud(done["spent"]),
+                "sub": f"{done['count']} completed order{'s' if done['count'] != 1 else ''}",
+            },
+        },
+        "email": user.email,
+        "card": card,
+        "stamps": [i < (card.stamps if card else 0) for i in range(STAMPS_PER_REWARD)],
+        "gift": gift,
+        "gift_balance": ui.aud(gift.balance_cents if gift else 0),
+        "profile": ui.facts(
+            ("Favourite café", getattr(profile and profile.preferred_location, "name", "")),
+            (
+                "Birthday",
+                date_format(profile.birthday, "j F") if profile and profile.birthday else "",
+            ),
+            ("Last sign-in", ui.moment(user.last_login)),
+            ("Notes", profile.notes if profile else ""),
+        ),
+        "order_count": orders.count(),
+        "orders": orders.select_related("location").order_by("-created_at")[:5],
+        "bookings": Booking.objects.filter(customer=user)
+        .select_related("location")
+        .order_by("-date", "-time")[:5],
+        "enquiries": Enquiry.objects.filter(customer=user).order_by("-created_at")[:3],
+    }
+
+
 @admin.register(User)
 class UserAdmin(DjangoUserAdmin):
-    change_form_template = "admin/bos_change_form.html"
+    change_form_template = "admin/bos_user_form.html"
     formfield_overrides = BOS_FORMFIELD_OVERRIDES
     list_per_page = 25
     actions = None
@@ -246,6 +305,13 @@ class UserAdmin(DjangoUserAdmin):
                     )
 
         return ScopedForm
+
+    def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
+        obj = self.get_object(request, object_id) if object_id else None
+        context = {"customer": customer_summary(obj) if obj and obj.role == "customer" else None}
+        return super().changeform_view(
+            request, object_id, form_url, {**context, **(extra_context or {})}
+        )
 
     def get_inline_instances(self, request, obj=None):
         # On the add page the cafés are picked in the form itself.

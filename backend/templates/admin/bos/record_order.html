@@ -1,0 +1,72 @@
+{% load bos_admin %}
+<div class="bos-record">
+  {% include "admin/includes/bos_record_hero.html" with hero=summary.hero %}
+
+  {% if summary.review_note %}
+    <div class="bos-record-alert">{% icon 'alert' %}<div><strong>Check prices</strong><p>{{ summary.review_note|linebreaksbr }}</p></div></div>
+  {% endif %}
+
+  <div class="bos-report-grid">
+    <section class="bos-card bos-span-2">
+      <header class="bos-card-head"><div><h2>Items</h2><p class="bos-card-sub">{{ summary.item_count }} item{{ summary.item_count|pluralize }}</p></div></header>
+      <ul class="bos-receipt">
+        {% for line in summary.lines %}
+          <li{% if line.voided %} class="is-voided"{% endif %}>
+            <span class="bos-receipt-qty">{{ line.qty }}×</span>
+            <div class="bos-receipt-name">
+              <strong>{{ line.name }}</strong>
+              {% if line.options %}<span>{{ line.options }}</span>{% endif %}
+              {% if line.note %}<em>“{{ line.note }}”</em>{% endif %}
+              {% if line.voided %}<span class="bos-tag bos-tone-bad">Voided</span>{% endif %}
+            </div>
+            <span class="bos-receipt-price">{{ line.total }}</span>
+          </li>
+        {% empty %}
+          <li><div class="bos-receipt-name"><span>No items on this order.</span></div></li>
+        {% endfor %}
+      </ul>
+      <dl class="bos-receipt-totals">
+        {% for row in summary.totals %}
+          <div{% if row.strong %} class="is-total"{% endif %}><dt>{{ row.label }}</dt><dd>{{ row.value }}</dd></div>
+        {% endfor %}
+      </dl>
+      {% if summary.note %}<p class="bos-card-foot">{% icon 'message' %} {{ summary.note }}</p>{% endif %}
+    </section>
+
+    <section class="bos-card">
+      <header class="bos-card-head"><div><h2>{{ summary.people_title }}</h2></div></header>
+      {% if summary.contact %}
+        <ul class="bos-record-links">
+          {% for item in summary.contact %}<li><a href="{{ item.href }}">{% icon item.icon %}{{ item.text }}</a></li>{% endfor %}
+        </ul>
+      {% endif %}
+      {% include "admin/includes/bos_record_facts.html" with rows=summary.people %}
+    </section>
+
+    <section class="bos-card">
+      <header class="bos-card-head"><div><h2>Payment</h2></div></header>
+      {% if summary.payments %}
+        <ul class="bos-record-list">
+          {% for pay in summary.payments %}
+            <li><div><strong>{{ pay.title }}</strong><span class="bos-feed-meta">{{ pay.meta }}</span></div><span>{{ pay.amount }}</span></li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+      {% include "admin/includes/bos_record_facts.html" with rows=summary.payment %}
+      {% if not summary.payments and not summary.payment %}<div class="bos-empty bos-empty-sm"><p>No payment recorded yet.</p></div>{% endif %}
+      {% if summary.adjustments %}
+        <h3 class="bos-record-subhead">Refunds and voids</h3>
+        <ul class="bos-record-list">
+          {% for adj in summary.adjustments %}
+            <li><div><strong>{{ adj.title }}</strong><span class="bos-feed-meta">{{ adj.meta }}</span></div><span class="bos-text-bad">−{{ adj.amount }}</span></li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </section>
+
+    <section class="bos-card bos-span-2">
+      <header class="bos-card-head"><div><h2>Timeline</h2><p class="bos-card-sub">Every step of this order, oldest first</p></div></header>
+      {% include "admin/includes/bos_timeline.html" with steps=summary.timeline %}
+    </section>
+  </div>
+</div>

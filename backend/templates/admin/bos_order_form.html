@@ -1,5 +1,8 @@
 {% extends "admin/bos_change_form.html" %}
 {% load bos_admin %}
+{% block form_top %}{% endblock %}
+{% block field_sets %}{% include "admin/bos/record_order.html" %}{% endblock %}
+{% block inline_field_sets %}{% endblock %}
 {% block submit_buttons_bottom %}
 <div class="submit-row bos-booking-actions">
   <p class="bos-actions-note">{% if order_actions %}{% icon 'smartphone' %} Choose the next step. The customer sees it in the app straight away.{% else %}{% icon 'check-circle' %} This order has reached its final status.{% endif %}</p>

@@ -1,0 +1,6 @@
+{% load bos_admin %}
+<dl class="bos-facts">
+  {% for row in rows %}
+    <div><dt>{{ row.label }}</dt><dd>{% if row.href %}<a href="{{ row.href }}">{{ row.value }}</a>{% else %}{{ row.value }}{% endif %}</dd></div>
+  {% endfor %}
+</dl>

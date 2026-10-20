@@ -6,12 +6,13 @@ from django.urls import path, reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
+from apps.core import admin_summary as ui
 from apps.core.admin_base import ReadOnlyAdmin, RoleAccessMixin
-from apps.core.bos_access import ALL
+from apps.core.bos_access import ALL, CHAIN, bos_role
 from apps.core.exceptions import DomainError
 from apps.core.templatetags.bos_admin import status_badge
 
-from .models import Order, OrderAdjustment, OrderLine, OrderPayment
+from .models import Order
 from .services import TRANSITIONS, transition_order
 
 ACTION_LABELS = {
@@ -21,63 +22,6 @@ ACTION_LABELS = {
     "completed": "Complete",
     "declined": "Decline order",
 }
-
-
-def aud(cents):
-    return f"${cents / 100:,.2f}"
-
-
-class ReadOnlyInline(admin.TabularInline):
-    extra = 0
-    can_delete = False
-
-    def get_readonly_fields(self, request, obj=None):
-        return self.fields
-
-    def has_add_permission(self, request, obj=None):
-        return False
-
-    def has_change_permission(self, request, obj=None):
-        return False
-
-    def has_view_permission(self, request, obj=None):
-        return True
-
-
-class OrderLineInline(ReadOnlyInline):
-    model = OrderLine
-    fields = ("qty", "name", "modifiers_label", "note", "unit_price")
-
-    @admin.display(description="Unit price")
-    def unit_price(self, obj):
-        return aud(obj.unit_price_cents)
-
-
-class PaymentInline(ReadOnlyInline):
-    model = OrderPayment
-    fields = ("method", "paid", "tip", "surcharge", "staff_name", "taken_at", "reference")
-    verbose_name_plural = "Payments taken at the till"
-
-    @admin.display(description="Amount")
-    def paid(self, obj):
-        return aud(obj.amount_cents)
-
-    @admin.display(description="Tip")
-    def tip(self, obj):
-        return aud(obj.tip_cents)
-
-    @admin.display(description="Surcharge")
-    def surcharge(self, obj):
-        return aud(obj.surcharge_cents)
-
-
-class AdjustmentInline(ReadOnlyInline):
-    model = OrderAdjustment
-    fields = ("mode", "returned", "reason", "staff_name", "approver_name", "made_at")
-
-    @admin.display(description="Returned")
-    def returned(self, obj):
-        return aud(obj.amount_cents)
 
 
 @admin.register(Order)
@@ -100,61 +44,12 @@ class OrderAdmin(ReadOnlyAdmin):
     search_fields = ("number", "contact_name", "contact_phone", "customer__email", "staff_name")
     date_hierarchy = "created_at"
     ordering = ("-created_at",)
-    inlines = (OrderLineInline, PaymentInline, AdjustmentInline)
     change_form_template = "admin/bos_order_form.html"
-    description = (
-        "Orders from the mobile app and the tills. Move app orders along as you work; the "
-        "customer sees every step in the app. Till orders show where their prices differed "
-        "from the menu."
-    )
-    fieldsets = [
-        (
-            "Order",
-            {
-                "fields": (
-                    "number",
-                    "channel",
-                    "order_status",
-                    "location",
-                    "method",
-                    "when",
-                    "delivery_address",
-                    "table_number",
-                    "note",
-                )
-            },
-        ),
-        ("Check prices", {"fields": ("review_note",)}),
-        ("Till", {"fields": ("terminal_id", "staff_name", "placed_at")}),
-        ("Customer", {"fields": ("contact_name", "contact_phone", "customer")}),
-        (
-            "Payment",
-            {
-                "fields": (
-                    "payment_label",
-                    "money",
-                    "stamps_earned",
-                    "reward_redeemed",
-                    "payment_reference",
-                )
-            },
-        ),
-        ("Handling history", {"fields": ("handled_by", "handled_at", "created_at", "updated_at")}),
-    ]
+    # The page shows a summary (summary() below), not the fields one by one.
+    fieldsets = [(None, {"fields": ("number",)})]
 
     def has_change_permission(self, request, obj=None):
         return RoleAccessMixin.has_change_permission(self, request, obj)
-
-    def get_readonly_fields(self, request, obj=None):
-        return (*super().get_readonly_fields(request, obj), "order_status", "when", "money")
-
-    def get_fieldsets(self, request, obj=None):
-        sets = super().get_fieldsets(request, obj)
-        if obj and obj.channel == "app":
-            return [row for row in sets if row[0] not in ("Check prices", "Till")]
-        if obj and not obj.review_note:
-            return [row for row in sets if row[0] != "Check prices"]
-        return sets
 
     @admin.display(description="Status", ordering="status")
     def order_status(self, obj):
@@ -166,21 +61,147 @@ class OrderAdmin(ReadOnlyAdmin):
 
     @admin.display(description="Total", ordering="total_cents")
     def total(self, obj):
-        return aud(obj.total_cents)
+        return ui.aud(obj.total_cents)
 
-    @admin.display(description="Amounts")
-    def money(self, obj):
-        parts = [f"Subtotal {aud(obj.subtotal_cents)}"]
+    def summary(self, request, obj):
+        lines = list(obj.lines.order_by("position"))
+        payments = list(obj.payments.order_by("created_at"))
+        adjustments = list(obj.adjustments.order_by("created_at"))
+        till = obj.channel == Order.Channel.POS
+        count = sum(line.qty for line in lines)
+        where = f"Table {obj.table_number}" if obj.table_number else obj.get_method_display()
+        meta = [
+            {"icon": "map-pin", "text": obj.location.name},
+            {"icon": "clock", "text": f"{where} · {self.when(obj)}"},
+            {"icon": "calendar", "text": ui.moment(obj.placed_at or obj.created_at)},
+        ]
+        totals = [{"label": "Subtotal", "value": ui.aud(obj.subtotal_cents)}]
+        for row in obj.discounts or []:
+            totals.append(
+                {"label": row.get("label") or "Discount", "value": f"−${row.get('amount', 0):,.2f}"}
+            )
+        if obj.discount_cents and not obj.discounts:
+            totals.append({"label": "Discounts", "value": f"−{ui.aud(obj.discount_cents)}"})
         for label, cents, sign in [
-            ("Discounts", obj.discount_cents, "−"),
-            ("Delivery", obj.delivery_cents, "+"),
+            ("Delivery", obj.delivery_cents, ""),
             ("Free coffee", obj.reward_cents, "−"),
-            ("Card surcharge", obj.surcharge_cents, "+"),
+            ("Card surcharge", obj.surcharge_cents, ""),
             ("Gift card", obj.gift_card_cents, "−"),
         ]:
             if cents:
-                parts.append(f"{label} {sign}{aud(cents)}")
-        return " · ".join(parts) + f" · Total {aud(obj.total_cents)}"
+                totals.append({"label": label, "value": f"{sign}{ui.aud(cents)}"})
+        totals.append({"label": "Total", "value": ui.aud(obj.total_cents), "strong": True})
+
+        customer = obj.customer
+        name = obj.contact_name or ui.person(customer)
+        account = (
+            reverse("admin:accounts_user_change", args=[customer.pk])
+            if customer and bos_role(request.user) == CHAIN
+            else ""
+        )
+        people = ui.facts(
+            ("Name", name, account),
+            ("Deliver to", obj.delivery_address),
+            ("Served by", obj.staff_name),
+            ("Till", obj.terminal_id),
+        )
+        steps = [
+            ui.step(
+                obj.placed_at or obj.created_at,
+                "Rung up at the till" if till else "Placed in the app",
+                obj.staff_name if till else name,
+                "info",
+            )
+        ]
+        steps += [ui.step(ui.parse_at(row.get("at")), row.get("what", "")) for row in obj.history]
+        steps += [
+            ui.step(p.created_at, f"Paid {ui.aud(p.amount_cents)} by {p.get_method_display().lower()}",
+                    p.staff_name, "good")
+            for p in payments
+        ]  # fmt: skip
+        steps += [
+            ui.step(a.created_at, f"{a.get_mode_display()} {ui.aud(a.amount_cents)}", a.staff_name,
+                    "bad")
+            for a in adjustments
+        ]  # fmt: skip
+        return {
+            "hero": {
+                "eyebrow": f"{'Till' if till else 'App'} order",
+                "title": obj.number,
+                "chips": [status_badge(obj.status), ui.tag(obj.get_method_display())],
+                "meta": meta,
+                "stat": {
+                    "label": "Total",
+                    "value": ui.aud(obj.total_cents),
+                    "sub": f"{count} item{'s' if count != 1 else ''}",
+                },
+            },
+            "review_note": obj.review_note,
+            "item_count": count,
+            "lines": [
+                {
+                    "qty": line.qty,
+                    "name": line.name,
+                    "options": line.modifiers_label,
+                    "note": line.note,
+                    "total": ui.aud(line.qty * line.unit_price_cents)
+                    if line.qty
+                    else ui.aud(line.unit_price_cents),
+                    "voided": not line.qty,
+                }
+                for line in lines
+            ],
+            "totals": totals,
+            "note": obj.note,
+            "people_title": "Customer" if name or not till else "At the till",
+            "contact": ui.contact(
+                obj.contact_phone or getattr(customer, "phone", ""),
+                getattr(customer, "email", ""),
+                f"Your EightyTwenty order {obj.number}",
+            ),
+            "people": people,
+            "payments": [
+                {
+                    "title": p.get_method_display()
+                    + (f" ·· {p.gift_last4}" if p.gift_last4 else ""),
+                    "meta": " · ".join(
+                        part
+                        for part in (
+                            p.taken_at,
+                            p.staff_name,
+                            f"tip {ui.aud(p.tip_cents)}" if p.tip_cents else "",
+                            f"surcharge {ui.aud(p.surcharge_cents)}" if p.surcharge_cents else "",
+                        )
+                        if part
+                    ),
+                    "amount": ui.aud(p.amount_cents),
+                }
+                for p in payments
+            ],
+            "payment": ui.facts(
+                ("Paid with", obj.payment_label or obj.get_payment_choice_display()),
+                ("Reference", obj.payment_reference),
+                ("Stamps earned", obj.stamps_earned or ""),
+                ("Free coffee used", "Yes" if obj.reward_redeemed else ""),
+            ),
+            "adjustments": [
+                {
+                    "title": a.get_mode_display() + (f" · {a.reason}" if a.reason else ""),
+                    "meta": " · ".join(
+                        part
+                        for part in (
+                            a.made_at,
+                            a.staff_name,
+                            f"approved by {a.approver_name}" if a.approver_name else "",
+                        )
+                        if part
+                    ),
+                    "amount": ui.aud(a.amount_cents),
+                }
+                for a in adjustments
+            ],
+            "timeline": ui.timeline(steps, ui.audit_steps(obj)),
+        }
 
     def get_urls(self):
         return [
@@ -230,6 +251,7 @@ class OrderAdmin(ReadOnlyAdmin):
             form_url,
             {
                 "order_actions": actions,
+                "summary": self.summary(request, obj) if obj else None,
                 "show_save": False,
                 "show_save_and_continue": False,
                 **(extra_context or {}),

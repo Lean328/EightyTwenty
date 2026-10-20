@@ -1,0 +1,86 @@
+{% load bos_admin %}
+<div class="bos-record bos-record-customer">
+  {% include "admin/includes/bos_record_hero.html" with hero=customer.hero %}
+
+  <div class="bos-report-grid">
+    <section class="bos-card">
+      <header class="bos-card-head">
+        <div><h2>Coffee card</h2><p class="bos-card-sub">{% if customer.card %}No. {{ customer.card.member_number }}{% else %}Not opened yet{% endif %}</p></div>
+        {% if customer.card %}<a class="bos-link" href="{% url 'admin:loyalty_loyaltycard_change' customer.card.pk %}">Open</a>{% endif %}
+      </header>
+      {% if customer.card %}
+        <div class="bos-stamps" role="img" aria-label="{{ customer.card.stamps }} of {{ customer.stamps|length }} stamps">
+          {% for filled in customer.stamps %}<span class="{% if filled %}is-on{% endif %}">{% icon 'coffee' %}</span>{% endfor %}
+        </div>
+        <p class="bos-card-foot">{% if customer.card.stamps >= customer.stamps|length %}The next coffee is free.{% else %}{{ customer.card.stamps }} of {{ customer.stamps|length }} stamps · the 10th coffee is free{% endif %}</p>
+      {% else %}
+        <div class="bos-empty bos-empty-sm"><p>The card opens with the first coffee in the app.</p></div>
+      {% endif %}
+    </section>
+
+    <section class="bos-card">
+      <header class="bos-card-head">
+        <div><h2>Gift card</h2><p class="bos-card-sub">{% if customer.gift %}Card ·· {{ customer.gift.last4 }}{% else %}No gift card{% endif %}</p></div>
+        {% if customer.gift %}<a class="bos-link" href="{% url 'admin:loyalty_giftcard_change' customer.gift.pk %}">Open</a>{% endif %}
+      </header>
+      <p class="bos-record-big">{{ customer.gift_balance }}</p>
+      <p class="bos-card-sub">Balance to spend on app orders</p>
+    </section>
+
+    <section class="bos-card">
+      <header class="bos-card-head"><div><h2>Profile</h2></div></header>
+      {% if customer.profile %}
+        {% include "admin/includes/bos_record_facts.html" with rows=customer.profile %}
+      {% else %}
+        <div class="bos-empty bos-empty-sm"><p>No favourite café, birthday or notes yet.</p></div>
+      {% endif %}
+    </section>
+
+    <section class="bos-card bos-span-2">
+      <header class="bos-card-head">
+        <div><h2>Recent orders</h2><p class="bos-card-sub">{{ customer.order_count }} order{{ customer.order_count|pluralize }} in the app</p></div>
+        {% if customer.order_count %}<a class="bos-link" href="{% url 'admin:orders_order_changelist' %}?q={{ customer.email|urlencode }}">All orders</a>{% endif %}
+      </header>
+      {% if customer.orders %}
+        <ul class="bos-record-list">
+          {% for order in customer.orders %}
+            <li>
+              <div><a href="{% url 'admin:orders_order_change' order.pk %}"><strong>{{ order.number }}</strong></a><span class="bos-feed-meta">{{ order.created_at|date:"D j M, g:i A" }} · {{ order.location.name }}</span></div>
+              <span class="bos-record-list-end">{{ order.status|status_badge }}<span>{{ order.total_cents|aud }}</span></span>
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="bos-empty bos-empty-sm"><p>No orders yet.</p></div>
+      {% endif %}
+    </section>
+
+    <section class="bos-card">
+      <header class="bos-card-head"><div><h2>Bookings</h2><p class="bos-card-sub">Latest first</p></div></header>
+      {% if customer.bookings %}
+        <ul class="bos-record-list">
+          {% for booking in customer.bookings %}
+            <li>
+              <div><a href="{% url 'admin:bookings_booking_change' booking.pk %}"><strong>{{ booking.date|date:"D j M" }} · {{ booking.time|time:"g:i A" }}</strong></a><span class="bos-feed-meta">{{ booking.party_size }} guests · {{ booking.location.name }}</span></div>
+              {{ booking.status|status_badge }}
+            </li>
+          {% endfor %}
+        </ul>
+      {% else %}
+        <div class="bos-empty bos-empty-sm"><p>No bookings yet.</p></div>
+      {% endif %}
+      {% if customer.enquiries %}
+        <h3 class="bos-record-subhead">Enquiries</h3>
+        <ul class="bos-record-list">
+          {% for enquiry in customer.enquiries %}
+            <li>
+              <div><a href="{% url 'admin:enquiries_enquiry_change' enquiry.pk %}"><strong>{{ enquiry.get_kind_display }}</strong></a><span class="bos-feed-meta">{{ enquiry.created_at|date:"j M Y" }}</span></div>
+              {{ enquiry.status|status_badge }}
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </section>
+  </div>
+  <h2 class="bos-record-divider">Account settings</h2>
+</div>

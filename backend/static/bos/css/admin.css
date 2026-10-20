@@ -6406,3 +6406,402 @@ body.bos-login,
         grid-template-columns: repeat(auto-fill, minmax(6.5rem, 1fr));
     }
 }
+
+/* Record pages (order, booking, enquiry, customer): a readable summary
+   instead of one field per row. Built in apps/core/admin_summary.py. */
+.bos-record {
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+    margin-bottom: 1.1rem;
+}
+
+.bos-record-hero {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem 1.5rem;
+    padding: 1.4rem 1.6rem;
+    border: 1px solid var(--bos-line);
+    border-radius: 1.25rem;
+    background:
+        radial-gradient(120% 140% at 100% 0%, var(--bos-accent-soft) 0%, transparent 55%),
+        var(--bos-surface);
+    box-shadow: var(--bos-shadow);
+}
+
+.bos-record-id {
+    flex: 1 1 20rem;
+    min-width: 0;
+}
+
+.bos-admin .bos-record-id h2 {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--bos-text);
+    font-size: 1.6rem;
+    font-weight: 750;
+    line-height: 1.2;
+    letter-spacing: -0.02em;
+    text-transform: none;
+    overflow-wrap: anywhere;
+}
+
+.bos-record-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+    margin-top: 0.65rem;
+}
+
+.bos-record-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.2rem;
+    margin: 0.8rem 0 0;
+    color: var(--bos-text-2);
+    font-size: 0.88rem;
+}
+
+.bos-record-meta > * {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.bos-record-meta .bos-i {
+    flex: none;
+    color: var(--bos-muted);
+}
+
+.bos-record-stat {
+    display: flex;
+    flex-direction: column;
+    min-width: 9.5rem;
+    padding: 0.85rem 1.1rem;
+    border: 1px solid var(--bos-line);
+    border-radius: 0.9rem;
+    background: color-mix(in srgb, var(--bos-surface) 80%, transparent);
+}
+
+.bos-record-stat span,
+.bos-record-stat small {
+    color: var(--bos-muted);
+    font-size: 0.76rem;
+}
+
+.bos-record-stat strong {
+    color: var(--bos-text);
+    font-size: 1.6rem;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+    line-height: 1.25;
+}
+
+.bos-record-alert {
+    display: flex;
+    gap: 0.75rem;
+    padding: 0.9rem 1.1rem;
+    border: 1px solid var(--bos-warn-line);
+    border-radius: var(--bos-radius);
+    background: var(--bos-warn-bg);
+    color: var(--bos-warn-fg);
+    font-size: 0.86rem;
+}
+
+.bos-record-alert p {
+    margin: 0.2rem 0 0;
+}
+
+.bos-receipt {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.bos-receipt li {
+    display: grid;
+    grid-template-columns: 2.4rem minmax(0, 1fr) auto;
+    gap: 0.75rem;
+    padding: 0.7rem 0;
+    border-bottom: 1px dashed var(--bos-line-strong);
+    list-style: none;
+    font-size: 0.88rem;
+}
+
+.bos-receipt-qty {
+    color: var(--bos-muted);
+    font-weight: 650;
+    font-variant-numeric: tabular-nums;
+}
+
+.bos-receipt-name {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.bos-receipt-name strong {
+    color: var(--bos-text);
+    font-weight: 600;
+}
+
+.bos-receipt-name span,
+.bos-receipt-name em {
+    color: var(--bos-text-2);
+    font-size: 0.8rem;
+}
+
+.bos-receipt-price {
+    color: var(--bos-text);
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+.bos-receipt li.is-voided .bos-receipt-name strong,
+.bos-receipt li.is-voided .bos-receipt-price {
+    color: var(--bos-muted);
+    text-decoration: line-through;
+}
+
+.bos-receipt-totals {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    max-width: 20rem;
+    margin: 0.9rem 0 0 auto;
+}
+
+.bos-receipt-totals > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    color: var(--bos-text-2);
+    font-size: 0.86rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.bos-receipt-totals dt,
+.bos-receipt-totals dd {
+    margin: 0;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+}
+
+.bos-receipt-totals > .is-total {
+    margin-top: 0.3rem;
+    padding-top: 0.55rem;
+    border-top: 1px solid var(--bos-line);
+    color: var(--bos-text);
+    font-size: 1.02rem;
+    font-weight: 750;
+}
+
+.bos-record-links {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    margin: 0 0 0.6rem;
+    padding: 0;
+    list-style: none;
+}
+
+.bos-record-links li {
+    list-style: none;
+}
+
+.bos-record-links a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+.bos-record-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.bos-record-list li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--bos-line);
+    list-style: none;
+    font-size: 0.85rem;
+}
+
+.bos-record-list li:last-child {
+    border-bottom: 0;
+}
+
+.bos-record-list li > div {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.bos-record-list-end {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.bos-admin .bos-record-subhead {
+    margin: 1rem 0 0.2rem;
+    padding: 0;
+    background: none;
+    color: var(--bos-muted);
+    font-size: 0.74rem;
+    font-weight: 650;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.bos-record-quote {
+    margin: 0;
+    padding: 0.9rem 1.1rem;
+    border-left: 3px solid var(--bos-accent);
+    border-radius: 0 0.6rem 0.6rem 0;
+    background: var(--bos-surface-2);
+    color: var(--bos-text);
+    font-size: 0.92rem;
+    line-height: 1.6;
+    overflow-wrap: anywhere;
+}
+
+.bos-record-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-top: 1rem;
+}
+
+.bos-record-big {
+    margin: 0;
+    color: var(--bos-text);
+    font-size: 1.9rem;
+    font-weight: 750;
+    letter-spacing: -0.02em;
+}
+
+.bos-admin .bos-record-divider {
+    margin: 0.6rem 0 0;
+    padding: 0;
+    background: none;
+    color: var(--bos-text);
+    font-size: 1.05rem;
+    text-transform: none;
+}
+
+.bos-stamps {
+    display: grid;
+    grid-template-columns: repeat(9, minmax(0, 1fr));
+    gap: 0.35rem;
+}
+
+.bos-stamps span {
+    display: grid;
+    place-items: center;
+    aspect-ratio: 1;
+    border: 1px dashed var(--bos-line-strong);
+    border-radius: 50%;
+    color: var(--bos-line-strong);
+}
+
+.bos-stamps span.is-on {
+    border: 0;
+    background: var(--bos-accent);
+    color: var(--bos-accent-ink);
+}
+
+.bos-stamps .bos-i {
+    width: 60%;
+    height: 60%;
+}
+
+.bos-timeline {
+    position: relative;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.bos-timeline li {
+    position: relative;
+    display: flex;
+    gap: 0.85rem;
+    padding: 0 0 1rem;
+    list-style: none;
+    font-size: 0.86rem;
+}
+
+.bos-timeline li:not(:last-child)::before {
+    content: "";
+    position: absolute;
+    top: 1rem;
+    bottom: 0;
+    left: 0.32rem;
+    width: 2px;
+    background: var(--bos-line);
+}
+
+.bos-timeline li:last-child {
+    padding-bottom: 0;
+}
+
+.bos-timeline li > div {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.bos-timeline strong {
+    color: var(--bos-text);
+    font-weight: 600;
+}
+
+.bos-timeline-dot {
+    flex: none;
+    width: 0.7rem;
+    height: 0.7rem;
+    margin-top: 0.3rem;
+    border-radius: 50%;
+    background: var(--bos-quiet-fg);
+    box-shadow: 0 0 0 3px var(--bos-surface);
+}
+
+.bos-timeline .is-good .bos-timeline-dot { background: var(--bos-good-fg); }
+.bos-timeline .is-warn .bos-timeline-dot { background: var(--bos-warn-fg); }
+.bos-timeline .is-bad .bos-timeline-dot { background: var(--bos-bad-fg); }
+.bos-timeline .is-info .bos-timeline-dot { background: var(--bos-info-fg); }
+.bos-timeline .is-live .bos-timeline-dot { background: var(--bos-live-fg); }
+
+@media (max-width: 640px) {
+    .bos-record-hero {
+        padding: 1.1rem;
+    }
+
+    .bos-record-stat {
+        flex: 1 1 100%;
+    }
+
+    .bos-stamps {
+        gap: 0.25rem;
+    }
+}

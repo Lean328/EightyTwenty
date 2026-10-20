@@ -3,11 +3,14 @@ from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from django.shortcuts import redirect
 from django.urls import path, reverse
+from django.utils.dateformat import format as date_format
+from django.utils.dateformat import time_format
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
+from apps.core import admin_summary as ui
 from apps.core.admin_base import RECORD_FIELDS, OperationsAdmin, ReadOnlyAdmin, RoleAccessMixin
-from apps.core.bos_access import ALL, OWNERS
+from apps.core.bos_access import ALL, CHAIN, OWNERS, bos_role
 from apps.core.exceptions import DomainError
 from apps.core.templatetags.bos_admin import status_badge
 
@@ -59,36 +62,59 @@ class BookingAdmin(ReadOnlyAdmin):
     date_hierarchy = "date"
     actions = ("confirm_bookings", "decline_bookings")
     change_form_template = "admin/bos_booking_form.html"
-    description = "Review the guest's request and choose the next action. Status updates notify the guest automatically."
-    fieldsets = [
-        (
-            "Reservation",
-            {
-                "fields": (
-                    "reference",
-                    "booking_status",
-                    "location",
-                    "date",
-                    "time",
-                    "party_size",
-                    "seating",
-                    "notes",
-                )
-            },
-        ),
-        ("Guest details", {"fields": ("name", "email", "phone", "customer", "source")}),
-        ("Handling history", {"fields": ("handled_by", "handled_at", "created_at", "updated_at")}),
-    ]
+    # The page shows a summary (summary() below), not the fields one by one.
+    fieldsets = [(None, {"fields": ("reference",)})]
 
     def has_change_permission(self, request, obj=None):
         return RoleAccessMixin.has_change_permission(self, request, obj)
 
-    def get_readonly_fields(self, request, obj=None):
-        return (*super().get_readonly_fields(request, obj), "booking_status")
-
     @admin.display(description="Status", ordering="status")
     def booking_status(self, obj):
         return status_badge(obj.status)
+
+    def summary(self, request, obj):
+        source = {"web": "the website", "app": "the app", "staff": "the team"}[obj.source]
+        account = (
+            reverse("admin:accounts_user_change", args=[obj.customer_id])
+            if obj.customer_id and bos_role(request.user) == CHAIN
+            else ""
+        )
+        guests = f"{obj.party_size} guest{'s' if obj.party_size != 1 else ''}"
+        day = date_format(obj.date, "l j F Y")
+        hour = time_format(obj.time, "g:i A")
+        return {
+            "hero": {
+                "eyebrow": f"Booking · {obj.reference}",
+                "title": obj.name,
+                "chips": [status_badge(obj.status), ui.tag(f"From {source}")],
+                "meta": [
+                    {"icon": "calendar", "text": f"{day} · {hour}"},
+                    {"icon": "users", "text": guests},
+                    {"icon": "map-pin", "text": obj.location.name},
+                ],
+                "stat": {"label": ui.relative_day(obj.date), "value": hour, "sub": guests},
+            },
+            "contact": ui.contact(
+                obj.phone, obj.email, f"Your EightyTwenty booking {obj.reference}"
+            ),
+            "guest": ui.facts(
+                ("Name", obj.name, account),
+                ("App account", "Yes" if obj.customer_id else ""),
+            ),
+            "reservation": ui.facts(
+                ("Date", day),
+                ("Time", hour),
+                ("Party size", guests),
+                ("Seating", obj.get_seating_display()),
+                ("Café", obj.location.name),
+                ("Reference", obj.reference),
+            ),
+            "notes": obj.notes,
+            "timeline": ui.timeline(
+                [ui.step(obj.created_at, f"Requested on {source}", obj.name, "warn")],
+                ui.audit_steps(obj),
+            ),
+        }
 
     def get_urls(self):
         return [
@@ -150,6 +176,7 @@ class BookingAdmin(ReadOnlyAdmin):
             form_url,
             {
                 "booking_actions": actions,
+                "summary": self.summary(request, obj) if obj else None,
                 "show_save": False,
                 "show_save_and_continue": False,
                 **(extra_context or {}),

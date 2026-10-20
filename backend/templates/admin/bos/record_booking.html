@@ -1,0 +1,35 @@
+{% load bos_admin %}
+<div class="bos-record">
+  {% include "admin/includes/bos_record_hero.html" with hero=summary.hero %}
+
+  <div class="bos-report-grid">
+    <section class="bos-card">
+      <header class="bos-card-head"><div><h2>Guest</h2></div></header>
+      {% if summary.contact %}
+        <ul class="bos-record-links">
+          {% for item in summary.contact %}<li><a href="{{ item.href }}">{% icon item.icon %}{{ item.text }}</a></li>{% endfor %}
+        </ul>
+      {% endif %}
+      {% include "admin/includes/bos_record_facts.html" with rows=summary.guest %}
+    </section>
+
+    <section class="bos-card">
+      <header class="bos-card-head"><div><h2>Reservation</h2></div></header>
+      {% include "admin/includes/bos_record_facts.html" with rows=summary.reservation %}
+    </section>
+
+    <section class="bos-card">
+      <header class="bos-card-head"><div><h2>Notes from the guest</h2></div></header>
+      {% if summary.notes %}
+        <blockquote class="bos-record-quote">{{ summary.notes|linebreaksbr }}</blockquote>
+      {% else %}
+        <div class="bos-empty bos-empty-sm"><p>No notes.</p></div>
+      {% endif %}
+    </section>
+
+    <section class="bos-card bos-span-3">
+      <header class="bos-card-head"><div><h2>Timeline</h2><p class="bos-card-sub">From the request to today, oldest first</p></div></header>
+      {% include "admin/includes/bos_timeline.html" with steps=summary.timeline %}
+    </section>
+  </div>
+</div>

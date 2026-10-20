@@ -1,0 +1,15 @@
+{% if steps %}
+  <ol class="bos-timeline">
+    {% for s in steps %}
+      <li class="is-{{ s.tone }}">
+        <span class="bos-timeline-dot" aria-hidden="true"></span>
+        <div>
+          <strong>{{ s.title }}</strong>
+          <span class="bos-feed-meta">{{ s.at|date:"D j M, g:i A" }}{% if s.who %} · {{ s.who }}{% endif %}</span>
+        </div>
+      </li>
+    {% endfor %}
+  </ol>
+{% else %}
+  <div class="bos-empty bos-empty-sm"><p>Nothing has happened yet.</p></div>
+{% endif %}

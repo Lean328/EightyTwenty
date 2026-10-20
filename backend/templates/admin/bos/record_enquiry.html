@@ -1,0 +1,35 @@
+{% load bos_admin %}
+<div class="bos-record">
+  {% include "admin/includes/bos_record_hero.html" with hero=summary.hero %}
+
+  <div class="bos-report-grid">
+    <section class="bos-card bos-span-2">
+      <header class="bos-card-head"><div><h2>Message</h2><p class="bos-card-sub">What the customer wrote</p></div></header>
+      {% if summary.message %}
+        <blockquote class="bos-record-quote">{{ summary.message|linebreaksbr }}</blockquote>
+      {% else %}
+        <div class="bos-empty bos-empty-sm"><p>No message.</p></div>
+      {% endif %}
+      {% if summary.contact %}
+        <div class="bos-record-actions">
+          {% for item in summary.contact %}<a class="bos-btn{% if forloop.last %} bos-btn-primary{% endif %}" href="{{ item.href }}">{% icon item.icon %}{% if item.icon == 'mail' %}Reply by email{% else %}Call {{ item.text }}{% endif %}</a>{% endfor %}
+        </div>
+      {% endif %}
+    </section>
+
+    <section class="bos-card">
+      <header class="bos-card-head"><div><h2>{{ summary.details_title }}</h2></div></header>
+      {% include "admin/includes/bos_record_facts.html" with rows=summary.details %}
+    </section>
+
+    <section class="bos-card">
+      <header class="bos-card-head"><div><h2>Contact</h2></div></header>
+      {% include "admin/includes/bos_record_facts.html" with rows=summary.people %}
+    </section>
+
+    <section class="bos-card bos-span-2">
+      <header class="bos-card-head"><div><h2>Timeline</h2><p class="bos-card-sub">Oldest first</p></div></header>
+      {% include "admin/includes/bos_timeline.html" with steps=summary.timeline %}
+    </section>
+  </div>
+</div>
