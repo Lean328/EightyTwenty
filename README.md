@@ -54,6 +54,20 @@ node scripts/export-mock-data.mjs path/to/mock-data.js docs/mock-data.snapshot.j
 
 Sau đó dùng `seed_from_mock` với file vừa xuất. Nếu `ORDER_RULES` nằm trong adapter, truyền thêm file JSON chứa object đó làm đối số thứ ba của script. Slug/id được giữ nguyên; nhóm modifier giống hệt nhau được dùng chung. Import chạy trong một transaction, chạy lại cập nhật theo slug. Lệnh không đồng bộ xóa món/chi nhánh vắng trong snapshot; các liên kết modifier/diet của món được nhập sẽ được đối chiếu lại.
 
+### Database dev có dữ liệu mẫu (SQLite)
+
+Từ 20/10/2026 dev dùng file `backend/db.sqlite3` riêng (không còn chung Supabase production). Dựng lại từ đầu (xóa/đổi tên `db.sqlite3` trước), chạy từ `backend/`:
+
+```powershell
+node ..\scripts\export-mock-data.mjs ..\website\mock-data.js $env:TEMP\mock.json ..\scripts\order-rules.json
+..\.venv\Scripts\python manage.py migrate
+..\.venv\Scripts\python manage.py seed_from_mock $env:TEMP\mock.json
+..\.venv\Scripts\python manage.py fill_opening_hours --apply
+..\.venv\Scripts\python manage.py seed_demo
+```
+
+`seed_demo` thêm chủ chuỗi `owner@example.com`, chủ quán/nhân viên cho 3 quán đầu (`manager.<slug>@example.com`, `staff.<slug>@example.com`, Till PIN 1001…), 30 khách (thẻ cà phê, gift card), ~600 đơn app + quầy trong 30 ngày, đặt bàn −14…+14 ngày, 15 enquiry, ca két, bàn, mã giảm giá. Mật khẩu mọi tài khoản demo: `eightytwenty-demo` (đổi bằng `--password`). Lệnh **từ chối mọi database không phải SQLite/localhost** và từ chối chạy lần hai. Ảnh món là đường dẫn `img/...` của website → chạy server website (cổng 8123) để thấy ảnh trong admin.
+
 Booking mặc định tắt. Cần cấu hình `OpeningHours`, ngày ngoại lệ `SpecialHours`, `BookingRule` và sức chứa đã được khách xác nhận trước khi bật.
 
 ## Phần đã có
