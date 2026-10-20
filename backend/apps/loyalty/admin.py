@@ -220,14 +220,16 @@ class GiftCardAdmin(OperationsAdmin):
     view_roles = ALL
     add_roles = ()
     list_display = ("customer", "last4", "balance", "updated_at")
+    list_display_links = ("customer",)
     search_fields = ("last4", "user__email", "user__first_name", "user__last_name")
     inlines = (GiftCardActivityInline,)
     description = "Mobile app gift card balances, in cents (2500 = $25.00). Raising a balance records a top-up the customer sees in the app."
     fieldsets = [("Gift card", {"fields": ("user", "last4", "balance_cents")}), RECORD_FIELDS]
 
-    @admin.display(description="Customer", ordering="user__email")
-    def customer(self, obj):
-        return obj.user.email
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("user")
+
+    customer = LoyaltyCardAdmin.customer
 
     @admin.display(description="Balance", ordering="balance_cents")
     def balance(self, obj):

@@ -68,6 +68,14 @@ class PosLineIn(serializers.Serializer):
 class PosDiscountIn(serializers.Serializer):
     label = serializers.CharField(max_length=120)
     amount = dollars()
+    code = serializers.CharField(
+        max_length=30,
+        required=False,
+        allow_blank=True,
+        help_text="Optional: the promo code applied (BOS → Promo codes). Without it the server "
+        "looks for a code in the label. A wrong, expired or too large code is noted on the "
+        "order for a manager (Check prices), never refused.",
+    )
 
 
 class PosPaymentIn(serializers.Serializer):
@@ -397,6 +405,7 @@ class PosAdjustmentOut(serializers.Serializer):
 class PosDiscountOut(serializers.Serializer):
     label = serializers.CharField()
     amount = serializers.FloatField()
+    code = serializers.CharField(required=False, help_text="Promo code, when the till sent one.")
 
 
 class PosHistoryOut(serializers.Serializer):

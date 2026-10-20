@@ -147,7 +147,10 @@ staff and can be shown as is. The HTTP status drives the till's `ApiError.kind`:
 - **Tables and promo codes** come from BOS: café owners set their floor plan (BOS → Locations → Tables) and
   the chain owner the promo codes (BOS → Daily operations → Promo codes; a percentage or a dollar amount, for every café or
   one, with optional dates). The snapshot returns this café's active tables and the codes live today. The code
-  is checked on the till; the order carries the discount as usual (`discounts`).
+  is checked on the till; the order carries the discount as usual (`discounts`), ideally with the code in the
+  optional `code` field (otherwise the server looks for a known code in `label`). The server checks it again
+  when the order is created: an unknown, switched-off, expired or other-café code, or more off than the code
+  allows, is **noted on the order for a manager** (BOS → Orders → Check prices) — the order is never refused.
 
 ## 6. Cash shifts and records
 

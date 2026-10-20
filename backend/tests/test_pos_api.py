@@ -26,7 +26,7 @@ from apps.menu.models import (
 from apps.notifications.models import AppNotification
 from apps.orders.models import Order, OrderLine
 from apps.pos import pins
-from apps.pos.models import CashShift, CommandReceipt, TillTransaction
+from apps.pos.models import CashShift, CommandReceipt, Promotion, TillTransaction
 from apps.pos.views import OrdersView, PosView, SnapshotView, VerifyPinView
 
 from .factories import UserFactory
@@ -266,6 +266,38 @@ def test_price_differences_are_recorded_not_rejected(till, cafe, menu):
     assert response.status_code == 201
     note = Order.objects.get().review_note
     assert "rung up at $5.80 (menu $6.30)" in note and "not on the Braddon menu" in note
+
+
+def test_promo_codes_are_checked_not_refused(till, cafe, elsewhere, menu):
+    today = timezone.localdate()
+    Promotion.objects.create(code="WELCOME10", label="10% off", kind="pct", percent=10)
+    Promotion.objects.create(
+        code="SUMMER", label="$5 off", kind="amt", amount_cents=500,
+        ends_on=today - timedelta(days=1),
+    )  # fmt: skip
+    Promotion.objects.create(
+        code="CIVIC5", label="$5 off", kind="amt", amount_cents=500, location=elsewhere
+    )
+
+    def note(number, discounts, total):
+        create(till, id=number, discounts=discounts, total=total)
+        return Order.objects.get(number=number).review_note
+
+    assert note("P-1", [{"label": "WELCOME10 · 10% off", "amount": 3.56}], 32.04) == ""
+    assert note("P-2", [{"label": "Staff 50%", "amount": 17.8}], 17.8) == ""
+    assert note("P-3", [{"label": "10% off", "code": "welcome10", "amount": 10}], 25.6) == (
+        "Promo code WELCOME10 took $10.00 off; it allows $3.56."
+    )
+    assert "Promo code SUMMER ended on" in note("P-4", [{"label": "SUMMER", "amount": 5}], 30.6)
+    assert note("P-5", [{"label": "x", "code": "CIVIC5", "amount": 5}], 30.6) == (
+        "Promo code CIVIC5 is for Civic only."
+    )
+    assert note("P-6", [{"label": "x", "code": "NOPE", "amount": 1}], 34.6) == (
+        "Promo code NOPE is not in BOS."
+    )
+    feed = till.get(f"{BASE}/orders", {"cafe": "braddon"}).json()["orders"]
+    sent = next(row for row in feed if row["id"] == "P-3")["discounts"]
+    assert sent == [{"label": "10% off", "amount": 10.0, "code": "welcome10"}]
 
 
 def test_totals_must_add_up(till, cafe, menu):

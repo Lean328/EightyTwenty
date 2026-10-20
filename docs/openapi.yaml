@@ -19214,6 +19214,12 @@ components:
           format: double
           maximum: 100000
           minimum: 0
+        code:
+          type: string
+          description: 'Optional: the promo code applied (BOS → Promo codes). Without
+            it the server looks for a code in the label. A wrong, expired or too large
+            code is noted on the order for a manager (Check prices), never refused.'
+          maxLength: 30
       required:
       - amount
       - label
@@ -19225,6 +19231,9 @@ components:
         amount:
           type: number
           format: double
+        code:
+          type: string
+          description: Promo code, when the till sent one.
       required:
       - amount
       - label

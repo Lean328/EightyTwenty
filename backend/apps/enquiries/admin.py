@@ -78,7 +78,6 @@ class EnquiryAdmin(OperationsAdmin):
     change_roles = OWNERS
     location_lookup = "location"
     list_display = (
-        "reference",
         "name",
         "kind_chip",
         "location",
@@ -86,9 +85,11 @@ class EnquiryAdmin(OperationsAdmin):
         "assigned_to",
         "received",
         "waiting",
+        "reference",
     )
+    list_display_links = ("name",)
     list_filter = ("status", "kind", "location")
-    search_fields = ("reference", "name", "email", "company")
+    search_fields = ("reference", "name", "email", "phone", "company")
     ordering = ("-created_at",)
     autocomplete_fields = ("assigned_to",)
     change_form_template = "admin/bos_enquiry_form.html"

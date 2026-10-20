@@ -7,12 +7,14 @@ its prices no longer match the menu; the differences are noted on the order for 
 """
 
 import ipaddress
+import re
 from datetime import timedelta
 from decimal import ROUND_HALF_UP, Decimal
 
 from django.core.exceptions import ValidationError
 from django.db.models import Q, Sum
 from django.utils import timezone
+from django.utils.dateformat import format as date_format
 from django.utils.dateparse import parse_date, parse_datetime
 from rest_framework.throttling import BaseThrottle
 
@@ -33,7 +35,7 @@ from apps.mobile.errors import AppError, invalid, not_found
 from apps.orders import services as order_services
 from apps.orders.models import Order, OrderAdjustment, OrderLine, OrderPayment
 
-from .models import CashShift, TillTransaction
+from .models import CashShift, Promotion, TillTransaction
 
 # POS OrderStatus ↔ stored status. "new" is confirmed (accepted) for till orders; an app order
 # waiting for the café is "received" and shows on the till as new + accepted: false.
@@ -175,6 +177,51 @@ def till_totals(data, location):
     return subtotal, discount, delivery, total
 
 
+PROMO_WORD = re.compile(r"[A-Za-z0-9]{3,30}")
+
+
+def promo_notes(discounts, location, subtotal, day):
+    """Promo codes on a till order checked against BOS: problems are noted, never refused."""
+    promos = None
+    notes = []
+    for row in discounts:
+        if promos is None:
+            promos = {p.code.upper(): p for p in Promotion.objects.select_related("location")}
+        code = (row.get("code") or "").strip().upper()
+        if not code:
+            words = {word.upper() for word in PROMO_WORD.findall(row.get("label") or "")}
+            code = next((word for word in sorted(words) if word in promos), "")
+            if not code:
+                continue  # a staff discount or the free coffee, not a promo code
+        promo = promos.get(code)
+        problem = promo_problem(promo, location, day)
+        if problem:
+            notes.append(f"Promo code {code} {problem}.")
+            continue
+        if promo.kind == "pct":
+            allowed = (subtotal * (promo.percent or 0) + 50) // 100
+        else:
+            allowed = min(promo.amount_cents or 0, subtotal)
+        taken = cents(row["amount"])
+        if taken > allowed + TOTAL_TOLERANCE_CENTS:
+            notes.append(f"Promo code {code} took {money(taken)} off; it allows {money(allowed)}.")
+    return notes
+
+
+def promo_problem(promo, location, day):
+    if promo is None:
+        return "is not in BOS"
+    if not promo.is_active:
+        return "is switched off in BOS"
+    if promo.location_id and promo.location_id != location.pk:
+        return f"is for {promo.location.name} only"
+    if promo.starts_on and day < promo.starts_on:
+        return f"only starts on {date_format(promo.starts_on, 'j M Y')}"
+    if promo.ends_on and day > promo.ends_on:
+        return f"ended on {date_format(promo.ends_on, 'j M Y')}"
+    return ""
+
+
 def customer_of(customer_id):
     if not customer_id:
         return None
@@ -201,6 +248,9 @@ def create_order(request, data):
     if status not in {"confirmed", "preparing", "ready", "completed"}:
         raise invalid("A new till order starts as new, preparing, ready or completed.")
     placed = data.get("placedAt") or timezone.now()
+    notes += promo_notes(
+        data.get("discounts") or [], location, subtotal, timezone.localdate(placed)
+    )
     table = (data.get("table") or "").strip()
     order = Order.objects.create(
         number=data["id"],

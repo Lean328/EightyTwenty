@@ -10,7 +10,8 @@ from django.utils import timezone
 from apps.accounts.models import StaffAssignment
 from apps.bookings.models import Booking
 from apps.core.models import AuditLog
-from apps.loyalty.models import LoyaltyActivity, LoyaltyCard
+from apps.enquiries.models import Enquiry
+from apps.loyalty.models import GiftCard, LoyaltyActivity, LoyaltyCard
 from apps.notifications.models import AppNotification
 from apps.orders.models import Order, OrderLine
 
@@ -155,3 +156,15 @@ def test_overview_counts_app_orders_waiting(cafe, chain):
     assert "channel__exact=app&amp;status__exact=received" in page
     manager_page = body(signed_in(member("manager", cafe)), reverse("admin:index"))
     assert "<strong>2</strong> app orders are waiting for you" in manager_page
+
+
+def test_gift_cards_and_enquiries_lead_with_the_customer(cafe, chain):
+    guest = UserFactory(role="customer", first_name="Olivia", last_name="Smith")
+    GiftCard.objects.create(user=guest, balance_cents=2500)
+    Enquiry.objects.create(kind="catering", name="Noah Taylor", email="n@example.com", message="Hi")
+    client = signed_in(chain)
+    gifts = body(client, reverse("admin:loyalty_giftcard_changelist"))
+    assert "Olivia Smith" in gifts and "$25.00" in gifts
+    enquiries = body(client, reverse("admin:enquiries_enquiry_changelist"))
+    first = enquiries.index('<th class="field-name">')
+    assert "Noah Taylor" in enquiries[first : first + 200]

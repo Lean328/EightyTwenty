@@ -1,43 +1,45 @@
-# Trạng thái triển khai — 06/10/2026
+# Trạng thái triển khai — 20/10/2026
 
-Đã xây dựng backend Phase 1 + auth/customer profile/availability thuộc Phase 1.5, đầy đủ file Python, migration, Django Admin, OpenAPI, seed, CI và cấu hình vận hành. Django Admin nay là một BOS workspace hoàn chỉnh với giao diện tự viết (không còn Jazzmin, 09/10/2026) và dashboard dữ liệu thật. Không thay đổi quyết định payment/POS và không triển khai phase tài chính sau.
+Backend (Django, `backend/`) đang chạy production trên Render (https://eightytwenty-api.onrender.com) + Supabase (Postgres + Storage). Đã có: BOS workspace (Django Admin ở `/`, 3 cấp quyền), API cho website (`/api/v1/public`), app điện thoại (`/api/v1/app`), máy POS + màn hình bếp (`/api/v1/pos`), báo cáo doanh thu trong BOS và push Expo. Định hướng của chủ dự án: chạy được trên Render free là đủ, làm cách đơn giản nhất.
 
-Lần kiểm tra gần nhất (10/10/2026): **154 test pass trên PostgreSQL 17**; **192 pass, 3 skip trên SQLite; 195 pass trên PostgreSQL 17** (12/10/2026, gồm 34 test API app `tests/test_mobile_api.py`) (ba test cần PostgreSQL). Ruff check/format, Django check, migration drift và OpenAPI validate đều qua. `check --deploy` chỉ còn W021 về HSTS preload chưa bật có chủ đích.
+## Lần kiểm tra gần nhất
 
-## Đã xác minh local
+- 20/10/2026, SQLite: **260 pass, 3 skip**. Ba test cần PostgreSQL chỉ chạy trên CI (GitHub Actions, Postgres 17), mọi commit gần đây đều xanh. Lần chạy Postgres ở máy gần nhất là 12/10/2026 (195 pass, Docker ở máy hiện không lên).
+- Ruff check/format, `manage.py check`, kiểm tra migration drift, OpenAPI validate (CI fail nếu `docs/openapi.yaml` lệch code) đều qua.
+- Production sau mỗi lần deploy: `/health`, bootstrap (10 quán / 12 danh mục / 84 món / 3 gói catering), `/api/docs/app/`, `/api/docs/pos/` trả 200; các trang admin chuyển về đăng nhập.
 
-- Django system check và migration graph.
-- pytest trên SQLite và PostgreSQL 17 thực tế qua Docker.
-- PostgreSQL: hai request tranh slot chỉ một booking được tạo khi hết sức chứa; hai request refresh cùng token chỉ một thành công; RLS bật trên bảng Django.
-- Các API BOS được test đọc/ghi hợp lệ, từ chối khách/nhân viên không đủ quyền và audit.
-- Snapshot mẫu round-trip qua seed → bootstrap; modifier dùng chung và thứ tự dietary tag được giữ.
-- OpenAPI validate, không có schema warnings; lint và formatter.
-- Schema sinh từ SQLite/PostgreSQL có cùng checksum. Đã chạy HTTP server local thật và nhận 200 cho health, bootstrap, Swagger, schema, trang đăng nhập Admin; server thử nghiệm đã dừng.
-- Script Node export mock-data đã chạy thử và đối chiếu JSON với snapshot mẫu.
-- BOS Admin được kiểm tra trực tiếp ở desktop và mobile trên cơ sở dữ liệu preview tách biệt: dashboard, danh sách, form AUD, inline, sidebar responsive và trang login.
-- `tests/test_bos_roles.py` xác minh phân quyền 3 cấp trong Admin (scope quán, menu chung vs món riêng, quản lý nhân viên, reports/system theo role).
-- Test admin xác minh quyền superuser, scope dashboard, Australia/Sydney, mã trạng thái booking + CSRF + audit/email, cents/AUD, inline audit và CMS validation.
+## Đã kiểm thử
 
-Số test chính xác xem lần chạy CI/pytest gần nhất; các test PostgreSQL được skip có chủ đích khi chỉ chạy SQLite.
+- **Website:** bootstrap đúng shape `mock-data.js` (ETag theo `menu_version`), form đặt bàn + enquiry (honeypot, rate limit DB, email outbox).
+- **BOS workspace:** phân quyền 3 cấp chủ chuỗi / chủ quán / nhân viên theo quán (`tests/test_bos_roles.py`), dashboard, Reports (doanh thu, CSV), Schedule, Availability board, System status, My profile, upload ảnh WebP lên Supabase (mock trong test).
+  - Trang chi tiết Order / Booking / Enquiry dạng tóm tắt; khối tổng quan khách hàng (`tests/test_record_pages.py`).
+  - Danh sách: bấm cả dòng để mở; Bookings mặc định hôm nay + sắp tới; tách Team và Customers; Coffee cards có nút +1 stamp / Redeem; Orders có cột món; Overview đếm đơn app đang chờ (`tests/test_admin_lists.py`).
+- **API app:** 41 path theo hợp đồng app Expo; giá tính khớp từng cent với app (`compute_totals`); không N+1 (đếm truy vấn); ẩn danh hóa; push Expo (mock).
+- **API POS:** PIN, snapshot, đơn quầy + idempotency, thanh toán, bếp, hoàn/void/hủy, ca két, sổ giao dịch, khách hàng + thẻ cà phê, còn/hết món, đặt bàn, catering, bàn, mã giảm giá. Mã giảm giá được server kiểm lại khi tạo đơn: sai/hết hạn/sai quán/giảm quá mức thì ghi chú "Check prices", không từ chối đơn.
+- **PostgreSQL (CI):** khóa slot đặt bàn khi tranh nhau, refresh token dùng một lần, RLS bật trên mọi bảng.
+- **Dữ liệu dev:** `seed_demo` dựng DB SQLite local có dữ liệu mẫu và từ chối mọi DB không phải local (`tests/test_seed_demo.py`).
 
-## Chưa thể xác minh bằng dữ liệu thật
+## Chưa chạy với hệ thống thật
 
-- Repo đầu vào không có mock-data.js, frontend handoff hoặc code website/app; sample không đại diện menu/giá thật.
-- Supabase Storage, Resend và Turnstile được mock trong test, chưa có credentials để chạy end-to-end với nhà cung cấp.
-- Chưa deploy Render/Vercel/Supabase; backup/job workflow chưa được chạy trên production.
-- Chưa có BOS React SPA. Django Admin hiện là BOS cho cả chủ chuỗi, chủ quán và nhân viên (phân quyền theo quán).
-- Chưa chốt chi nhánh nhận booking, sức chứa, các câu hỏi mục 14. Booking rule default disabled.
-- API app điện thoại (12/10/2026): đã so khớp với dữ liệu app dùng (DB SQLite tạm seed từ `mock-data.js`: 10 quán gồm giờ/cờ/area/headline, 12 danh mục, 84 món gồm giá/modifier/thứ tự, 3 gói catering, FAQ, offer — 0 lệch) và chạy luồng order mẫu §9.1 của app (2930 + 86 − 1000 = 2016¢). Chưa chạy với app thật, chưa migrate lên Supabase (Render tự migrate khi push).
-- API máy POS `/api/v1/pos` (16/10/2026, giai đoạn 1): 25 test `tests/test_pos_api.py` (trang BOS, PIN, phạm vi quán, snapshot, tạo đơn + idempotency + trùng số, lệch giá, thanh toán, bếp, hoàn/void/hủy, bàn, đơn app trên quầy, feed theo cursor, số truy vấn cố định, ca két, sổ giao dịch, nhật ký, trang docs). Chưa chạy với frontend POS thật (dev khác nối). Server không kiểm quyền từng nhân viên (chỉ tài khoản máy); máy quẹt thẻ chưa nối nên bản production của POS chưa nhận thẻ.
-- POS giai đoạn 2, doanh thu BOS, push Expo (16/10/2026): 8 test thêm trong `tests/test_pos_api.py` (khách hàng, thẻ cà phê, còn-hết, đặt bàn POS + website, catering, báo cáo Sales + CSV) và 6 test `tests/test_push.py` (đăng ký/xóa token, đẩy feed, theo toggle, DeviceNotRegistered, lỗi mạng không làm hỏng request, ẩn danh hóa). Push chưa thử với Expo thật (mock trong test).
-- Bàn, mã giảm giá, số liệu dashboard POS (16/10/2026): 3 test (snapshot bàn/mã theo quán, ngày, bật/tắt; trang BOS Tables theo quán + Promo codes chỉ chủ chuỗi + form AUD; số liệu thẻ/đặt bàn/catering/doanh thu từ dữ liệu thật).
-- Chưa có cổng thanh toán (order có tiền phải trả → 501; `PAYMENT_PROVIDER=demo` để test), thẻ lưu, gửi eGift thật, Apple Wallet, inventory.
+- Chưa chạy end-to-end với app Expo và frontend POS thật: dev khác đang nối. Các luồng đã test bằng client giả theo hợp đồng của họ.
+- Resend (email) và Expo push mới được mock. Email cần domain có SPF/DKIM (ARCHITECTURE mục 14, câu 10).
+- Production chưa có dữ liệu vận hành, chỉ có menu và quán. Chưa có superuser (chủ dự án tự tạo), chưa ai đặt Till PIN.
+- Job định kỳ (`scheduled-jobs.yml`) và backup (`db-backup.yml`) chưa được xác nhận là chạy được trên production.
 
-## Các giới hạn có chủ đích
+## Chưa làm (chờ khách hoặc bên thứ ba)
 
-- Soft deactivate/unpublish thay delete business data; thời gian đặt bàn không kéo qua ngày hay chiếm nhiều slot.
-- Hai form public chưa có idempotency key. Client không tự retry khi không rõ kết quả; đối chiếu reference/hàng đợi khi cần.
-- Auth dùng bearer JSON; cookie HttpOnly chưa triển khai. Customer email có thể chưa verify vẫn đăng nhập được; cờ email_verified dùng cho luồng xác nhận và đối chiếu guest records khi ẩn danh hóa.
-- Ẩn danh hóa customer xóa PII trong user/profile và booking liên kết. Chỉ khi email verified mới ẩn danh hóa guest booking/enquiry cùng email; audit lịch sử do nhân viên tạo được giữ quyền đọc hạn chế, cần quy trình retention riêng khi có yêu cầu dữ liệu cá nhân.
-- API catalogue thay đổi phải đi qua service/save để tăng menu_version. Thao tác SQL tay/bulk update ngoài service không được bảo đảm invalidation.
-- Django Admin phân quyền 3 cấp qua `apps/core/bos_access.py` + `RoleAccessMixin`; không có nút xóa (khóa/bỏ publish thay thế). Quyền REST API BOS giữ nguyên (manager/staff vẫn chỉ đọc catalog qua API).
+- Cổng thanh toán: đơn app có tiền phải trả → 501 (`PAYMENT_PROVIDER=demo` chỉ dùng để thử). Chưa có thẻ lưu, chưa gửi eGift thật.
+- Máy quẹt thẻ và máy in nối POS, gift card Square, kho, hóa đơn điện tử, Apple Wallet.
+- Bật đặt bàn cho từng quán: cần giờ mở cửa + sức chứa do khách xác nhận (`BookingRule.is_enabled` đang tắt). Quán Akuna St vẫn TBC.
+- Website hiển thị món hết hàng theo quán: backend đã có (`?location=`), giao diện chờ khách duyệt.
+- React BOS: chưa làm, Django Admin đang là BOS.
+
+## Giới hạn có chủ đích
+
+- Không hard delete dữ liệu kinh doanh: dùng khóa / bỏ publish / trạng thái. Admin không có nút xóa.
+- Thời gian đặt bàn không kéo qua ngày hoặc chiếm nhiều slot. Hai form public chưa có idempotency key.
+- Auth dùng bearer JSON, chưa có cookie HttpOnly. Khách chưa verify email vẫn đăng nhập được.
+- Đơn quầy: server kiểm tổng tiền (lệch ≤ 1¢), giá lệch menu và mã giảm giá chỉ được ghi chú, không từ chối. Server không kiểm quyền từng nhân viên trên máy POS (chỉ kiểm tài khoản máy).
+- Thay đổi catalog phải đi qua service/save để tăng `menu_version`. SQL tay hoặc bulk update không được bảo đảm làm mới cache.
+- Ẩn danh hóa khách xóa PII trong user/profile, booking, đơn app, địa chỉ, feed. Audit do nhân viên tạo vẫn giữ lại.
+- Theo yêu cầu chủ dự án (16/10/2026): host + CORS mở hoàn toàn, không thêm lớp bảo mật nếu không cần.
