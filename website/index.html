@@ -72,8 +72,6 @@
   @media (prefers-reduced-motion:reduce){[data-cafe-track]{animation:none!important;transform:none!important}}
   [data-about-hero-image]{width:100%;max-width:1200px;margin:0 auto;height:min(52vw,620px);min-height:420px}
   @media (max-width:899px){[data-about-hero-image]{height:clamp(280px,56vw,460px);min-height:0}}
-  [data-home-phillip-image]{display:block;width:100%;height:clamp(360px,46vw,620px);object-fit:cover;object-position:center 42%;border-radius:8px}
-  @media (max-width:899px){[data-home-phillip-image]{height:auto;aspect-ratio:4/5;object-position:center 50%}}
   /* scroll reveal system */
   [data-reveal]{opacity:0;transform:translateY(22px);transition:opacity .7s cubic-bezier(.22,1,.36,1),transform .7s cubic-bezier(.22,1,.36,1)}
   [data-reveal="fade"]{transform:none;transition:opacity .8s cubic-bezier(.22,1,.36,1)}
@@ -336,20 +334,6 @@
         <p style="margin:0 0 16px;font:500 11px/1.2 Figtree;letter-spacing:.18em;text-transform:uppercase;color:#8B5827">The EightyTwenty way</p>
         <h1 id="home-brand-title" style="max-width:780px;margin:0;font:300 clamp(42px,6vw,80px)/1.02 'Newsreader',serif;letter-spacing:-.02em">Simple food. Good coffee. Everyday balance.</h1>
         <a href="#menu" onClick="{{ goMenu }}" style="display:inline-block;margin-top:24px;padding:10px 0;border-bottom:1px solid #B67A4B;font:500 14px/1.3 Figtree;color:#4B2E26">Explore the menu →</a>
-      </section>
-
-      <section aria-labelledby="home-phillip-title" style="max-width:1400px;margin:0 auto;padding:clamp(64px,8vw,112px) clamp(16px,3vw,40px) 0">
-        <div style="display:flex;align-items:end;justify-content:space-between;gap:20px;margin-bottom:22px">
-          <h2 id="home-phillip-title" style="margin:0;font:300 clamp(44px,7vw,88px)/1 'Newsreader',serif;letter-spacing:-.02em">Phillip</h2>
-        </div>
-        <img data-home-phillip-image src="img/loc/phillip-exterior-01.webp" alt="EightyTwenty Phillip storefront at C07/11 Launceston Street" loading="lazy">
-        <div style="display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:18px 32px;padding-top:22px">
-          <div style="font:400 15px/1.6 Figtree;color:#4B2E26">
-            <div>{{ homePhillip.address }}</div>
-            <div>{{ homePhillip.hours }}</div>
-          </div>
-          <a href="#location/phillip" onClick="{{ viewPhillip }}" style="display:inline-block;padding:10px 0;border-bottom:1px solid #B67A4B;font:500 14px/1.3 Figtree;color:#4B2E26">Visit Phillip →</a>
-        </div>
       </section>
 
       <!-- EXTRAS -->
@@ -1436,13 +1420,13 @@
 
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;startView&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;home&quot;,&quot;menu&quot;,&quot;locations&quot;,&quot;location&quot;,&quot;reserve&quot;,&quot;catering&quot;,&quot;about&quot;,&quot;checkout&quot;],&quot;default&quot;:&quot;home&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype&quot;},&quot;defaultLocation&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;braddon&quot;,&quot;civic&quot;,&quot;coombs&quot;,&quot;greenway&quot;,&quot;gungahlin&quot;,&quot;dickson&quot;,&quot;belconnen&quot;,&quot;phillip&quot;,&quot;kingston&quot;,&quot;akuna&quot;],&quot;default&quot;:&quot;braddon&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype&quot;},&quot;forceMobile&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Prototype&quot;},&quot;signedIn&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Prototype&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;startView&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;home&quot;,&quot;menu&quot;,&quot;locations&quot;,&quot;location&quot;,&quot;reserve&quot;,&quot;catering&quot;,&quot;about&quot;,&quot;checkout&quot;],&quot;default&quot;:&quot;home&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype&quot;},&quot;defaultLocation&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;braddon&quot;,&quot;civic&quot;,&quot;coombs&quot;,&quot;greenway&quot;,&quot;gungahlin&quot;,&quot;dickson&quot;,&quot;belconnen&quot;,&quot;phillip&quot;,&quot;kingston&quot;,&quot;akuna&quot;],&quot;default&quot;:&quot;phillip&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype&quot;},&quot;forceMobile&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Prototype&quot;},&quot;signedIn&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Prototype&quot;}}">
 class Component extends DCLogic {
   state = {
-    ready:false, view:'home', locId:'braddon', locationId:'phillip', method:'Pickup', timing:'ASAP', schedDay:'', schedTime:'',
+    ready:false, view:'home', locId:'phillip', locationId:'phillip', method:'Pickup', timing:'ASAP', schedDay:'', schedTime:'',
     cart:[], drawer:false, item:null, itemClosing:false, editKey:null, qty:1, sel:{}, note:'', picker:false, navOpen:false, cat:'allday',
     co:{name:'',phone:'',email:'',notes:''}, coErr:{}, pay:'card', placed:null,
-    bk:{loc:'braddon',size:'2',date:'',time:'',seat:'Indoor',name:'',phone:'',email:'',notes:''}, bkErr:{}, bkDone:false, bkSending:false, bkRef:'',
+    bk:{loc:'phillip',size:'2',date:'',time:'',seat:'Indoor',name:'',phone:'',email:'',notes:''}, bkErr:{}, bkDone:false, bkSending:false, bkRef:'',
     pkgOpen:false, ctab:0, enquiryDraft:null, enquiryMailto:'', enquirySending:null, enquiryRef:'', profileSaved:false, narrow: typeof window !== 'undefined' && window.innerWidth < 900, xwide: typeof window !== 'undefined' && window.innerWidth >= 1180, toast:''
   };
   D = { LOCATIONS:[], MENU:[], CATEGORIES:[], CATERING:[], ORDER_RULES:{ cardSurcharge:.0295, deliveryRate:.1 } };
@@ -1450,9 +1434,11 @@ class Component extends DCLogic {
   componentDidMount() {
     const p = this.props || {};
     if (p.startView) this.setState({ view:p.startView });
-    if (p.defaultLocation) this.setState({ locId:p.defaultLocation, bk: Object.assign({}, this.state.bk, { loc:p.defaultLocation }) });
-    import(new URL('eightytwenty-data.js?v=bos-api-20261006', location.href).href).then(m => {
+    import(new URL('eightytwenty-data.js?v=phillip-preference-20261020', location.href).href).then(m => {
       this.D = m;
+      const preferred = this._chosenLocation || m.preferredLocation(m.LOCATIONS, p.defaultLocation);
+      if (this._chosenLocation) m.rememberLocation(preferred);
+      this.setState({ locId:preferred, locationId:preferred, bk:Object.assign({}, this.state.bk, { loc:preferred }) });
       const previewCat = location.hash === '#menu/smoothies' ? 'smoothies' : null;
       this.setState(previewCat ? { ready:true, view:'menu', cat:previewCat } : { ready:true }, () => this.hydrateImages());
     });
@@ -1509,7 +1495,8 @@ class Component extends DCLogic {
   componentWillUnmount() { clearInterval(this._bkT); clearTimeout(this._itemCloseT); if (this._revealScroll) { window.removeEventListener('scroll', this._revealScroll); window.removeEventListener('resize', this._revealScroll); } window.removeEventListener('resize', this._onResize); window.removeEventListener('keydown', this._onItemKeyDown); this.unlockItemScroll(); clearTimeout(this._toastT); }
 
   $(n) { return '$' + n.toFixed(2); }
-  go(view, patch) { return (e) => { if (e && e.preventDefault) e.preventDefault(); const auth = view === 'login' || view === 'signup'; this.setState(st => Object.assign({ view, navOpen:false, drawer:false, item:null, picker:false, acctOpen:false }, auth ? { auReset:null, auPwFocus:false, auT:{}, au: Object.assign({}, st.au, { resetEmail:'' }) } : null, patch || {})); window.scrollTo(0, 0); requestAnimationFrame(() => this.observeReveals()); setTimeout(() => this.observeReveals(), 60); }; }
+  rememberLocation(id) { this._chosenLocation = id; if (this.D.rememberLocation) this.D.rememberLocation(id); }
+  go(view, patch) { return (e) => { if (e && e.preventDefault) e.preventDefault(); if (patch && patch.bk && patch.bk.loc) this.rememberLocation(patch.bk.loc); const auth = view === 'login' || view === 'signup'; this.setState(st => Object.assign({ view, navOpen:false, drawer:false, item:null, picker:false, acctOpen:false }, auth ? { auReset:null, auPwFocus:false, auT:{}, au: Object.assign({}, st.au, { resetEmail:'' }) } : null, patch || {})); window.scrollTo(0, 0); requestAnimationFrame(() => this.observeReveals()); setTimeout(() => this.observeReveals(), 60); }; }
   locById(id) { return this.D.LOCATIONS.find(l => l.id === id) || { name:'…', sub:'', address:'', hours:'', hoursShort:'', methods:['Pickup'], img:'', phone:'' }; }
   isOpenNow(l) { if (l.tbc) return false; const d = new Date(), h = d.getHours() + d.getMinutes()/60, day = d.getDay(); if (l.id === 'civic' && (day === 0 || day === 6)) return false; const start = /6:00am/.test(l.hours) ? 6 : 7; return h >= start && h < 15; }
   status(l) { if (l.tbc) return { status:'Details TBC', statusColor:'#7A6259' }; return this.isOpenNow(l) ? { status:'Open now', statusColor:'#4E6538' } : { status:'Closed now', statusColor:'#9A5A3C' }; }
@@ -1635,7 +1622,7 @@ class Component extends DCLogic {
     const featuredPhillip = this.decorate(this.locById('phillip'));
     const otherLocationId = s.locationId === 'phillip' ? 'braddon' : s.locationId;
     const SUBS = { braddon:'Lonsdale St', civic:'Mort St · Quick Service', coombs:'Molonglo Valley', greenway:'Tuggeranong', gungahlin:'Gungahlin Town Centre', dickson:'Inner North', belconnen:'Gluten Free Cafe', phillip:'100% Gluten Free', kingston:'Rosemary by EightyTwenty', akuna:'Canberra City' };
-    const locations = D.LOCATIONS.slice().sort((a, b) => (b.id === 'phillip') - (a.id === 'phillip')).map(l => { const on = l.id === otherLocationId; return Object.assign(this.decorate(l), { on, border: on ? '#B67A4B' : 'rgba(75,46,38,.12)', bg: on ? '#ECE4D6' : 'transparent', accent: on ? '#B67A4B' : 'transparent', arrow: on ? '#8B5827' : '#B79A82', subShort: SUBS[l.id] || l.sub, hoursTiny: l.tbc ? 'Hours to be confirmed' : (l.hoursShort || '').replace(', 7 days', '').replace(', weekdays', ' weekdays'), select: () => this.setState({ locationId:l.id }) }); });
+    const locations = (D.phillipFirst ? D.phillipFirst(D.LOCATIONS) : D.LOCATIONS).map(l => { const on = l.id === otherLocationId; return Object.assign(this.decorate(l), { on, border: on ? '#B67A4B' : 'rgba(75,46,38,.12)', bg: on ? '#ECE4D6' : 'transparent', accent: on ? '#B67A4B' : 'transparent', arrow: on ? '#8B5827' : '#B79A82', subShort: SUBS[l.id] || l.sub, hoursTiny: l.tbc ? 'Hours to be confirmed' : (l.hoursShort || '').replace(', 7 days', '').replace(', weekdays', ' weekdays'), select: () => this.setState({ locationId:l.id }) }); });
     const otherLocations = locations.filter(l => l.id !== 'phillip');
     const mobileOtherLocs = otherLocations;
     const selSubShort = SUBS[sel.id] || sel.sub;
@@ -1660,7 +1647,7 @@ class Component extends DCLogic {
     const unit = s.item ? this.unitPrice(s.item, s.sel) : 0;
     const cartLines = s.cart.map(l => Object.assign({}, l, { imgSrc: l.img || '', hasImg: !!l.img, lineLabel:this.$(l.unit*l.qty), inc: () => this.changeQty(l.key, 1), dec: () => this.changeQty(l.key, -1), remove: () => this.removeLine(l.key), edit: () => { const it = D.MENU.find(m => m.id === l.itemId); if (it) this.openItem(it, l); } }));
     const bkLoc = this.locById(s.bk.loc);
-    const bkLocs = D.LOCATIONS.map(l => ({ name:l.name, pick: () => this.setState(st => ({ bk: Object.assign({}, st.bk, { loc:l.id }) })), border: s.bk.loc === l.id ? '#4B2E26' : 'rgba(75,46,38,.18)', bg: s.bk.loc === l.id ? '#4B2E26' : 'transparent', color: s.bk.loc === l.id ? '#F3EEE5' : '#4B2E26' }));
+    const bkLocs = locations.map(l => ({ name:l.name, pick: () => { this.rememberLocation(l.id); this.setState(st => ({ bk: Object.assign({}, st.bk, { loc:l.id }) })); }, border: s.bk.loc === l.id ? '#4B2E26' : 'rgba(75,46,38,.18)', bg: s.bk.loc === l.id ? '#4B2E26' : 'transparent', color: s.bk.loc === l.id ? '#F3EEE5' : '#4B2E26' }));
     const setField = (key, f) => e => this.setState(st => ({ [key]: Object.assign({}, st[key], { [f]: e.target.value }) }));
     const errB = (obj, f) => obj[f] ? '#B4431F' : 'rgba(75,46,38,.2)';
     const cal = this.calDays('bk'); const calCt = this.calDays('ct'); const tm = this.timeSlots();
@@ -1686,8 +1673,8 @@ class Component extends DCLogic {
     return {
       sortOpts, visibleCount, menuCols: narrow ? '1fr' : '200px minmax(0,1fr)', catDir: narrow ? 'row' : 'column', catPad: narrow ? '8px' : '12px 10px 12px', catPos: narrow ? 'static' : 'sticky', catTop: narrow ? 'auto' : '88px',
       wide, narrow, xwide: s.xwide && wide, midWide: wide && !s.xwide, ready:s.ready, selHasImg: s.ready && !!sel.img, pkgHasImg: s.ready && !!pkg.img, itemHasImg: s.ready && !!item.img, selImgSrc: sel.img || '', pkgImgSrc: pkg.img || '', itemImgSrc: item.img || '', locImgSrc: loc.img || '', loc, sel:Object.assign({}, sel, { subShort:selSubShort }), locations, otherLocations, featuredPhillip, mobileOtherLocs, phillipReserve:this.go('reserve', { bk:Object.assign({}, s.bk, { loc:'phillip' }) }), featured, sections, cats, methods, methodsCo:methods,
-      pickerLocs: locations.map(l => { const on = l.id === s.locId; const AREA = { braddon:'Lonsdale St', civic:'City', coombs:'Molonglo', greenway:'Tuggeranong', gungahlin:'North', dickson:'Inner North', belconnen:'North', phillip:'Woden', kingston:'Inner South', akuna:'City' }; return Object.assign({}, l, { on, area: AREA[l.id] || l.sub, accent: on ? '#B67A4B' : 'transparent', nameColor: on ? '#3A2B24' : '#4B2E26', choose: () => { this.setState({ locId:l.id, picker:false, method: l.methods.includes(s.method) ? s.method : 'Pickup', bk: Object.assign({}, s.bk, { loc:l.id }) }); }, opacity: l.tbc ? .5 : 1 }); }),
-      footerLocs: locations.filter(l => !l.tbc), homePhillip: D.LOCATIONS.find(l => l.id === 'phillip'),
+      pickerLocs: locations.map(l => { const on = l.id === s.locId; const AREA = { braddon:'Lonsdale St', civic:'City', coombs:'Molonglo', greenway:'Tuggeranong', gungahlin:'North', dickson:'Inner North', belconnen:'North', phillip:'Woden', kingston:'Inner South', akuna:'City' }; return Object.assign({}, l, { on, area: AREA[l.id] || l.sub, accent: on ? '#B67A4B' : 'transparent', nameColor: on ? '#3A2B24' : '#4B2E26', choose: () => { this.rememberLocation(l.id); this.setState({ locId:l.id, picker:false, method: l.methods.includes(s.method) ? s.method : 'Pickup', bk: Object.assign({}, s.bk, { loc:l.id }) }); }, opacity: l.tbc ? .5 : 1 }); }),
+      footerLocs: locations.filter(l => !l.tbc),
       isHome: view === 'home', isMenu, isLocations: view === 'locations', isLocation: view === 'location', isReserve: view === 'reserve', isCatering: view === 'catering', isAbout: view === 'about', isWholesale: view === 'wholesale', isGift: view === 'giftcards', isCheckout: view === 'checkout', isConfirm: view === 'confirm',
       showFooter: view !== 'checkout',
       isPrivacy: view === 'privacy', isRefund: view === 'refund', isAccess: view === 'accessibility', isCookies: view === 'cookies',

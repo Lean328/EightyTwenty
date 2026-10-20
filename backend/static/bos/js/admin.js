@@ -39,8 +39,7 @@
             .replace(/[̀-ͯ]/g, "");
     }
 
-    /* Theme: one button, two states. The reader's choice is remembered; with
-       no choice made, the operating system decides (admin-theme.js). */
+    /* Theme: one button, two states; light until the reader chooses dark. */
     function wireTheme() {
         document.querySelectorAll("[data-bos-theme-toggle]").forEach(function (button) {
             button.addEventListener("click", function () {
@@ -54,22 +53,66 @@
     /* Menu: a drawer under 1024px, a rail that collapses to icons above it. */
     var MOBILE = window.matchMedia("(max-width: 1023px)");
 
+    function keepFocus(event, region) {
+        if (event.key !== "Tab") { return; }
+        var controls = Array.from(region.querySelectorAll(
+            'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), summary, [tabindex="0"]'
+        )).filter(function (element) { return element.getClientRects().length && !element.closest("[inert]"); });
+        if (!controls.length) { return; }
+        var first = controls[0];
+        var last = controls[controls.length - 1];
+        if (event.shiftKey && document.activeElement === first) {
+            event.preventDefault(); last.focus();
+        } else if (!event.shiftKey && document.activeElement === last) {
+            event.preventDefault(); first.focus();
+        }
+    }
+
     function setDrawer(open) {
         var scrim = document.querySelector("[data-bos-close-nav]");
         var toggle = document.querySelector("[data-bos-nav-toggle]");
+        var sidebar = document.querySelector(".bos-sidebar");
+        var workspace = document.querySelector("#bos-workspace");
+        var wasOpen = document.body.classList.contains("bos-nav-open");
         document.body.classList.toggle("bos-nav-open", open);
+        if (sidebar) {
+            sidebar.inert = MOBILE.matches && !open;
+            if (open) {
+                sidebar.setAttribute("role", "dialog");
+                sidebar.setAttribute("aria-modal", "true");
+            } else {
+                sidebar.removeAttribute("role");
+                sidebar.removeAttribute("aria-modal");
+            }
+        }
+        if (workspace) { workspace.inert = open; }
         if (scrim) {
             scrim.hidden = !open;
         }
         if (toggle) {
             toggle.setAttribute("aria-expanded", open ? "true" : "false");
         }
+        if (open && sidebar) {
+            var close = sidebar.querySelector("[data-bos-close-drawer]");
+            if (close) { close.focus(); }
+        } else if (wasOpen && toggle && MOBILE.matches) { toggle.focus(); }
     }
 
     function wireMenu() {
         var toggle = document.querySelector("[data-bos-nav-toggle]");
         var collapse = document.querySelector("[data-bos-collapse]");
         var scrim = document.querySelector("[data-bos-close-nav]");
+        var sidebar = document.querySelector(".bos-sidebar");
+        setDrawer(false);
+        document.querySelectorAll("[data-bos-close-drawer]").forEach(function (button) {
+            button.addEventListener("click", function () { setDrawer(false); });
+        });
+        document.addEventListener("keydown", function (event) {
+            if (sidebar && document.body.classList.contains("bos-nav-open")) {
+                if (event.key === "Escape") { setDrawer(false); }
+                else { keepFocus(event, sidebar); }
+            }
+        });
 
         if (toggle) {
             toggle.addEventListener("click", function () {
@@ -189,8 +232,10 @@
         }
 
         function open() {
+            if (document.body.classList.contains("bos-nav-open")) { setDrawer(false); }
             lastFocus = document.activeElement;
             palette.hidden = false;
+            document.querySelector(".bos-shell").inert = true;
             input.value = "";
             cursor = 0;
             render();
@@ -199,6 +244,7 @@
 
         function close() {
             palette.hidden = true;
+            document.querySelector(".bos-shell").inert = false;
             if (lastFocus && lastFocus.focus) {
                 lastFocus.focus();
             }
@@ -216,6 +262,7 @@
             cursor = 0;
             render();
         });
+        palette.addEventListener("keydown", function (event) { keepFocus(event, palette); });
         input.addEventListener("keydown", function (event) {
             var items = list.querySelectorAll(".bos-palette-item");
             if (event.key === "ArrowDown") {
@@ -1208,6 +1255,27 @@
         }
     }
 
+    /* Match numeric column headings to their cells without changing Django's
+       server rendering, sorting links or values. Only known amount/count fields. */
+    function wireTableNumbers() {
+        var table = document.querySelector("#result_list");
+        if (!table || !table.tHead) { return; }
+        var numeric = /^(price|local_price|price_delta_cents|base_price_cents|total|total_display|amount|amount_cents|balance|balance_cents|stamps|stamp_dots|party_size|size|width|height|min_select|max_select|sort_order|capacity|total_aud|amount_aud|balance_aud|sales_total)$/;
+        Array.from(table.tHead.rows[0].cells).forEach(function (header, index) {
+            var field = Array.from(header.classList).find(function (name) { return name.indexOf("column-") === 0; });
+            if (field && numeric.test(field.slice(7))) {
+                header.classList.add("bos-numeric");
+                Array.from(table.tBodies).forEach(function (body) {
+                    Array.from(body.rows).forEach(function (row) {
+                        if (row.cells.length === table.tHead.rows[0].cells.length) {
+                            row.cells[index].classList.add("bos-numeric");
+                        }
+                    });
+                });
+            }
+        });
+    }
+
     ready(function () {
         wireTheme();
         wireMenu();
@@ -1225,6 +1293,7 @@
         wireToasts();
         wireNavTips();
         wireRowLinks();
+        wireTableNumbers();
 
         // A thumbnail whose file cannot be fetched becomes the empty tile,
         // whether it failed before this script ran or fails later.

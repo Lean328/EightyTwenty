@@ -11,7 +11,7 @@
     {% for tick in chart.ticks %}<i class="bos-chart-rule" style="bottom: {{ tick.pct }}%" aria-hidden="true"></i>{% endfor %}
     <div class="bos-chart-cols">
       {% for bar in chart.bars %}
-        <div class="bos-col{% if bar.today %} is-today{% endif %}" tabindex="0" data-tip="{{ bar.tip }}">
+        <div class="bos-col{% if bar.today %} is-today{% endif %}" tabindex="0" aria-label="{{ bar.tip }}" data-tip="{{ bar.tip }}">
           <span class="bos-col-bar{% if bar.empty %} is-zero{% endif %}" style="height: {{ bar.pct }}%"></span>
         </div>
       {% endfor %}

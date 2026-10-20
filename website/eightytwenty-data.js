@@ -3,6 +3,7 @@
 // then to the bundled mock-data.js snapshot, so the site never renders empty.
 import * as MOCK from './mock-data.js';
 import { API_BASE } from './config.js';
+export { preferredLocation, rememberLocation, phillipFirst } from './location-preference.js';
 
 const CACHE_KEY = 'e82-bootstrap-v1';
 const WAIT_MS = 4000; // Render free tier may be cold; don't block the page longer than this.

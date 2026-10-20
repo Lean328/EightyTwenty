@@ -27,6 +27,7 @@
         <img class="bos-brand-tile" src="{% static 'bos/img/logo-tile.png' %}" alt="" width="37" height="37">
         <span class="bos-brand-tag">back office</span>
       </a>
+      <button type="button" class="bos-icon-btn bos-nav-close" data-bos-close-drawer aria-label="Close menu">{% icon 'x' %}</button>
 
       <nav class="bos-nav" data-bos-nav>
         {% for section in bos_navigation %}
@@ -59,7 +60,7 @@
     {% endblock %}
   {% endif %}
 
-  <div class="bos-main">
+  <div class="bos-main" id="bos-workspace">
     {% if not is_popup %}
     {% block header %}
     <header class="bos-topbar">

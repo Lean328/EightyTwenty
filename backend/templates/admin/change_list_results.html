@@ -10,7 +10,7 @@
 </div>
 {% endif %}
 {% if results %}
-<div class="results">
+<div class="results" tabindex="0" role="region" aria-label="{{ cl.opts.verbose_name_plural|capfirst }} results, scroll horizontally for more columns">
 <table id="result_list">
 <thead>
 <tr>

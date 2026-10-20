@@ -29,13 +29,13 @@
     --bos-sky: #6f93a3;
     --bos-mango: #d9a441;
 
-    --bos-bg: #f4efe6;
+    --bos-bg: #f3eee5;
     --bos-surface: #fdfbf7;
     --bos-surface-2: #f8f4ec;
     --bos-surface-3: #efe8dc;
     --bos-field-bg: #fffefb;
     --bos-line: #e6dccd;
-    --bos-line-strong: #d3c5b0;
+    --bos-line-strong: #9d8977;
     --bos-text: #33251f;
     --bos-text-2: #5b463c;
     --bos-muted: #7a6259;
@@ -66,26 +66,26 @@
     --bos-danger-hover: #85261a;
     --bos-danger-ink: #fdfbf7;
 
-    --bos-chart: #c49a6c;
-    --bos-chart-today: #b4431f;
+    --bos-chart: #8b5827;
+    --bos-chart-today: #4b2e26;
     --bos-chart-zero: #e9e1d3;
     --bos-chart-rule: #ece5d9;
 
-    --bos-sidebar: #2b1e19;
-    --bos-sidebar-text: #f4ede3;
-    --bos-sidebar-link: #d8c9b8;
-    --bos-sidebar-muted: #a08b7b;
-    --bos-sidebar-hover: rgba(244, 237, 227, 0.07);
-    --bos-sidebar-active: #fff8ee;
-    --bos-sidebar-active-bg: rgba(244, 237, 227, 0.12);
-    --bos-sidebar-line: rgba(244, 237, 227, 0.1);
-    --bos-sidebar-badge-bg: #b4431f;
-    --bos-sidebar-badge-fg: #fff8ee;
-    --bos-logo-filter: invert(1) sepia(0.25) brightness(0.96);
+    --bos-sidebar: #f3eee5;
+    --bos-sidebar-text: #3a2b24;
+    --bos-sidebar-link: #5b463c;
+    --bos-sidebar-muted: #7a6259;
+    --bos-sidebar-hover: #eae2d6;
+    --bos-sidebar-active: #3a2b24;
+    --bos-sidebar-active-bg: #e6ddd0;
+    --bos-sidebar-line: #e6dccd;
+    --bos-sidebar-badge-bg: #f5dfda;
+    --bos-sidebar-badge-fg: #8a2e1c;
+    --bos-logo-filter: none;
     --bos-logo-ink: none;
 
     --bos-scrim: rgba(43, 30, 25, 0.45);
-    --bos-topbar-bg: rgba(244, 239, 230, 0.88);
+    --bos-topbar-bg: #f3eee5;
     --bos-inset: none;
     --bos-shadow-sm: none;
     --bos-shadow: none;
@@ -147,10 +147,10 @@
     --bos-chart-zero: #2e241e;
     --bos-chart-rule: #2a211c;
 
-    --bos-sidebar: #120d0b;
+    --bos-sidebar: #17110e;
     --bos-sidebar-text: #f2eae0;
     --bos-sidebar-link: #cdbfb1;
-    --bos-sidebar-muted: #8d7b6d;
+    --bos-sidebar-muted: #bbaa9a;
     --bos-sidebar-hover: rgba(255, 255, 255, 0.05);
     --bos-sidebar-active: #e9c89e;
     --bos-sidebar-active-bg: rgba(233, 200, 158, 0.12);
@@ -161,7 +161,7 @@
     --bos-logo-ink: invert(1) sepia(0.25) brightness(0.96);
 
     --bos-scrim: rgba(0, 0, 0, 0.6);
-    --bos-topbar-bg: rgba(23, 17, 14, 0.86);
+    --bos-topbar-bg: #17110e;
     --bos-inset: none;
     --bos-shadow-sm: none;
     --bos-shadow: none;
@@ -393,7 +393,7 @@ br.clear {
     display: none;
 }
 
-/* Sidebar. Espresso in both themes: it is the brand, not a surface that themes. */
+/* Sidebar shares the cream frame in light mode and espresso frame in dark. */
 .bos-sidebar {
     position: sticky;
     top: 0;
@@ -6785,4 +6785,271 @@ body.bos-login,
     max-width: 20rem;
     color: var(--bos-text-2);
     white-space: normal;
+}
+
+/* Workspace system: the website's cream frame around a warm paper sheet.
+   Desktop arithmetic: 240px navigation + 8px sheet inset + 2 × 24px gutters
+   + fluid content = viewport. Every screen uses the same content edges. */
+:root[data-theme] {
+    --bos-sidebar-width: 15rem;
+    --bos-control: 2.5rem;
+    --bos-radius: 8px;
+    --bos-radius-sm: 6px;
+    --bos-gap: 1rem;
+}
+
+.bos-content {
+    margin: 0 8px 8px 0;
+    padding: 1.5rem 1.5rem 4rem;
+    border: 1px solid var(--bos-line);
+    border-radius: 16px;
+    background: var(--bos-surface);
+}
+
+.bos-sidebar { border-right: 0; }
+.bos-topbar {
+    min-height: 3.5rem;
+    padding: 0.5rem 1.5rem;
+    border-bottom: 0;
+}
+
+.bos-topbar,
+.bos-scrim,
+.bos-palette,
+.bos-admin .submit-row,
+.bos-tabs,
+.bos-lightbox,
+.bos-picker-overlay {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+}
+
+.bos-admin .submit-row,
+.bos-tabs { background: var(--bos-surface); }
+.bos-nav-link.is-active::before { content: none; }
+.bos-nav-link .bos-i { opacity: 1; }
+.bos-nav-title {
+    font: 500 0.75rem/1.5 var(--font-family-primary);
+    margin-top: 1.25rem;
+}
+.bos-admin a.bos-nav-link,
+.bos-collapse { min-height: 2.5rem; }
+.bos-nav-close { display: none !important; }
+
+.bos-admin #content > h1,
+.bos-admin .bos-hero h1,
+.bos-page-head h1,
+.bos-admin .bos-profile-id h1 {
+    font-size: 2rem;
+    line-height: 1.2;
+    overflow-wrap: anywhere;
+}
+
+.bos-card-head h2,
+.bos-section-head h2,
+.bos-admin fieldset.module > h2,
+.bos-admin fieldset.module > details > summary h2 {
+    font: 600 1rem/1.4 var(--font-family-primary);
+    letter-spacing: 0;
+}
+
+.bos-admin .bos-record-hero h2 { font-size: 1.75rem; }
+.bos-hero { padding-top: 0.25rem; }
+.bos-page,
+.bos-two-col,
+.bos-three-col,
+.bos-schedule-grid,
+.bos-report-grid { gap: var(--bos-gap); }
+
+.bos-todo-count,
+.bos-stat-value,
+.bos-kpi-value,
+.bos-metric-value,
+.bos-report-value,
+.bos-record-stat dd,
+.bos-record-big,
+.bos-profile-stats dd {
+    font-family: var(--font-family-primary);
+    font-size: 1.75rem;
+    font-weight: 500;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.025em;
+}
+
+.bos-todo.is-clear .bos-todo-count { color: var(--bos-muted); }
+.bos-admin table,
+.bos-record-facts,
+.bos-record-lines { font-variant-numeric: tabular-nums; }
+
+.bos-admin #result_list :is(th, td).bos-numeric { text-align: right; }
+.bos-admin #result_list th.bos-numeric .text :is(a, span) { text-align: right; }
+.bos-admin #result_list th.bos-numeric .sortoptions { float: left; }
+
+.bos-admin :is(.results, .bos-matrix-wrap, .inline-group .tabular) {
+    max-width: 100%;
+    overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    scrollbar-color: var(--bos-line-strong) var(--bos-surface-2);
+}
+
+.bos-admin .results:focus-visible,
+.bos-admin .bos-matrix-wrap:focus-visible {
+    outline: 2px solid var(--bos-accent-text);
+    outline-offset: -3px;
+}
+
+.bos-admin :is(a, button, input, select, textarea, summary, [tabindex]):focus-visible {
+    outline: 2px solid var(--bos-accent-text);
+    outline-offset: 3px;
+}
+
+.bos-admin :is(input, textarea)::placeholder { opacity: 1; }
+.bos-admin :is(a, button, input, select, textarea, summary, [tabindex]) {
+    scroll-margin-top: 7rem;
+    scroll-margin-bottom: 6rem;
+}
+
+.bos-admin .errornote {
+    border-radius: var(--bos-radius-sm);
+    background: var(--bos-bad-bg);
+    color: var(--bos-bad-fg);
+    line-height: 1.6;
+}
+
+.bos-admin .errorlist { color: var(--bos-bad-fg); }
+.bos-admin :is(.help, .helptext, .readonly) { overflow-wrap: anywhere; }
+.bos-admin .bos-card-sub,
+.bos-admin .bos-record-subhead,
+.bos-admin .bos-chart-axis,
+.bos-admin .bos-chart-labels,
+.bos-admin .bos-matrix small { font-size: 0.75rem; }
+
+.bos-record-subhead,
+.bos-admin .bos-record-subhead {
+    text-transform: none;
+    letter-spacing: 0;
+}
+
+.bos-icon-chip,
+.bos-profile-list-icon,
+.bos-profile-list-icon.is-accent {
+    background: transparent;
+    color: var(--bos-muted);
+}
+
+.bos-cell { min-height: 2.5rem; border-radius: var(--bos-radius-sm); }
+.bos-cell:active { transform: none; }
+.bos-cell.is-off {
+    background: var(--bos-bad-bg);
+    color: var(--bos-bad-fg);
+}
+.bos-cell.is-on { border-color: var(--bos-line-strong); }
+.bos-matrix tbody th.bos-matrix-item a { white-space: normal; }
+.bos-chip { flex-shrink: 0; }
+.bos-login-card { max-width: 26rem; }
+.bos-login-card h1 { font-size: 2rem; }
+.bos-eyebrow { color: var(--bos-muted); }
+.bos-admin a.skip-to-content-link,
+.bos-admin a.skip-to-content-link:hover { color: var(--bos-accent-ink); }
+.bos-admin a.bos-todo,
+.bos-stat,
+.bos-kpi {
+    box-shadow: none;
+    border-inline-start: 1px solid var(--bos-line);
+    border-block-start: 1px solid var(--bos-line);
+    margin-inline-start: -1px;
+    margin-block-start: -1px;
+}
+
+@media (min-width: 768px) and (max-width: 1100px) {
+    .bos-kpis,
+    .bos-todo-grid,
+    .bos-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    :is(.bos-kpis, .bos-todo-grid, .bos-stats) > :last-child:nth-child(odd) {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (max-width: 1023px) {
+    .bos-content {
+        margin: 0 8px 8px;
+        padding: 1.25rem;
+    }
+    .bos-sidebar {
+        width: min(20rem, calc(100vw - 3rem));
+        height: 100dvh;
+        box-shadow: none;
+    }
+    .bos-admin .bos-brand { padding-right: 3.5rem; }
+    .bos-nav-close {
+        display: inline-grid !important;
+        position: absolute;
+        right: 0.75rem;
+        top: 0.75rem;
+        color: var(--bos-sidebar-text);
+    }
+    .bos-nav-open { overflow: hidden; }
+    .bos-topbar { padding-inline: 1rem; }
+    .bos-admin a.bos-nav-link { min-height: 2.75rem; }
+}
+
+@media (max-width: 767px) {
+    .bos-content {
+        margin: 0;
+        border: 0;
+        border-radius: 0;
+        padding: 1.25rem 1rem 3rem;
+    }
+    .bos-admin #content > h1,
+    .bos-admin .bos-hero h1,
+    .bos-page-head h1,
+    .bos-admin .bos-profile-id h1 { font-size: 1.75rem; }
+    :root[data-theme] { --bos-control: 2.75rem; }
+    .bos-admin input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
+    .bos-admin textarea,
+    .bos-admin select,
+    .bos-admin .bos-select-trigger { font-size: 1rem; }
+    .bos-admin .bos-icon-btn,
+    .bos-admin .bos-select-trigger,
+    .bos-admin .bos-cell,
+    .bos-admin .bos-segment a,
+    .bos-admin .bos-menu-item,
+    .bos-admin .bos-btn,
+    .bos-admin .bos-btn-xs,
+    .bos-admin .paginator :is(a, .this-page),
+    .bos-admin .object-tools a,
+    .bos-admin .bos-tab { min-height: 2.75rem; }
+    .bos-admin .bos-icon-btn { min-width: 2.75rem; }
+    .bos-admin #toolbar form input[type="submit"],
+    .bos-admin #changelist .actions :is(.button, select) { min-height: 2.75rem; }
+    .bos-admin .bos-toolbar-form { width: 100%; min-width: 0; }
+    .bos-toolbar-form > :is(input, .bos-select) { flex: 1 1 10rem; min-width: 0; }
+    .bos-admin .inline-group .tabular { overflow-x: auto; }
+    .bos-admin .inline-group .tabular table { min-width: 40rem; }
+    .bos-admin #result_list { min-width: 36rem; }
+    .bos-matrix .bos-matrix-item {
+        min-width: 9rem;
+        max-width: 10rem;
+        padding-inline: 0.65rem;
+    }
+    .bos-matrix-wrap { max-height: 70dvh; }
+    .bos-reservation-actions { flex-wrap: wrap; }
+    .bos-record-list li { flex-wrap: wrap; }
+    .bos-user-name { max-width: 6rem; }
+    :is(.bos-kpis, .bos-todo-grid, .bos-stats) > :last-child:nth-child(odd) {
+        grid-column: 1 / -1;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .bos-admin *, .bos-admin *::before, .bos-admin *::after {
+        scroll-behavior: auto !important;
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+    }
+}
+
+@media print {
+    .bos-content { margin: 0; padding: 0; border: 0; }
+    .bos-nav-close { display: none !important; }
 }
