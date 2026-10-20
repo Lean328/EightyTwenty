@@ -42,6 +42,8 @@
     </form>
   </div>
 
+  <nav class="bos-report-index" aria-label="Report sections"><a href="#sales">Sales &amp; reconciliation</a><a href="#reservations">Reservations</a><a href="#enquiries">Enquiries</a><a href="#menu">Menu health</a></nav>
+  <h2 class="bos-report-heading" id="sales">Sales &amp; reconciliation</h2>
   <section class="bos-kpis" aria-label="Sales figures">
     <article class="bos-kpi">
       <p class="bos-kpi-label">Sales</p>
@@ -107,6 +109,7 @@
     </section>
   </div>
 
+  <h2 class="bos-report-heading" id="reservations">Reservations &amp; guest demand</h2>
   <section class="bos-kpis" aria-label="Booking figures">
     <article class="bos-kpi">
       <p class="bos-kpi-label">Bookings</p>
@@ -200,7 +203,7 @@
     </section>
 
     <section class="bos-card">
-      <header class="bos-card-head"><div><h2>Enquiry pipeline</h2><p class="bos-card-sub">Received in this period, by current status</p></div></header>
+      <header class="bos-card-head"><div><h2 id="enquiries">Enquiry pipeline</h2><p class="bos-card-sub">Received in this period, by current status</p></div></header>
       {% include "admin/includes/bos_bars.html" with rows=e.pipeline toned=True %}
     </section>
 
@@ -210,7 +213,7 @@
     </section>
 
     <section class="bos-card bos-card-flush">
-      <header class="bos-card-head"><div><h2>Availability</h2><p class="bos-card-sub">Overrides on published items, today</p></div>
+      <header class="bos-card-head"><div><h2 id="menu">Availability</h2><p class="bos-card-sub">Overrides on published items, today</p></div>
         <a class="bos-link" href="{% url 'admin:bos_availability' %}">Board {% icon 'arrow-right' %}</a></header>
       <div class="bos-table-wrap">
         <table class="bos-table">

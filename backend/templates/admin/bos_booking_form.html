@@ -7,9 +7,15 @@
 <div class="submit-row bos-booking-actions">
   <p class="bos-actions-note">{% if booking_actions %}{% icon 'mail' %} Choose the next step. The guest is emailed the new status.{% else %}{% icon 'check-circle' %} This reservation has reached its final status.{% endif %}</p>
   {% for action in booking_actions %}
-    <button type="submit" formaction="{{ action.url }}" formmethod="post"
-            class="bos-btn {% if action.primary %}bos-btn-primary{% elif action.danger %}bos-btn-danger-ghost{% endif %}">{{ action.label }}</button>
+    {% if action.primary %}<button type="submit" formaction="{{ action.url }}" formmethod="post"
+            class="bos-btn {% if action.primary %}bos-btn-primary{% elif action.danger %}bos-btn-danger-ghost{% endif %}">{{ action.label }}</button>{% endif %}
   {% endfor %}
+  <details class="bos-record-more-actions" data-bos-menu><summary class="bos-btn bos-btn-ghost">Other actions</summary><div>
+  {% for action in booking_actions %}
+    {% if not action.primary %}<button type="submit" formaction="{{ action.url }}" formmethod="post"
+            class="bos-btn {% if action.primary %}bos-btn-primary{% elif action.danger %}bos-btn-danger-ghost{% endif %}">{{ action.label }}</button>{% endif %}
+  {% endfor %}
+  </div></details>
   <a href="{% url 'admin:bookings_booking_changelist' %}" class="bos-btn bos-btn-ghost">Back to bookings</a>
 </div>
 {% endblock %}

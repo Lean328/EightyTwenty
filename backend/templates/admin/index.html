@@ -8,12 +8,11 @@
 {% block content_title %}{% endblock %}
 
 {% block content %}
-<div class="bos-page">
-
+<div class="bos-page bos-overview">
   <header class="bos-hero">
     <div class="bos-hero-text">
-      <p class="bos-eyebrow">{% if selected_location %}{{ selected_location.name }}{% else %}EightyTwenty{% endif %} · Canberra</p>
-      <h1>{{ today|date:"l j F" }}</h1>
+      <p class="bos-eyebrow">{% if selected_location %}{{ selected_location.name }}{% else %}EightyTwenty{% endif %} · {{ today|date:"l j F" }}</p>
+      <h1>Overview</h1>
       <p class="bos-lead">
         {% if waiting_sentence %}
           {{ waiting_sentence }}{% if selected_location %} at {{ selected_location.name }}{% endif %}.
@@ -35,8 +34,8 @@
       <noscript><button type="submit" class="bos-btn bos-btn-ghost">Apply</button></noscript>
     </form>
   </header>
-
-  <section aria-labelledby="bos-todo-title">
+<div class="bos-overview-top">
+<section aria-labelledby="bos-todo-title">
     <div class="bos-section-head">
       <h2 id="bos-todo-title">Needs attention</h2>
     </div>
@@ -80,8 +79,33 @@
       {% endif %}
     </div>
   </section>
-
-  <section class="bos-stats" aria-label="Key figures">
+<section class="bos-card">
+        <header class="bos-card-head">
+          <div>
+            <h2>Today's reservations</h2>
+            <p class="bos-card-sub">{{ today|date:"l j F" }}</p>
+          </div>
+          <span class="bos-day-badge" aria-hidden="true">{{ today|date:"d" }}<small>{{ today|date:"M" }}</small></span>
+        </header>
+        {% if today_schedule %}
+          <ol class="bos-schedule">
+            {% for booking in today_schedule %}
+              <li>
+                <a href="{{ booking.admin_url }}">
+                  <time>{{ booking.time|time:"g:i" }}<small>{{ booking.time|time:"A" }}</small></time>
+                  <span class="bos-schedule-body"><strong>{{ booking.name }}</strong><small>{{ booking.party_size }} guest{{ booking.party_size|pluralize }} · {{ booking.location.name }}</small></span>
+                  {{ booking.status|status_badge }}
+                </a>
+              </li>
+            {% endfor %}
+          </ol>
+        {% else %}
+          <div class="bos-empty bos-empty-sm">{% icon 'calendar' %}<p>No reservations today.</p></div>
+        {% endif %}
+        <p class="bos-card-foot"><a class="bos-link" href="{% url 'admin:bos_schedule' %}{% if selected_location %}?location={{ selected_location.slug }}{% endif %}">Open today's schedule {% icon 'arrow-right' %}</a></p>
+      </section>
+</div>
+<section class="bos-stats" aria-label="Key figures">
     <a class="bos-stat" href="{{ today_bookings_url }}">
       <p class="bos-stat-label">Today's bookings</p>
       <p class="bos-stat-value">{{ totals.today_bookings }}</p>
@@ -105,30 +129,7 @@
       <p class="bos-stat-note">{{ published_location_count }} published location{{ published_location_count|pluralize }}</p>
     </a>
   </section>
-
-  <div class="bos-dash-grid">
-    <div class="bos-dash-main">
-      <section class="bos-card">
-        <header class="bos-card-head">
-          <div>
-            <h2>Booking activity</h2>
-            <p class="bos-card-sub">{{ period_start|date:"j M" }} – {{ today|date:"j M Y" }} · by reservation date, excluding declined, cancelled and no-shows</p>
-          </div>
-          {% if bos_can.reports %}<a class="bos-link" href="{% url 'admin:bos_reports' %}">Full reports {% icon 'arrow-right' %}</a>{% endif %}
-        </header>
-        {% include "admin/includes/bos_columns.html" with chart=chart label="Active bookings per day" %}
-        <details class="bos-chart-details">
-          <summary>Daily figures</summary>
-          <div class="bos-table-wrap">
-            <table class="bos-table">
-              <thead><tr><th>Date</th><th class="bos-num">Bookings</th></tr></thead>
-              <tbody>{% for day in trend %}<tr><td>{{ day.date|date:"D j M" }}</td><td class="bos-num">{{ day.count }}</td></tr>{% endfor %}</tbody>
-            </table>
-          </div>
-        </details>
-      </section>
-
-      <section class="bos-card bos-card-flush">
+<section class="bos-card bos-card-flush">
         <header class="bos-card-head">
           <div>
             <h2>Bookings to review</h2>
@@ -157,36 +158,27 @@
           <div class="bos-empty">{% icon 'check-circle' %}<p>All caught up — new requests will appear here.</p></div>
         {% endif %}
       </section>
-    </div>
-
-    <aside class="bos-dash-side">
-      <section class="bos-card">
+<div class="bos-overview-analysis">
+<section class="bos-card">
         <header class="bos-card-head">
           <div>
-            <h2>Today's reservations</h2>
-            <p class="bos-card-sub">{{ today|date:"l j F" }}</p>
+            <h2>Booking activity</h2>
+            <p class="bos-card-sub">{{ period_start|date:"j M" }} – {{ today|date:"j M Y" }} · by reservation date, excluding declined, cancelled and no-shows</p>
           </div>
-          <span class="bos-day-badge" aria-hidden="true">{{ today|date:"d" }}<small>{{ today|date:"M" }}</small></span>
+          {% if bos_can.reports %}<a class="bos-link" href="{% url 'admin:bos_reports' %}">Full reports {% icon 'arrow-right' %}</a>{% endif %}
         </header>
-        {% if today_schedule %}
-          <ol class="bos-schedule">
-            {% for booking in today_schedule %}
-              <li>
-                <a href="{{ booking.admin_url }}">
-                  <time>{{ booking.time|time:"g:i" }}<small>{{ booking.time|time:"A" }}</small></time>
-                  <span class="bos-schedule-body"><strong>{{ booking.name }}</strong><small>{{ booking.party_size }} guest{{ booking.party_size|pluralize }} · {{ booking.location.name }}</small></span>
-                  {{ booking.status|status_badge }}
-                </a>
-              </li>
-            {% endfor %}
-          </ol>
-        {% else %}
-          <div class="bos-empty bos-empty-sm">{% icon 'calendar' %}<p>No reservations today.</p></div>
-        {% endif %}
-        <p class="bos-card-foot"><a class="bos-link" href="{% url 'admin:bos_schedule' %}{% if selected_location %}?location={{ selected_location.slug }}{% endif %}">Open today's schedule {% icon 'arrow-right' %}</a></p>
+        {% include "admin/includes/bos_columns.html" with chart=chart label="Active bookings per day" %}
+        <details class="bos-chart-details">
+          <summary>Daily figures</summary>
+          <div class="bos-table-wrap">
+            <table class="bos-table">
+              <thead><tr><th>Date</th><th class="bos-num">Bookings</th></tr></thead>
+              <tbody>{% for day in trend %}<tr><td>{{ day.date|date:"D j M" }}</td><td class="bos-num">{{ day.count }}</td></tr>{% endfor %}</tbody>
+            </table>
+          </div>
+        </details>
       </section>
-
-      <section class="bos-card">
+<section class="bos-card">
         <header class="bos-card-head">
           <div>
             <h2>Enquiry mix</h2>
@@ -204,32 +196,8 @@
         </ul>
         <p class="bos-card-foot"><a class="bos-link" href="{{ enquiry_list_url }}">Open enquiry inbox {% icon 'arrow-right' %}</a></p>
       </section>
-
-      <section class="bos-card">
-        <header class="bos-card-head">
-          <div><h2>Recent activity</h2><p class="bos-card-sub">{% if bos_can.chain %}Latest changes across the workspace{% else %}Your latest changes{% endif %}</p></div>
-        </header>
-        {% if recent_activity %}
-          <ol class="bos-feed">
-            {% for event in recent_activity %}
-              <li>
-                <span class="bos-feed-mark bos-tone-{% if 'create' in event.action %}good{% elif 'delete' in event.action %}bad{% else %}info{% endif %}">{{ event.display_action }}</span>
-                <div class="bos-feed-body">
-                  <span>{{ event.display_entity|capfirst }}</span>
-                  <span class="bos-feed-meta">{% firstof event.actor.first_name event.actor.email "System" %} · {{ event.created_at|timesince }} ago</span>
-                </div>
-              </li>
-            {% endfor %}
-          </ol>
-        {% else %}
-          <div class="bos-empty bos-empty-sm"><p>Changes made by your team will appear here.</p></div>
-        {% endif %}
-        {% if bos_can.chain %}<p class="bos-card-foot"><a class="bos-link" href="{% url 'admin:core_auditlog_changelist' %}">Activity log {% icon 'arrow-right' %}</a></p>{% endif %}
-      </section>
-    </aside>
-  </div>
-
-  <section class="bos-card">
+</div>
+<section class="bos-card">
     <header class="bos-card-head">
       <div>
         <h2>Locations</h2>
@@ -254,7 +222,29 @@
         {% if bos_can.chain %}<a class="bos-btn bos-btn-primary bos-btn-sm" href="{% url 'admin:locations_location_add' %}">{% icon 'plus' %} Add a location</a>{% endif %}</div>
     {% endif %}
   </section>
-
+<details class="bos-activity-disclosure"><summary>Recent workspace activity</summary>
+<section class="bos-card">
+        <header class="bos-card-head">
+          <div><h2>Recent activity</h2><p class="bos-card-sub">{% if bos_can.chain %}Latest changes across the workspace{% else %}Your latest changes{% endif %}</p></div>
+        </header>
+        {% if recent_activity %}
+          <ol class="bos-feed">
+            {% for event in recent_activity %}
+              <li>
+                <span class="bos-feed-mark bos-tone-{% if 'create' in event.action %}good{% elif 'delete' in event.action %}bad{% else %}info{% endif %}">{{ event.display_action }}</span>
+                <div class="bos-feed-body">
+                  <span>{{ event.display_entity|capfirst }}</span>
+                  <span class="bos-feed-meta">{% firstof event.actor.first_name event.actor.email "System" %} · {{ event.created_at|timesince }} ago</span>
+                </div>
+              </li>
+            {% endfor %}
+          </ol>
+        {% else %}
+          <div class="bos-empty bos-empty-sm"><p>Changes made by your team will appear here.</p></div>
+        {% endif %}
+        {% if bos_can.chain %}<p class="bos-card-foot"><a class="bos-link" href="{% url 'admin:core_auditlog_changelist' %}">Activity log {% icon 'arrow-right' %}</a></p>{% endif %}
+      </section>
+</details>
   <p class="bos-footnote">{% icon 'clock' %} Times are Australia/Sydney. Quick links:
     <a href="{% url 'admin:bos_availability' %}">mark items sold out</a>
     {% if bos_can.add_menu_item %} · <a href="{% url 'admin:menu_menuitem_add' %}">add a menu item</a>{% endif %}

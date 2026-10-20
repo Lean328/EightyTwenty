@@ -10,7 +10,9 @@
 {% block responsive %}<link rel="stylesheet" href="{% static 'admin/css/responsive.css' %}">{% endblock %}
 {% block extrastyle %}{% endblock %}
 <link rel="stylesheet" href="{% static 'bos/css/admin.css' %}">
+<link rel="stylesheet" href="{% static 'bos/css/experience.css' %}">
 {% block extrahead %}{% endblock %}
+<script src="{% static 'bos/js/workspaces.js' %}" defer></script>
 <script src="{% static 'bos/js/admin.js' %}" defer></script>
 </head>
 
@@ -30,6 +32,7 @@
       <button type="button" class="bos-icon-btn bos-nav-close" data-bos-close-drawer aria-label="Close menu">{% icon 'x' %}</button>
 
       <nav class="bos-nav" data-bos-nav>
+        <div class="bos-nav-source">
         {% for section in bos_navigation %}
           <div class="bos-nav-section">
             {% if section.title %}<p class="bos-nav-title">{{ section.title }}</p>{% endif %}
@@ -38,7 +41,7 @@
                 <li>
                   <a class="bos-nav-link{% if item.active %} is-active{% endif %}" href="{{ item.url }}"
                      {% if item.active %}aria-current="page"{% endif %} aria-label="{{ item.name }}{% if item.badge %}, {{ item.badge }} waiting{% endif %}" data-bos-tip="{{ item.name }}" data-bos-nav-link
-                     data-bos-section="{{ section.title|default:'' }}">
+                     data-bos-key="{{ item.key }}" data-bos-section="{{ section.title|default:'' }}">
                     {% icon item.icon %}
                     <span class="bos-nav-text">{{ item.name }}</span>
                     {% if item.badge %}<span class="bos-nav-badge" aria-label="{{ item.badge }} waiting">{{ item.badge }}</span>{% endif %}
@@ -48,6 +51,7 @@
             </ul>
           </div>
         {% endfor %}
+        </div>
       </nav>
 
       <div class="bos-sidebar-foot">

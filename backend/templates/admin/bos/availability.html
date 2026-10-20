@@ -9,7 +9,7 @@
 <div class="bos-page">
   <header class="bos-page-head">
     <div>
-      <p class="bos-eyebrow">Menu</p>
+      <p class="bos-eyebrow">Operations</p>
       <h1>Availability board</h1>
       <p class="bos-lead">Tap a cell to mark an item sold out — or back on — at one café. Every change is saved straight away and recorded in the activity log.</p>
     </div>
@@ -32,7 +32,7 @@
     <p class="bos-legend" aria-hidden="true"><span class="bos-cell-dot is-on"></span> Available <span class="bos-cell-dot is-off"></span> Sold out <span class="bos-cell-dot is-hidden"></span> Hidden at that café</p>
   </div>
 
-  <p class="bos-alert bos-alert-info">{% icon 'info' %}<span>The website does not show sold-out labels yet (waiting for sign-off). The API already returns availability per café with <code>?location=</code>, so the app and future website can use it.</span></p>
+  <details class="bos-service-note"><summary>How availability reaches the website</summary><p class="bos-alert bos-alert-info">{% icon 'info' %}<span>The website does not show sold-out labels yet (waiting for sign-off). The API already returns availability per café with <code>?location=</code>, so the app and future website can use it.</span></p></details>
 
   {% if rows %}
   <div class="bos-card bos-card-flush">

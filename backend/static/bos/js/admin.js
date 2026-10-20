@@ -140,7 +140,7 @@
         });
 
         // Keep the open page in view when the menu is longer than the screen.
-        var active = document.querySelector(".bos-nav-link.is-active");
+        var active = document.querySelector(".bos-primary-nav .is-active, .bos-utility-nav .is-active") || document.querySelector(".bos-nav-link.is-active");
         var nav = document.querySelector("[data-bos-nav]");
         if (active && nav && active.offsetTop > nav.clientHeight - 80) {
             nav.scrollTop = active.offsetTop - nav.clientHeight / 2;
@@ -762,7 +762,7 @@
                 show(index, true);
             });
             tab.addEventListener("keydown", function (event) {
-                var step = event.key === "ArrowRight" ? 1 : (event.key === "ArrowLeft" ? -1 : 0);
+                var step = ["ArrowRight", "ArrowDown"].includes(event.key) ? 1 : (["ArrowLeft", "ArrowUp"].includes(event.key) ? -1 : 0);
                 if (step) {
                     event.preventDefault();
                     var next = (index + step + tabs.length) % tabs.length;
@@ -799,7 +799,19 @@
             }
         }
 
-        holder.insertBefore(bar, panels[0]);
+        var layout = document.createElement("div");
+        layout.className = "bos-editor-layout";
+        var rail = document.createElement("div");
+        rail.className = "bos-editor-sections";
+        var label = document.createElement("p");
+        label.className = "bos-editor-label";
+        label.textContent = "Record sections";
+        rail.append(label, bar);
+        var body = document.createElement("div");
+        body.className = "bos-editor-panels";
+        holder.insertBefore(layout, panels[0]);
+        layout.append(rail, body);
+        panels.forEach(function (panel) { body.appendChild(panel); });
         document.body.classList.add("bos-has-tabs");
 
         var start = tabs.findIndex(function (tab) {
@@ -1010,6 +1022,7 @@
        its href, so a middle click still opens a tab and the page works
        unchanged without this script. */
     var lightbox = null;
+    var lightboxTrigger = null;
 
     function closeLightbox() {
         if (!lightbox) {
@@ -1017,17 +1030,20 @@
         }
         lightbox.remove();
         lightbox = null;
-        document.removeEventListener("keydown", onLightboxKey);
+        document.removeEventListener("keydown", onLightboxKey, true);
+        document.querySelector(".bos-shell").inert = false;
+        if (lightboxTrigger) { lightboxTrigger.focus(); }
     }
 
     function onLightboxKey(event) {
-        if (event.key === "Escape") {
+        if (event.key === "Escape" || ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k")) {
             closeLightbox();
-        }
+        } else { keepFocus(event, lightbox); }
     }
 
     function openLightbox(source, caption) {
         closeLightbox();
+        lightboxTrigger = document.activeElement;
         lightbox = document.createElement("div");
         lightbox.className = "bos-lightbox";
         lightbox.setAttribute("role", "dialog");
@@ -1058,7 +1074,8 @@
             }
         });
         document.body.appendChild(lightbox);
-        document.addEventListener("keydown", onLightboxKey);
+        document.querySelector(".bos-shell").inert = true;
+        document.addEventListener("keydown", onLightboxKey, true);
         close.focus();
     }
 
@@ -1087,7 +1104,8 @@
             }
             modal.remove();
             modal = null;
-            document.removeEventListener("keydown", onPickerKey);
+            document.removeEventListener("keydown", onPickerKey, true);
+            document.querySelector(".bos-shell").inert = false;
             var back = current && current.querySelector("[data-bos-picker-open]");
             current = null;
             if (back) {
@@ -1096,9 +1114,10 @@
         }
 
         function onPickerKey(event) {
-            if (event.key === "Escape") {
+            if (event.key === "Escape" || ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k")) {
+                if (event.key === "Escape") { event.preventDefault(); }
                 closePicker();
-            }
+            } else { keepFocus(event, modal); }
         }
 
         function setPhoto(picker, item) {
@@ -1208,7 +1227,8 @@
                 }, 250);
             });
             document.body.appendChild(modal);
-            document.addEventListener("keydown", onPickerKey);
+            document.querySelector(".bos-shell").inert = true;
+            document.addEventListener("keydown", onPickerKey, true);
             load(grid, "");
             search.focus();
         }
@@ -1260,7 +1280,7 @@
     function wireTableNumbers() {
         var table = document.querySelector("#result_list");
         if (!table || !table.tHead) { return; }
-        var numeric = /^(price|local_price|price_delta_cents|base_price_cents|total|total_display|amount|amount_cents|balance|balance_cents|stamps|stamp_dots|party_size|size|width|height|min_select|max_select|sort_order|capacity|total_aud|amount_aud|balance_aud|sales_total)$/;
+        var numeric = /^(price|local_price|price_delta_cents|base_price_cents|total|total_display|amount|amount_cents|balance|balance_cents|stamps|stamp_dots|party_size|size|width|height|min_select|max_select|sort_order|capacity|total_aud|amount_aud|balance_aud|sales_total|float_amount|counted|variance|cash_sales|cash_refunds|expected|gst|seats|value)$/;
         Array.from(table.tHead.rows[0].cells).forEach(function (header, index) {
             var field = Array.from(header.classList).find(function (name) { return name.indexOf("column-") === 0; });
             if (field && numeric.test(field.slice(7))) {
@@ -1278,6 +1298,7 @@
 
     ready(function () {
         wireTheme();
+        if (window.BOSWorkspaces) { window.BOSWorkspaces.init(); }
         wireMenu();
         wireUserMenu();
         wirePalette();
@@ -1317,6 +1338,7 @@
         wireSelects(document);
         wireSelectDismiss();
         wireTabs();
+        if (window.BOSWorkspaces) { window.BOSWorkspaces.enhanceLists(); }
 
         // A new inline row is cloned from a hidden template after load.
         document.addEventListener("formset:added", function (event) {

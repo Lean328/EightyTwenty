@@ -1,0 +1,13 @@
+{% extends "admin/change_list.html" %}
+{% load i18n %}
+
+{% block content_title %}
+<header class="bos-list-heading">
+  <div>
+    <p class="bos-eyebrow">{% trans "Workspace records" %}</p>
+    {{ block.super }}
+    <p class="bos-list-count">{{ cl.result_count }} {% blocktrans count counter=cl.result_count %}result{% plural %}results{% endblocktrans %}{% if cl.is_filtered %} · {% trans "Filtered view" %}{% endif %}</p>
+  </div>
+  <div data-bos-list-tools></div>
+</header>
+{% endblock %}
