@@ -3,6 +3,7 @@ from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from django.shortcuts import redirect
 from django.urls import path, reverse
+from django.utils.html import format_html
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
@@ -31,10 +32,10 @@ class OrderAdmin(ReadOnlyAdmin):
     location_lookup = "location"
     list_display = (
         "number",
-        "channel",
-        "contact_name",
+        "who",
+        "items",
         "location",
-        "method",
+        "channel",
         "when",
         "total",
         "order_status",
@@ -50,6 +51,24 @@ class OrderAdmin(ReadOnlyAdmin):
 
     def has_change_permission(self, request, obj=None):
         return RoleAccessMixin.has_change_permission(self, request, obj)
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("location").prefetch_related("lines")
+
+    @admin.display(description="Customer", ordering="contact_name")
+    def who(self, obj):
+        if obj.contact_name:
+            return obj.contact_name
+        return f"Table {obj.table_number}" if obj.table_number else "Walk-in"
+
+    @admin.display(description="Items")
+    def items(self, obj):
+        lines = [line for line in obj.lines.all() if line.qty]
+        shown = ", ".join(
+            f"{line.qty}× {line.name}" if line.qty > 1 else line.name for line in lines[:3]
+        )
+        more = f" +{len(lines) - 3} more" if len(lines) > 3 else ""
+        return format_html('<span class="bos-items">{}{}</span>', shown, more) if lines else "—"
 
     @admin.display(description="Status", ordering="status")
     def order_status(self, obj):
@@ -95,7 +114,7 @@ class OrderAdmin(ReadOnlyAdmin):
         customer = obj.customer
         name = obj.contact_name or ui.person(customer)
         account = (
-            reverse("admin:accounts_user_change", args=[customer.pk])
+            reverse("admin:accounts_customer_change", args=[customer.pk])
             if customer and bos_role(request.user) == CHAIN
             else ""
         )

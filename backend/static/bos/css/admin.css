@@ -6805,3 +6805,58 @@ body.bos-login,
         gap: 0.25rem;
     }
 }
+
+/* Lists: the whole row opens the record (admin.js wireRowLinks). */
+.bos-admin #result_list tr.bos-row-link {
+    cursor: pointer;
+}
+
+.bos-admin #result_list tr.bos-row-link:hover > td,
+.bos-admin #result_list tr.bos-row-link:hover > th {
+    background: var(--bos-surface-2);
+}
+
+/* Coffee card stamps in lists (loyalty/admin.py stamp_dots). */
+.bos-dots {
+    display: inline-flex;
+    gap: 3px;
+    vertical-align: middle;
+}
+
+.bos-dots span {
+    width: 0.6rem;
+    height: 0.6rem;
+    border: 1px solid var(--bos-line-strong);
+    border-radius: 50%;
+}
+
+.bos-dots span.is-on {
+    border-color: var(--bos-accent);
+    background: var(--bos-accent);
+}
+
+.bos-dots-count {
+    margin-left: 0.35rem;
+    color: var(--bos-text-2);
+    font-size: 0.8rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.bos-when,
+.bos-admin #result_list td.field-card,
+.bos-admin #result_list td.field-phone,
+.bos-admin #result_list td.field-phone_link {
+    white-space: nowrap;
+}
+
+.bos-when strong {
+    margin-right: 0.3rem;
+}
+
+.bos-items {
+    display: inline-block;
+    min-width: 10rem;
+    max-width: 20rem;
+    color: var(--bos-text-2);
+    white-space: normal;
+}

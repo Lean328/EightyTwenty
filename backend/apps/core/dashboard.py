@@ -7,11 +7,13 @@ from django.db.models import Count, Q, Sum
 from django.http import Http404
 from django.urls import reverse
 from django.utils import timezone
+from django.utils.html import format_html, format_html_join
 
 from apps.bookings.models import Booking
 from apps.enquiries.models import Enquiry
 from apps.menu.models import LocationMenuItem, MenuItem
 from apps.notifications.models import EmailMessage
+from apps.orders.models import Order
 
 from .bos_access import bos_location_ids, bos_locations
 from .charts import column_chart, delta
@@ -21,6 +23,23 @@ from .models import AuditLog
 def list_url(app, model, **filters):
     url = reverse(f"admin:{app}_{model}_changelist")
     return f"{url}?{urlencode(filters)}" if filters else url
+
+
+def waiting_sentence(rows):
+    """'<b>2</b> app orders and <b>4</b> booking requests are waiting', or '' when none are."""
+    parts = [
+        format_html("<strong>{}</strong> {}", count, one if count == 1 else many)
+        for count, one, many in rows
+        if count
+    ]
+    if not parts:
+        return ""
+    joined = parts[0]
+    if len(parts) > 1:
+        head = format_html_join(", ", "{}", ((part,) for part in parts[:-1]))
+        joined = format_html("{} and {}", head, parts[-1])
+    total = sum(count for count, _, _ in rows)
+    return format_html("{} {} waiting for you", joined, "is" if total == 1 else "are")
 
 
 def change_url(obj):
@@ -73,6 +92,12 @@ def dashboard_context(request):
         period_bookings=Count("id", filter=Q(date__range=(start, today))),
         previous_bookings=Count("id", filter=Q(date__gte=previous_start, date__lt=start)),
     )
+    orders = Order.objects.filter(channel="app", status="received")
+    if selected:
+        orders = orders.filter(location=selected)
+    elif ids is not None:
+        orders = orders.filter(location__in=ids)
+    waiting_orders = orders.count()
     # Past unattended requests remain visible rather than disappearing at midnight.
     pending = bookings.filter(status="requested")
     new_enquiries = enquiries.filter(status="new")
@@ -187,6 +212,17 @@ def dashboard_context(request):
         "selected_location": selected,
         "totals": totals,
         "awaiting_count": awaiting_count,
+        "waiting_orders": waiting_orders,
+        "waiting_sentence": waiting_sentence(
+            [
+                (waiting_orders, "app order", "app orders"),
+                (awaiting_count, "booking request", "booking requests"),
+                (enquiry_count, "new enquiry", "new enquiries"),
+            ]
+        ),
+        "waiting_orders_url": list_url(
+            "orders", "order", channel__exact="app", status__exact="received", **scope
+        ),
         "new_enquiry_count": enquiry_count,
         "menu_count": published_menu.count(),
         "unavailable_count": unavailable_count,
@@ -213,7 +249,7 @@ def dashboard_context(request):
         "branches": branches,
         "failed_emails": failed_emails,
         "recent_activity": recent_activity,
-        "booking_list_url": list_url("bookings", "booking", **scope),
+        "booking_list_url": list_url("bookings", "booking", when="all", **scope),
         "today_bookings_url": list_url(
             "bookings",
             "booking",

@@ -134,7 +134,7 @@
       {% block messages %}{% include "admin/includes/bos_messages.html" %}{% endblock messages %}
       <div id="content" class="{% block coltype %}colM{% endblock %}">
         {% block pretitle %}{% endblock %}
-        {% block content_title %}{% if cl %}<h1>{{ cl.opts.verbose_name_plural|capfirst }}</h1>{% elif title %}<h1>{{ title }}</h1>{% endif %}{% endblock %}
+        {% block content_title %}{% if cl %}<h1>{% firstof list_title cl.opts.verbose_name_plural|capfirst %}</h1>{% elif title %}<h1>{{ title }}</h1>{% endif %}{% endblock %}
         {% block content_subtitle %}{% if subtitle %}<h2>{{ subtitle }}</h2>{% endif %}{% endblock %}
         {% block content %}
           {% block object-tools %}{% endblock %}

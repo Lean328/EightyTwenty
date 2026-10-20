@@ -7,6 +7,8 @@ import re
 
 from django.db import transaction
 
+from apps.core.exceptions import DomainError
+from apps.core.services import audit, snapshot
 from apps.notifications.services import notify
 
 from .models import STAMPS_PER_REWARD, GiftCard, GiftCardActivity, LoyaltyActivity, LoyaltyCard
@@ -144,6 +146,38 @@ def record_stamp_change(card, before, location_name="In store"):
             else "Stamps adjusted by the team",
             location_name=location_name,
         )
+
+
+@transaction.atomic
+def add_stamp(card, request, location_name="In store"):
+    """One coffee at the counter: +1 stamp, up to the full card."""
+    card = LoyaltyCard.objects.select_for_update().get(pk=card.pk)
+    if card.stamps >= STAMPS_PER_REWARD:
+        raise DomainError("card_full", "The card is full: redeem the free coffee first.", 409)
+    return _set_stamps(card, card.stamps + 1, request, location_name)
+
+
+@transaction.atomic
+def redeem_reward(card, request, location_name="In store"):
+    """The 10th coffee is free: only a full card can be redeemed, and it starts again at 0."""
+    card = LoyaltyCard.objects.select_for_update().get(pk=card.pk)
+    if card.stamps < STAMPS_PER_REWARD:
+        raise DomainError(
+            "reward_not_earned",
+            f"{card.stamps} of {STAMPS_PER_REWARD} stamps: the free coffee is not earned yet.",
+            409,
+        )
+    return _set_stamps(card, 0, request, location_name)
+
+
+def _set_stamps(card, stamps, request, location_name):
+    before, previous = snapshot(card), card.stamps
+    card.stamps = stamps
+    card.updated_by = request.user
+    card.save(update_fields=["stamps", "updated_by", "updated_at"])
+    audit(request, card, before)
+    record_stamp_change(card, previous, location_name)
+    return card
 
 
 def record_balance_change(gift, before):

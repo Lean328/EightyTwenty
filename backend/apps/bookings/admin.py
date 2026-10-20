@@ -3,8 +3,10 @@ from django.core.exceptions import PermissionDenied
 from django.http import Http404
 from django.shortcuts import redirect
 from django.urls import path, reverse
+from django.utils import timezone
 from django.utils.dateformat import format as date_format
 from django.utils.dateformat import time_format
+from django.utils.html import format_html
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_POST
 
@@ -50,15 +52,64 @@ class BookingRuleAdmin(OperationsAdmin):
     ]
 
 
+class WhenFilter(admin.SimpleListFilter):
+    """Opening Bookings shows today and what is coming; any search, filter or link shows all."""
+
+    title = "When"
+    parameter_name = "when"
+    QUIET = {"o", "p", "_changelist_filters"}
+
+    def lookups(self, request, model_admin):
+        return [
+            ("upcoming", "Today & upcoming"),
+            ("today", "Today"),
+            ("past", "Past"),
+            ("all", "All dates"),
+        ]
+
+    def value(self):
+        return super().value() or ("upcoming" if self.landing else "all")
+
+    def __init__(self, request, params, model, model_admin):
+        self.landing = not (set(request.GET) - self.QUIET)
+        super().__init__(request, params, model, model_admin)
+
+    def choices(self, changelist):
+        for lookup, title in self.lookup_choices:
+            yield {
+                "selected": self.value() == lookup,
+                "query_string": changelist.get_query_string({self.parameter_name: lookup}),
+                "display": title,
+            }
+
+    def queryset(self, request, queryset):
+        today = timezone.localdate()
+        return {
+            "upcoming": queryset.filter(date__gte=today),
+            "today": queryset.filter(date=today),
+            "past": queryset.filter(date__lt=today),
+        }.get(self.value(), queryset)
+
+
 @admin.register(Booking)
 class BookingAdmin(ReadOnlyAdmin):
     # Owners and staff handle their own cafés' reservations (the record itself stays read-only).
     view_roles = change_roles = ALL
     location_lookup = "location"
-    list_display = ("reference", "name", "location", "date", "time", "party_size", "booking_status")
-    list_filter = ("status", "location", "date", "source")
+    list_display = (
+        "guest",
+        "when",
+        "party",
+        "location",
+        "phone_link",
+        "booking_status",
+        "source",
+        "reference",
+    )
+    list_display_links = ("guest",)
+    list_filter = (WhenFilter, "status", "location", "source")
     search_fields = ("reference", "name", "email", "phone")
-    ordering = ("-date", "time")
+    ordering = ("date", "time")
     date_hierarchy = "date"
     actions = ("confirm_bookings", "decline_bookings")
     change_form_template = "admin/bos_booking_form.html"
@@ -72,10 +123,41 @@ class BookingAdmin(ReadOnlyAdmin):
     def booking_status(self, obj):
         return status_badge(obj.status)
 
+    def get_ordering(self, request):
+        # Today and upcoming: soonest first. Anything else: latest first.
+        when = request.GET.get("when") or (
+            "" if set(request.GET) - WhenFilter.QUIET else "upcoming"
+        )
+        return self.ordering if when in ("upcoming", "today") else ("-date", "-time")
+
+    @admin.display(description="Guest", ordering="name")
+    def guest(self, obj):
+        return obj.name
+
+    @admin.display(description="When", ordering="date")
+    def when(self, obj):
+        day = ui.relative_day(obj.date)
+        label = day if day in ("Today", "Tomorrow", "Yesterday") else date_format(obj.date, "D j M")
+        return format_html(
+            '<span class="bos-when"><strong>{}</strong> {}</span>',
+            label,
+            time_format(obj.time, "g:i A"),
+        )
+
+    @admin.display(description="Guests", ordering="party_size")
+    def party(self, obj):
+        return obj.party_size
+
+    @admin.display(description="Phone")
+    def phone_link(self, obj):
+        return (
+            format_html('<a href="{}">{}</a>', ui.tel(obj.phone), obj.phone) if obj.phone else "—"
+        )
+
     def summary(self, request, obj):
         source = {"web": "the website", "app": "the app", "staff": "the team"}[obj.source]
         account = (
-            reverse("admin:accounts_user_change", args=[obj.customer_id])
+            reverse("admin:accounts_customer_change", args=[obj.customer_id])
             if obj.customer_id and bos_role(request.user) == CHAIN
             else ""
         )

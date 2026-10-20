@@ -1,4 +1,4 @@
 {% extends "admin/base.html" %}
 
 {% comment %}A list's tab reads "Bookings", not Django's "Select booking to change".{% endcomment %}
-{% block title %}{% if cl %}{{ cl.opts.verbose_name_plural|capfirst }}{% else %}{% if subtitle %}{{ subtitle }} · {% endif %}{{ title }}{% endif %} · {{ site_title|default:"EightyTwenty BOS" }}{% endblock %}
+{% block title %}{% if cl %}{% firstof list_title cl.opts.verbose_name_plural|capfirst %}{% else %}{% if subtitle %}{{ subtitle }} · {% endif %}{{ title }}{% endif %} · {{ site_title|default:"EightyTwenty BOS" }}{% endblock %}

@@ -72,11 +72,12 @@ def test_who_can_open_the_workspace(world):
 def test_menu_shows_each_role_only_its_pages(world):
     staff_page = signed_in(world["staff"]).get("/").content.decode()
     assert "Schedule" in staff_page and "Availability board" in staff_page
-    for hidden in ["Users", "Reports", "System status", "Pages", "Email delivery"]:
+    for hidden in ["Team", "Customers", "Reports", "System status", "Pages", "Email delivery"]:
         assert f">{hidden}<" not in staff_page, hidden
     manager_page = signed_in(world["manager"]).get("/").content.decode()
-    assert ">Users<" in manager_page and ">Reports<" in manager_page
+    assert ">Team<" in manager_page and ">Reports<" in manager_page
     assert ">System status<" not in manager_page and ">Pages<" not in manager_page
+    assert ">Customers<" not in manager_page
 
 
 def test_bookings_are_scoped_and_handled_by_owners_and_staff(world):

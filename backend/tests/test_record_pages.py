@@ -115,8 +115,8 @@ def test_app_order_shows_customer_and_who_moved_it(cafe, chain, crew, guest):
     assert "App order" in body and 'href="tel:0412345678"' in body
     assert "Placed in the app" in body and "Mia Tran" in body
     # Staff cannot open customer accounts, so the name is not a link for them.
-    assert reverse("admin:accounts_user_change", args=[guest.pk]) not in body
-    assert reverse("admin:accounts_user_change", args=[guest.pk]) in page(
+    assert reverse("admin:accounts_customer_change", args=[guest.pk]) not in body
+    assert reverse("admin:accounts_customer_change", args=[guest.pk]) in page(
         signed_in(chain), "orders_order", obj
     )
 
@@ -196,7 +196,7 @@ def test_customer_account_opens_with_an_overview(cafe, chain, guest):
         location=cafe, date=timezone.localdate(), time=time(10), party_size=2, name="Olivia",
         email="o@example.com", phone="1", customer=guest,
     )  # fmt: skip
-    body = page(signed_in(chain), "accounts_user", guest)
+    body = page(signed_in(chain), "accounts_customer", guest)
     for text in [
         "Spent in the app",
         "$12.50",

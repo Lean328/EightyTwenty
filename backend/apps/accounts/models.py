@@ -66,6 +66,15 @@ class User(AbstractBaseUser, PermissionsMixin, BaseModel):
         return self.first_name
 
 
+class Customer(User):
+    """App customers, listed apart from the team in the workspace (same table as User)."""
+
+    class Meta:
+        proxy = True
+        verbose_name = "customer"
+        verbose_name_plural = "customers"
+
+
 class StaffAssignment(ManagedModel):
     def __str__(self):
         return f"{self.user} / {self.location}"

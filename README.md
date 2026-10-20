@@ -82,7 +82,7 @@ Booking mặc định tắt. Cần cấu hình `OpeningHours`, ngày ngoại l�
 - Django Admin là BOS workspace hoàn chỉnh, phân quyền 3 cấp (chủ chuỗi / chủ quán / nhân viên): dashboard vận hành, menu, chi nhánh, booking, enquiry, CMS, media và audit log.
 
 - API cho app điện thoại `/api/v1/app/...` (12/10/2026) theo hợp đồng của app Expo: đăng ký/đăng nhập, hồ sơ, sở thích, món yêu thích, địa chỉ, quán + menu, order (tính giá phía server, idempotency, theo dõi trạng thái), thẻ tích dấu cà phê, gift card, đặt bàn, catering, thông báo trong app, offer/FAQ. BOS có thêm App orders, Coffee cards, Gift cards, App offers/FAQs. Tài liệu: [docs/APP_API.md](docs/APP_API.md).
-- API cho máy POS + màn hình bếp `/api/v1/pos/...` (16/10/2026, giai đoạn 1) theo `contracts.ts` của repo POS khách gửi: máy đăng nhập bằng tài khoản nhân viên (JWT), từng người vào bằng PIN 4 số (đặt trong BOS → Users → Till PIN), snapshot khởi động theo quán, tạo đơn tại quầy (kiểm tra tổng, ghi chú lệch giá so với menu thay vì từ chối), ghi nhận thanh toán, hoàn/void/hủy, tiến độ bếp, bàn, feed đơn thay đổi (gồm đơn app), ca két, sổ giao dịch, nhật ký. Mọi lệnh ghi idempotent theo `Idempotency-Key`. BOS có thêm Orders (gộp app + quầy), Till shifts, Till transactions. Tài liệu: [docs/POS_API.md](docs/POS_API.md).
+- API cho máy POS + màn hình bếp `/api/v1/pos/...` (16/10/2026, giai đoạn 1) theo `contracts.ts` của repo POS khách gửi: máy đăng nhập bằng tài khoản nhân viên (JWT), từng người vào bằng PIN 4 số (đặt trong BOS → Team → Till PIN), snapshot khởi động theo quán, tạo đơn tại quầy (kiểm tra tổng, ghi chú lệch giá so với menu thay vì từ chối), ghi nhận thanh toán, hoàn/void/hủy, tiến độ bếp, bàn, feed đơn thay đổi (gồm đơn app), ca két, sổ giao dịch, nhật ký. Mọi lệnh ghi idempotent theo `Idempotency-Key`. BOS có thêm Orders (gộp app + quầy), Till shifts, Till transactions. Tài liệu: [docs/POS_API.md](docs/POS_API.md).
 
 - POS giai đoạn 2: khách hàng + thẻ cà phê dùng chung với app, bật/tắt còn-hết món, đặt bàn và catering từ POS. BOS Reports có doanh thu (theo ngày/quán/món/hình thức thanh toán/kênh, chênh lệch két, CSV). App nhận push notification qua Expo (`/api/v1/app/me/push-tokens`). BOS có Tables (sơ đồ bàn từng quán) và Promo codes cho POS.
 
@@ -90,7 +90,7 @@ Chưa có giao diện React BOS, thanh toán thật (chưa chọn cổng: order 
 
 ## BOS workspace / Django Admin
 
-Mở `http://127.0.0.1:8000/` (production: https://eightytwenty-api.onrender.com/) bằng tài khoản tạo từ `createsuperuser` (chủ chuỗi). Chủ chuỗi vào **Users → Add** chọn role *Café owner* + quán để tạo tài khoản chủ quán; chủ quán tự thêm nhân viên cho quán mình.
+Mở `http://127.0.0.1:8000/` (production: https://eightytwenty-api.onrender.com/) bằng tài khoản tạo từ `createsuperuser` (chủ chuỗi). Chủ chuỗi vào **Team → Add** chọn role *Café owner* + quán để tạo tài khoản chủ quán; chủ quán tự thêm nhân viên cho quán mình.
 
 | Việc | Chủ chuỗi (superuser) | Chủ quán (`manager`) | Nhân viên (`staff`) |
 |---|---|---|---|
@@ -102,7 +102,8 @@ Mở `http://127.0.0.1:8000/` (production: https://eightytwenty-api.onrender.com
 | Giờ mở cửa, ngày đặc biệt, booking rule, ảnh quán | ✔ | ✔ | Xem |
 | Thông tin quán (địa chỉ, liên hệ…) | ✔ + tên/trạng thái/publish | ✔ (trừ tên/trạng thái/publish) | Xem |
 | Reports | Mọi quán | Quán của mình | — |
-| Users | Mọi người, tạo chủ quán | Chỉ nhân viên quán mình | — |
+| Team | Cả đội, tạo chủ quán | Chỉ nhân viên quán mình | — |
+| Customers | Mọi khách dùng app | — | — |
 | Website/CMS, System status, Email, Activity log, tạo quán | ✔ | — | — |
 
 Ô Role khi tạo user chỉ có Café owner / Staff / Customer (role `owner`/`admin` chỉ dùng cho API, không chọn trong admin). "Xóa" = khóa tài khoản / bỏ publish (không hard delete). Người có role `manager`/`staff` phải được gán ít nhất một quán mới đăng nhập được. Quyền REST API `/api/v1/bos/*` không đổi.

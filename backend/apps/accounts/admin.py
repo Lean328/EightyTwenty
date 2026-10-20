@@ -1,8 +1,9 @@
 from django import forms
 from django.contrib import admin
+from django.contrib.admin.views.main import ChangeList
 from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.contrib.auth.forms import AdminUserCreationForm, UserChangeForm
-from django.db.models import Count, Sum
+from django.db.models import Count, Q, Sum
 from django.template.loader import render_to_string
 from django.utils.dateformat import format as date_format
 
@@ -18,7 +19,7 @@ from apps.loyalty.models import STAMPS_PER_REWARD, GiftCard, LoyaltyCard
 from apps.orders.models import Order
 from apps.pos import pins
 
-from .models import CustomerProfile, StaffAssignment, User
+from .models import Customer, CustomerProfile, StaffAssignment, User
 
 TEAM_ROLES = ("manager", "staff")
 # Roles the chain owner hands out here. "owner"/"admin" are chain-wide roles for the
@@ -197,10 +198,27 @@ class UserAdmin(DjangoUserAdmin):
     add_form = CreateUserForm
     form = ChangeUserForm
     inlines = (AssignmentInline,)
-    ordering = ["email"]
-    list_display = ["email", "first_name", "role", "cafes", "is_active"]
-    search_fields = ["email", "first_name", "last_name"]
-    list_filter = ["role", "is_active"]
+    ordering = ["first_name", "last_name", "email"]
+    list_display = ["full_name", "email", "team_role", "cafes", "is_active", "last_login"]
+    list_display_links = ["full_name"]
+    search_fields = ["email", "first_name", "last_name", "phone"]
+    list_filter = ["is_active"]
+
+    def get_changelist(self, request, **kwargs):
+        return TeamChangeList
+
+    def changelist_view(self, request, extra_context=None):
+        return super().changelist_view(request, {"list_title": "Team", **(extra_context or {})})
+
+    @admin.display(description="Name", ordering="first_name")
+    def full_name(self, obj):
+        return obj.get_full_name() or obj.email
+
+    @admin.display(description="Role", ordering="role")
+    def team_role(self, obj):
+        if obj.is_superuser:
+            return "Chain owner"
+        return dict(CHAIN_ROLE_CHOICES).get(obj.role) or API_ROLE_LABELS.get(obj.role, obj.role)
 
     # --- who may do what -------------------------------------------------
     def manages(self, request, obj):
@@ -342,6 +360,71 @@ class UserAdmin(DjangoUserAdmin):
     def cafes(self, obj):
         names = [a.location.name for a in obj.assignments.all() if a.is_active]
         return ", ".join(names) if names else "—"
+
+
+class TeamChangeList(ChangeList):
+    """People list: the team only. Customers have their own list (CustomerAdmin)."""
+
+    def get_queryset(self, request, exclude_parameters=None):
+        # Also narrows the "N total" count, which Django takes from root_queryset.
+        self.root_queryset = self.root_queryset.exclude(role="customer", is_superuser=False)
+        return super().get_queryset(request, exclude_parameters)
+
+
+@admin.register(Customer)
+class CustomerAdmin(UserAdmin):
+    """Mobile app customers, apart from the team. The chain owner's list only."""
+
+    list_display = [
+        "full_name",
+        "email",
+        "phone",
+        "stamps",
+        "gift_balance",
+        "app_orders",
+        "date_joined",
+        "is_active",
+    ]
+    list_filter = ["is_active", "email_verified", "marketing_opt_in"]
+    ordering = ["-date_joined"]
+
+    def get_changelist(self, request, **kwargs):
+        return ChangeList
+
+    def changelist_view(self, request, extra_context=None):
+        return DjangoUserAdmin.changelist_view(self, request, extra_context)
+
+    def get_queryset(self, request):
+        return (
+            super()
+            .get_queryset(request)
+            .filter(role="customer", is_superuser=False)
+            .select_related("loyalty_card", "gift_card")
+            .annotate(app_order_count=Count("orders", filter=Q(orders__channel="app")))
+        )
+
+    def has_module_permission(self, request):
+        return bos_role(request.user) == CHAIN
+
+    def has_view_permission(self, request, obj=None):
+        return bos_role(request.user) == CHAIN
+
+    def has_add_permission(self, request):
+        return False  # customers sign up in the app
+
+    @admin.display(description="Coffee card")
+    def stamps(self, obj):
+        card = getattr(obj, "loyalty_card", None)
+        return f"{card.stamps}/{STAMPS_PER_REWARD}" if card else "—"
+
+    @admin.display(description="Gift card")
+    def gift_balance(self, obj):
+        gift = getattr(obj, "gift_card", None)
+        return ui.aud(gift.balance_cents) if gift and gift.balance_cents else "—"
+
+    @admin.display(description="App orders", ordering="app_order_count")
+    def app_orders(self, obj):
+        return obj.app_order_count
 
 
 @admin.register(StaffAssignment)

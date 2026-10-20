@@ -63,7 +63,8 @@ NAVIGATION = (
     (
         "People",
         (
-            ("accounts.user", "Users", "users"),
+            ("accounts.user", "Team", "users"),
+            ("accounts.customer", "Customers", "star"),
             ("accounts.staffassignment", "Team assignments", "user-check"),
             ("accounts.customerprofile", "Customer profiles", "user"),
             ("loyalty.loyaltycard", "Coffee cards", "coffee"),
@@ -93,7 +94,7 @@ VIEW_ROLES = {
 
 # Which items carry a count of work waiting, and the SQL that feeds it.
 BADGES = {
-    "orders.order": ("orders_order", "status = 'received'"),
+    "orders.order": ("orders_order", "status = 'received' AND channel = 'app'"),
     "bookings.booking": ("bookings_booking", "status = 'requested'"),
     "enquiries.enquiry": ("enquiries_enquiry", "status = 'new'"),
     "notifications.emailmessage": ("notifications_emailmessage", "status = 'failed'"),
@@ -110,7 +111,7 @@ def scoped_badge_counts(user, keys):
     try:
         if "orders.order" in keys:
             counts["orders.order"] = Order.objects.filter(
-                scope_filter(user), status="received"
+                scope_filter(user), status="received", channel="app"
             ).count()
         if "bookings.booking" in keys:
             counts["bookings.booking"] = Booking.objects.filter(

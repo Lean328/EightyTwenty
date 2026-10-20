@@ -15,9 +15,8 @@
       <p class="bos-eyebrow">{{ today|date:"l, j F Y" }} · Canberra</p>
       <h1>{% greeting %}, {% firstof user.first_name "there" %}</h1>
       <p class="bos-lead">
-        {% if awaiting_count or new_enquiry_count %}
-          {% if awaiting_count %}<strong>{{ awaiting_count }}</strong> booking request{{ awaiting_count|pluralize }}{% endif %}{% if awaiting_count and new_enquiry_count %} and {% endif %}{% if new_enquiry_count %}<strong>{{ new_enquiry_count }}</strong> new enquir{{ new_enquiry_count|pluralize:"y,ies" }}{% endif %}
-          {{ awaiting_count|add:new_enquiry_count|pluralize:"is,are" }} waiting for you{% if selected_location %} at {{ selected_location.name }}{% endif %}.
+        {% if waiting_sentence %}
+          {{ waiting_sentence }}{% if selected_location %} at {{ selected_location.name }}{% endif %}.
         {% else %}
           You're all caught up{% if selected_location %} at {{ selected_location.name }}{% endif %}. Nothing is waiting for a decision.
         {% endif %}
@@ -42,6 +41,15 @@
       <h2 id="bos-todo-title">Needs attention</h2>
     </div>
     <div class="bos-todo-grid">
+      <a class="bos-todo{% if waiting_orders %} is-urgent{% else %} is-clear{% endif %}" href="{{ waiting_orders_url }}">
+        <span class="bos-todo-icon">{% if waiting_orders %}{% icon 'bowl' %}{% else %}{% icon 'check' %}{% endif %}</span>
+        <span class="bos-todo-body">
+          <span class="bos-todo-label">App orders</span>
+          <span class="bos-todo-note">{% if waiting_orders %}Waiting to be accepted{% else %}No order waiting{% endif %}</span>
+        </span>
+        <span class="bos-todo-count">{{ waiting_orders }}</span>
+        {% icon 'chevron-right' 'bos-todo-go' %}
+      </a>
       <a class="bos-todo{% if awaiting_count %} is-urgent{% else %} is-clear{% endif %}" href="{{ pending_bookings_url }}">
         <span class="bos-todo-icon">{% if awaiting_count %}{% icon 'calendar' %}{% else %}{% icon 'check' %}{% endif %}</span>
         <span class="bos-todo-body">

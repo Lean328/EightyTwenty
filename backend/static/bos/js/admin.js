@@ -768,6 +768,41 @@
         show(start >= 0 && start < panels.length ? start : 0, false);
     }
 
+    /* Lists: a click anywhere on a row opens the record, not only on its
+       first column. Links, buttons and boxes inside the row keep their own
+       job; Ctrl/Cmd or middle click opens a new tab; selecting text does
+       nothing. Lookup pop-ups keep Django's own behaviour. */
+    function wireRowLinks() {
+        var table = document.querySelector("#changelist #result_list");
+        if (!table || document.body.classList.contains("popup")) {
+            return;
+        }
+        table.querySelectorAll("tbody tr").forEach(function (row) {
+            var link = row.querySelector("th a[href], td.field-__str__ a[href]");
+            if (link) {
+                row.classList.add("bos-row-link");
+                row.dataset.href = link.href;
+            }
+        });
+        function open(event) {
+            var row = event.target.closest("tr.bos-row-link");
+            if (!row || event.target.closest("a, button, input, select, textarea, label, td.action-checkbox")) {
+                return;
+            }
+            var selection = window.getSelection && window.getSelection();
+            if (selection && String(selection).trim()) {
+                return;
+            }
+            if (event.button === 1 || event.ctrlKey || event.metaKey) {
+                window.open(row.dataset.href, "_blank", "noopener");
+            } else if (event.button === 0) {
+                window.location.href = row.dataset.href;
+            }
+        }
+        table.addEventListener("click", open);
+        table.addEventListener("auxclick", open);
+    }
+
     /* Submitting: the pressed button shows it is working, and a second press
        (double click, impatient Enter) does not post the form twice. The
        button is not disabled, so its name/value still goes with the form. */
@@ -1189,6 +1224,7 @@
         wireSubmitFeedback();
         wireToasts();
         wireNavTips();
+        wireRowLinks();
 
         // A thumbnail whose file cannot be fetched becomes the empty tile,
         // whether it failed before this script ran or fails later.
