@@ -66,7 +66,9 @@ node ..\scripts\export-mock-data.mjs ..\website\mock-data.js $env:TEMP\mock.json
 ..\.venv\Scripts\python manage.py seed_demo
 ```
 
-`seed_demo` thêm chủ chuỗi `owner@example.com`, chủ quán/nhân viên cho 3 quán đầu (`manager.<slug>@example.com`, `staff.<slug>@example.com`, Till PIN 1001…), 30 khách (thẻ cà phê, gift card), ~600 đơn app + quầy trong 30 ngày, đặt bàn −14…+14 ngày, 15 enquiry, ca két, bàn, mã giảm giá. Mật khẩu mọi tài khoản demo: `eightytwenty-demo` (đổi bằng `--password`). Lệnh **từ chối mọi database không phải SQLite/localhost** và từ chối chạy lần hai. Ảnh món là đường dẫn `img/...` của website → chạy server website (cổng 8123) để thấy ảnh trong admin.
+`seed_demo` dựng một chuỗi café chạy 60 ngày (`--days`, `--customers`): chủ chuỗi `owner@example.com`, mỗi quán đang mở 1 chủ quán + 3 nhân viên (`manager|staff|staff2|staff3.<slug>@example.com`, Till PIN 1001…), 400 khách (thẻ cà phê, gift card, địa chỉ, push), ~13.500 đơn app + quầy theo giờ cao điểm (luôn có vài đơn "vừa đặt"), đặt bàn −60…+30 ngày, 120 enquiry, ca két, sổ giao dịch, email, thông báo app, nhật ký, trang CMS, menu điều hướng, ngày lễ, booking rules, món hết, mã giảm giá. Mật khẩu mọi tài khoản demo: `eightytwenty-demo`. Lệnh **từ chối mọi database không phải SQLite/localhost** và từ chối chạy lần hai. Email khách đều `@example.*`; đặt `PUSH_ENABLED=False` trong `backend/.env` vì token push là giả.
+
+Ảnh thật cho DB demo: `..\.venv\Scripts\python manage.py demo_photos` trỏ ảnh menu/quán/catering sang bản đã có trên Supabase (đọc bootstrap production); thêm `--folder ..\_image-originals\img` để upload ảnh café thật (thư mục `demo/` trên bucket) cho món/offer còn thiếu ảnh và vài ảnh Media library.
 
 Booking mặc định tắt. Cần cấu hình `OpeningHours`, ngày ngoại lệ `SpecialHours`, `BookingRule` và sức chứa đã được khách xác nhận trước khi bật.
 

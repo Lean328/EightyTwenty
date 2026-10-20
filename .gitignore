@@ -56,3 +56,6 @@ desktop.ini
 
 # --- Personal notes ---
 note.txt
+
+# Client documents (PDF exports)
+exports/

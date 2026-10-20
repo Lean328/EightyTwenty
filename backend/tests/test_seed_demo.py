@@ -27,11 +27,11 @@ def menu():
 
 def test_fills_a_local_database(menu):
     out = StringIO()
-    call_command("seed_demo", "--days", "3", stdout=out)
+    call_command("seed_demo", "--days", "3", "--customers", "20", stdout=out)
     assert "Demo data" in out.getvalue()
     owner = User.objects.get(email="owner@example.com")
     assert owner.is_superuser and owner.check_password("eightytwenty-demo")
-    assert User.objects.filter(role="customer").count() == 30
+    assert User.objects.filter(role="customer").count() == 20
     assert Order.objects.filter(channel="pos").exists() and Order.objects.filter(channel="app")
     assert Booking.objects.exists() and Enquiry.objects.count() == 15
     staff = User.objects.get(email=f"staff.{menu[0].slug}@example.com")

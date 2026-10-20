@@ -91,7 +91,8 @@ Git repo: github.com/maiviet283/EightyTwenty (public), nhánh `main`; push thay 
 ..\.venv\Scripts\python manage.py migrate
 ..\.venv\Scripts\python manage.py makemigrations
 ..\.venv\Scripts\python manage.py seed_from_mock <file.json>   # chỉ DB trống; DB có dữ liệu → từ chối (cờ --update-existing ghi đè)
-..\.venv\Scripts\python manage.py seed_demo [--days 30] [--password ...]  # dữ liệu mẫu cho DB local (từ chối DB khác)
+..\.venv\Scripts\python manage.py seed_demo [--days 60] [--customers 400]  # chuỗi café demo cho DB local (từ chối DB khác)
+..\.venv\Scripts\python manage.py demo_photos [--folder ..\_image-originals\img]   # ảnh thật cho DB demo (Supabase)
 ..\.venv\Scripts\python manage.py fill_opening_hours [--apply]   # giờ tuần từ hours_text; chỉ quán chưa có giờ
 ..\.venv\Scripts\python manage.py upload_legacy_media [--apply]  # ảnh legacy_path img/... → nén WebP → Supabase; bỏ qua ảnh đã lên
 ..\.venv\Scripts\python manage.py fill_alt_text [--apply]        # alt trống → "<tên món/gói/quán> – EightyTwenty"
@@ -227,6 +228,8 @@ Website local: `.venv\Scripts\python -m http.server 8123 --bind 127.0.0.1 --dire
 ## 8. Nhật ký thay đổi
 
 > Thêm một dòng mỗi khi code thay đổi (mới nhất ở trên): ngày — phạm vi — tóm tắt ngắn + file chính. Giữ ngắn gọn; chi tiết đã có trong code/tài liệu.
+
+- 2026-10-20 — data/docs — `seed_demo` viết lại thành chuỗi café 60 ngày đủ mọi bảng (bulk_create, `own_timestamps` tự đặt created_at, mã quầy riêng mỗi quán, vài đơn "vừa đặt"), lệnh mới `apps/media/management/commands/demo_photos.py` (trỏ ảnh dev sang Supabase theo bootstrap production; `--folder` upload ảnh café vào `demo/` cho chỗ thiếu — đã upload 25 ảnh từ `_image-originals`). DB dev đã dựng lại (13.507 đơn, 947 đặt bàn, 120 enquiry, 116 ảnh; tài khoản `maiviet283@gmail.com` giữ nguyên; bản cũ `backend/db-before-big-seed-20261020.sqlite3`), `backend/.env` thêm `PUSH_ENABLED=False`. Test `test_seed_demo.py` cập nhật. 260 pass + 3 skip. Tài liệu khách (Claude Docs "EightyTwenty back office and website: progress update", tiếng Anh) + PDF theo màu website ở `exports/` (gitignore). Chưa commit.
 
 - 2026-10-20 — admin/pos/docs — Gift cards hiện tên khách (`loyalty/admin.py`, dùng chung `customer` của Coffee cards), Enquiries tên khách cột đầu + tìm theo SĐT (`enquiries/admin.py`). POS: server kiểm mã giảm giá (`pos/services.promo_notes|promo_problem`, `PosDiscountIn/Out.code` tùy chọn, `apps/pos/guide.md`); `docs/openapi.yaml` chỉ thêm field `code` (file dùng chung). `docs/IMPLEMENTATION_STATUS.md` viết lại theo trạng thái 20/10. Test: `test_pos_api.py` (+1), `test_admin_lists.py` (+1). 260 pass + 3 skip. **Đã deploy** (commit `ec5ccf5`, CI xanh, schema POS trên production có field `code`).
 
