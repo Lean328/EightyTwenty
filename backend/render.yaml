@@ -34,4 +34,4 @@ services:
       - key: EMAIL_FROM
         sync: false
       - key: CLIENT_BASE_URL
-        value: https://eightytwenty3.vercel.app
+        value: https://eightytwenty.pages.dev
