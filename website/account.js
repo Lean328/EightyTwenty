@@ -80,6 +80,22 @@ export async function signUp(fields) {
 
 export const updateProfile = fields => authed('/api/v1/me', { method:'PATCH', body:fields });
 
+// The customer's own table requests, newest first (paginated API; the first page is plenty here).
+export async function myBookings() {
+  if (!access && !stored()) return [];
+  const res = await authed('/api/v1/me/bookings?page_size=20');
+  return res.ok && res.data && Array.isArray(res.data.results) ? res.data.results : [];
+}
+
+// Public booking POST with the customer's token so the booking is linked to their account;
+// a stale session must never block the booking itself, so 401 retries as a guest.
+export async function bookAsCustomer(body) {
+  const opts = { method:'POST', body };
+  let res = access || stored() ? await authed('/api/v1/public/bookings', opts) : { status:401 };
+  if (res.status === 401) res = await call('/api/v1/public/bookings', opts);
+  return { ok: res.ok, data: res.data };
+}
+
 export async function signOut() {
   const body = () => ({ refresh:stored() });
   if (stored()) {

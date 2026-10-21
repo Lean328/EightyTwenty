@@ -241,6 +241,33 @@ test('a rejected login stays signed out and says why', async () => {
   assert.equal(app.state.auSrv.login, 'Email or password is incorrect.');
   assert.equal(app.state.auBusy, null);
 });
+test('my bookings come from the API; a signed-in booking carries the token, a stale one books as guest', async () => {
+  saved.clear();
+  fakeApi({ '/api/v1/auth/login': () => [200, tokens(4)], '/api/v1/me': () => [200, profile] });
+  await account.signIn('guest@example.com', 'correct-horse-1');
+  let calls = fakeApi({ '/api/v1/me/bookings?page_size=20': () => [200, { count: 1, results: [{ reference: 'BK-1', location: 'phillip', status: 'confirmed' }] }],
+    '/api/v1/public/bookings': () => [201, { reference: 'BK-2', status: 'requested' }] });
+  assert.equal((await account.myBookings())[0].reference, 'BK-1');
+  const booked = await account.bookAsCustomer({ location: 'phillip' });
+  assert.equal(booked.data.reference, 'BK-2');
+  assert.equal(calls.at(-1).auth, 'Bearer access-4');
+  calls = fakeApi({ '/api/v1/public/bookings': call => call.auth ? [401, null] : [201, { reference: 'BK-3' }],
+    '/api/v1/auth/refresh': () => [401, null] });
+  assert.equal((await account.bookAsCustomer({ location: 'phillip' })).data.reference, 'BK-3');
+  assert.equal(calls.at(-1).auth, undefined);
+});
+test('the reservations tab lists the account bookings from the API', async () => {
+  const app = mountWithAccount({ myBookings: async () => [{ reference: 'BK-1', location: 'phillip', date: '2026-11-10', time: '09:30:00', party_size: 3, status: 'confirmed', notes: 'Table: Outdoor\nHigh chair' }] });
+  app.D = { LOCATIONS: [{ id: 'phillip', name: 'Phillip', booking: 'Phillip - 100% Gluten Free' }] };
+  app.loadMyBookings();
+  await settle();
+  const [row] = app.bookingRows();
+  assert.equal(row.cafe, 'Phillip - 100% Gluten Free');
+  assert.match(row.when, /9:30 am$/);
+  assert.equal(row.size, 3);
+  assert.equal(row.seat, ' · Outdoor');
+  assert.equal(row.status, 'Confirmed');
+});
 test('saving the profile sends name and phone to the API, never the email', async () => {
   let sent;
   const app = mountWithAccount({ updateProfile: async fields => { sent = fields; return { ok: true, status: 200, data: { ...profile, ...fields } }; } });

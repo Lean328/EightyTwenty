@@ -270,13 +270,19 @@
           <sc-if value="{{ acctRes }}" hint-placeholder-val="{{ false }}">
             <section style="border:1px solid rgba(75,46,38,.12);border-radius:10px;padding:22px;background:#F8F4EC">
               <h2 style="margin:0;font:300 24px/1 'Newsreader',serif">Reservations</h2>
-              <sc-if value="{{ bkDone }}" hint-placeholder-val="{{ false }}">
+              <sc-for list="{{ myBookings }}" as="b" hint-placeholder-count="0">
+                <div style="display:grid;grid-template-columns:1fr auto;gap:8px 16px;align-items:center;margin-top:18px;padding:16px 0;border-top:1px solid rgba(75,46,38,.1);border-bottom:1px solid rgba(75,46,38,.1)">
+                  <span><span style="display:block;font:500 15px/1.3 Figtree">{{ b.cafe }}</span><span style="display:block;margin-top:4px;font:400 13px/1.4 Figtree;color:#7A6259">{{ b.when }} · {{ b.size }} guests{{ b.seat }}</span></span>
+                  <span style="padding:6px 10px;border-radius:999px;background:#ECE4D6;color:#8B5827;font:500 11px/1 Figtree;letter-spacing:.08em;text-transform:uppercase">{{ b.status }}</span>
+                </div>
+              </sc-for>
+              <sc-if value="{{ acctBkLocal }}" hint-placeholder-val="{{ false }}">
                 <div style="display:grid;grid-template-columns:1fr auto;gap:8px 16px;align-items:center;margin-top:18px;padding:16px 0;border-top:1px solid rgba(75,46,38,.1);border-bottom:1px solid rgba(75,46,38,.1)">
                   <span><span style="display:block;font:500 15px/1.3 Figtree">{{ bkLocLabel }}</span><span style="display:block;margin-top:4px;font:400 13px/1.4 Figtree;color:#7A6259">{{ bkWhen }} · {{ bk.size }} guests · {{ bk.seat }}</span></span>
                   <span style="padding:6px 10px;border-radius:999px;background:#ECE4D6;color:#8B5827;font:500 11px/1 Figtree;letter-spacing:.08em;text-transform:uppercase">Requested</span>
                 </div>
               </sc-if>
-              <sc-if value="{{ bkDoneNot }}" hint-placeholder-val="{{ true }}"><p style="margin:14px 0 0;font:400 15px/1.5 Figtree;color:#7A6259">No table requests yet.</p></sc-if>
+              <sc-if value="{{ acctBkNone }}" hint-placeholder-val="{{ true }}"><p style="margin:14px 0 0;font:400 15px/1.5 Figtree;color:#7A6259">No table requests yet.</p></sc-if>
               <button type="button" onClick="{{ goReserve }}" style="margin-top:16px;height:40px;padding:0 16px;border-radius:999px;border:1px solid #4B2E26;background:transparent;color:#4B2E26;font:500 13px/1 Figtree;cursor:pointer">Request a table</button>
             </section>
           </sc-if>
@@ -1442,10 +1448,10 @@ class Component extends DCLogic {
       const previewCat = location.hash === '#menu/smoothies' ? 'smoothies' : null;
       this.setState(previewCat ? { ready:true, view:'menu', cat:previewCat } : { ready:true }, () => this.hydrateImages());
     });
-    this._account = import(new URL('account.js?v=accounts-20261021', location.href).href).then(A => {
+    this._account = import(new URL('account.js?v=accounts-20261022', location.href).href).then(A => {
       this.A = A;
       A.handleAccountLink().then(msg => { if (msg) this.flash(msg, 6000); });
-      A.restoreSession().then(u => { if (u && !this.state.signedIn) this.setState(this.signedInPatch(u)); });
+      A.restoreSession().then(u => { if (u && !this.state.signedIn) { this.setState(this.signedInPatch(u)); this.loadMyBookings(); } });
       return A;
     }).catch(() => null);
     this.hydrateImages();
@@ -1616,7 +1622,7 @@ class Component extends DCLogic {
     const [first, ...rest] = vals.name.split(' ');
     this.setState({ au: vals, auBusy:mode, auSrv:{} });
     this._account.then(A => !A ? { ok:false, status:0, data:null } : mode === 'signup' ? A.signUp({ email:vals.email, password:vals.password, first_name:first, last_name:rest.join(' '), phone:vals.phone }) : A.signIn(vals.email, vals.password)).then(res => {
-      if (res.ok) { this.setState(Object.assign(this.signedInPatch(res.data), { auBusy:null, au:{}, auT:{}, auPwFocus:false, view: this.state.authReturn || 'account', acctTab:'profile' })); window.scrollTo(0, 0); return; }
+      if (res.ok) { this.setState(Object.assign(this.signedInPatch(res.data), { auBusy:null, au:{}, auT:{}, auPwFocus:false, view: this.state.authReturn || 'account', acctTab:'profile' })); this.loadMyBookings(); window.scrollTo(0, 0); return; }
       const err = this.A ? this.A.errorsOf(res) : { message:'We couldn’t reach EightyTwenty. Check your connection and try again.' }; const srv = {};
       [['email','email'],['phone','phone'],['password','password'],['non_field_errors','password'],['first_name','name'],['last_name','name']].forEach(([k, f]) => { const key = this.auKey(mode, f); if (err[k] && fields.includes(f) && !srv[key]) srv[key] = err[k]; });
       if (!Object.keys(srv).length) srv[mode] = err.message;
@@ -1628,11 +1634,15 @@ class Component extends DCLogic {
       if (res.ok) { this.setState({ profileSaving:false, profileMsg:'Changes saved.', user:this.userOf(res.data) }); return; }
       const err = this.A ? this.A.errorsOf(res) : { message:'We couldn’t reach EightyTwenty. Check your connection and try again.' };
       this.setState({ profileSaving:false, profileMsg: res.status === 401 ? 'Your session has ended. Please log out and log in again.' : err.first_name || err.last_name || err.phone || err.message }); }); }
+  loadMyBookings() { if (this._account) this._account.then(A => A && A.myBookings ? A.myBookings() : []).then(list => this.setState({ myBookings: list }), () => {}); }
+  bookingRows() { const label = { requested:'Requested', confirmed:'Confirmed', seated:'Seated', declined:'Declined', cancelled:'Cancelled', no_show:'No show' };
+    return (this.state.myBookings || []).map(b => { const l = this.locById(b.location); const [hh, mm] = String(b.time || '').split(':').map(Number); const t = isNaN(hh) ? '' : ', ' + (((hh + 11) % 12) + 1) + ':' + String(mm).padStart(2, '0') + (hh < 12 ? ' am' : ' pm'); const seat = (String(b.notes || '').match(/^Table: (.+)$/m) || [])[1];
+      return { cafe: l.booking || l.name, when: new Date(b.date + 'T00:00').toLocaleDateString('en-AU', { weekday:'long', day:'numeric', month:'long' }) + t, size: b.party_size, seat: seat ? ' · ' + seat : '', status: label[b.status] || b.status }; }); }
   flash(msg, ms) { this.setState({ toast:msg }); clearTimeout(this._toastT); this._toastT = setTimeout(() => this.setState({ toast:'' }), ms || 2600); }
   emailDraft(to, subject, lines) { return 'mailto:' + to + '?subject=' + encodeURIComponent(subject) + '&body=' + encodeURIComponent(lines.filter(Boolean).join('\n')); }
   bookingDraft() { const b = this.state.bk, l = this.locById(b.loc); return this.emailDraft(l.email || 'info@eightytwentyfood.com.au', 'EightyTwenty booking request — ' + l.name, ['Café: ' + l.name, 'Guests: ' + b.size, 'Date: ' + b.date, 'Time: ' + b.time, 'Table: ' + b.seat, 'Name: ' + b.name.trim(), 'Phone: ' + b.phone.trim(), 'Email: ' + b.email.trim(), 'Special requests: ' + (b.notes.trim() || 'None')]); }
   submitEnquiry(kind) { return e => { e.preventDefault(); const controls = [...e.currentTarget.querySelectorAll('input,select,textarea')]; const required = kind === 'catering' ? [0,1,2,3,9] : [0,1,2,3]; required.forEach(i => { if (controls[i]) controls[i].required = true; }); if (!e.currentTarget.reportValidity()) return; if (this.state.enquirySending) return; const pairs = controls.map(el => { const label = el.closest('label'); const name = label?.querySelector('span')?.textContent.trim() || el.getAttribute('aria-label') || el.placeholder || el.name; return [name, el.value.trim()]; }).filter(p => p[0] && p[1]); const fields = pairs.map(p => p[0] + ': ' + p[1]); if (kind === 'catering') fields.push('Date: ' + (this.state.ct?.date || 'Not specified'), 'Package: ' + (this.D.CATERING[this.state.ctab]?.id || 'Not specified')); const url = this.emailDraft('info@eightytwentyfood.com.au', 'EightyTwenty ' + kind + ' enquiry', fields); const get = re => (pairs.find(p => re.test(p[0])) || [])[1] || ''; const slug = v => String(v).toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, ''); const pkgId = get(/^catering menu/i) || this.D.CATERING[this.state.ctab]?.id || ''; const body = kind === 'catering' ? { kind, name:(get(/^first name/i) + ' ' + get(/^last name/i)).trim(), email:get(/^email/i), phone:get(/^phone/i), company:get(/^company/i), event_date:this.state.ct?.date || null, headcount:parseInt(get(/^how many/i), 10) || null, package:pkgId ? slug(pkgId) : null, message:fields.join('\n') } : { kind, name:get(/^business name/i) || 'Wholesale enquiry', company:get(/^business name/i), email:get(/^email/i), phone:get(/^phone/i), message:fields.join('\n') }; this.setState({ enquirySending:kind }); const send = this.D.postForm ? this.D.postForm('/api/v1/public/enquiries', body) : Promise.resolve({ ok:false }); send.then(res => { const ref = (res.ok && res.data && res.data.reference) || ''; this.setState({ enquirySending:null, enquiryDraft:kind, enquiryRef:ref, enquiryMailto:url }); if (!ref) window.location.href = url; }); }; }
-  bkSubmit() { const { bk } = this.state; const err = {}; if (!bk.size) err.size = 1; if (!bk.date) err.date = 1; if (!bk.time) err.time = 1; if (!bk.name.trim()) err.name = 1; if ((bk.phone.match(/\d/g) || []).length < 8) err.phone = 1; if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(bk.email)) err.email = 1; if (Object.keys(err).length) { this.setState({ bkErr:err }); return; } if (this.state.bkSending) return; this.setState({ bkSending:true, bkErr:{} }); const body = { location:bk.loc, date:bk.date, time:bk.time, party_size:parseInt(bk.size, 10) || 1, name:bk.name.trim(), email:bk.email.trim(), phone:bk.phone.trim(), notes:['Table: ' + bk.seat, bk.notes.trim()].filter(Boolean).join('\n') }; const send = this.D.postForm ? this.D.postForm('/api/v1/public/bookings', body) : Promise.resolve({ ok:false }); send.then(res => { const ref = (res.ok && res.data && res.data.reference) || ''; this.setState({ bkSending:false, bkDone:true, bkRef:ref }); window.scrollTo(0, 0); if (!ref) window.location.href = this.bookingDraft(); }); }
+  bkSubmit() { const { bk } = this.state; const err = {}; if (!bk.size) err.size = 1; if (!bk.date) err.date = 1; if (!bk.time) err.time = 1; if (!bk.name.trim()) err.name = 1; if ((bk.phone.match(/\d/g) || []).length < 8) err.phone = 1; if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(bk.email)) err.email = 1; if (Object.keys(err).length) { this.setState({ bkErr:err }); return; } if (this.state.bkSending) return; this.setState({ bkSending:true, bkErr:{} }); const body = { location:bk.loc, date:bk.date, time:bk.time, party_size:parseInt(bk.size, 10) || 1, name:bk.name.trim(), email:bk.email.trim(), phone:bk.phone.trim(), notes:['Table: ' + bk.seat, bk.notes.trim()].filter(Boolean).join('\n') }; const guest = () => this.D.postForm ? this.D.postForm('/api/v1/public/bookings', body) : Promise.resolve({ ok:false }); const signed = !!this.state.signedIn; const send = signed && this._account ? this._account.then(A => A ? A.bookAsCustomer(body) : guest()) : guest(); send.then(res => { const ref = (res.ok && res.data && res.data.reference) || ''; this.setState({ bkSending:false, bkDone:true, bkRef:ref }); window.scrollTo(0, 0); if (ref && signed) this.loadMyBookings(); if (!ref) window.location.href = this.bookingDraft(); }); }
 
   renderVals() {
     const s = this.state, D = this.D;
@@ -1711,7 +1721,7 @@ class Component extends DCLogic {
       toggleNav: () => this.setState({ navOpen: !s.navOpen }), navOpen: s.navOpen,
       openPicker: (e) => { if (s.picker) { this.setState({ picker:false }); return; } const r = e && e.currentTarget ? e.currentTarget.getBoundingClientRect() : null; const rightAnchored = r ? (r.left + 272 > window.innerWidth - 12) : true; this.setState({ picker:true, navOpen:false, pickerPos: r ? { top: r.bottom + 6, left: rightAnchored ? null : r.left, right: rightAnchored ? Math.max(12, window.innerWidth - r.right) : null } : { top: 78, left: null, right: 24 } }); }, closePicker: () => this.setState({ picker:false }), picker: s.picker, pickerChevron: s.picker ? '˄' : '˅',
       pickerTop: ((s.pickerPos || {}).top || 78) + 'px', pickerLeft: (s.pickerPos || {}).left != null ? s.pickerPos.left + 'px' : 'auto', pickerRight: (s.pickerPos || {}).right != null ? s.pickerPos.right + 'px' : 'auto',
-      signedIn: !!signed, signedOut: !signed, showAuthLinks: wide && !signed, showAccount: wide && signed, signOut: e => { e.preventDefault(); if (this._account) this._account.then(A => A && A.signOut()); this.setState({ signedIn:false, user:null, profileMsg:'', navOpen:false, acctOpen:false, view: s.view === 'account' ? 'home' : s.view }); },
+      signedIn: !!signed, signedOut: !signed, showAuthLinks: wide && !signed, showAccount: wide && signed, signOut: e => { e.preventDefault(); if (this._account) this._account.then(A => A && A.signOut()); this.setState({ signedIn:false, user:null, profileMsg:'', myBookings:[], navOpen:false, acctOpen:false, view: s.view === 'account' ? 'home' : s.view }); },
       goLogin: this.go('login', { authReturn: s.view === 'checkout' ? 'checkout' : null }), goSignup: this.go('signup', { authReturn: s.view === 'checkout' ? 'checkout' : null }), goAccount: this.go('account', { acctOpen:false }),
       isLogin: view === 'login', isSignup: view === 'signup', isAccount: view === 'account' && signed, isAuth: view === 'login' || view === 'signup',
       authToSignup: e => { if (e && e.preventDefault) e.preventDefault(); this.setState({ view:'signup', auT:{}, auPwFocus:false, auReset:null }); }, authToLogin: e => { if (e && e.preventDefault) e.preventDefault(); this.setState({ view:'login', auT:{}, auPwFocus:false, auReset:null }); },
@@ -1743,6 +1753,7 @@ class Component extends DCLogic {
       acctMenu: [['profile','Profile'],['orders','Orders'],['reservations','Reservations'],['saved','Saved details']].filter(([id]) => id !== 'orders' && id !== 'saved').map(([id, name]) => ({ name, go: this.go('account', { acctTab:id, acctOpen:false }) })),
       acctTabs: [['profile','Profile'],['orders','Orders'],['reservations','Reservations'],['saved','Saved details']].filter(([id]) => id !== 'orders' && id !== 'saved').map(([id, name]) => { const on = (s.acctTab || 'profile') === id; return { name, on, pick: () => this.setState({ acctTab:id }), bg: on ? '#4B2E26' : 'transparent', color: on ? '#F3EEE5' : '#4B2E26' }; }),
       acctProfile: (s.acctTab || 'profile') === 'profile', acctOrders: s.acctTab === 'orders', acctRes: s.acctTab === 'reservations', acctSaved: s.acctTab === 'saved', acctCols: narrow ? '1fr' : '200px minmax(0,1fr)', acctLogoutMt: narrow ? '0' : 'auto',
+      myBookings: this.bookingRows(), acctBkLocal: !!s.bkDone && !(s.myBookings || []).length, acctBkNone: !s.bkDone && !(s.myBookings || []).length,
       hasPlaced: !!s.placed, noPlaced: !s.placed, savedAddress: s.address || 'None saved', profileSaved: !!s.profileMsg, profileMsg: s.profileMsg || '',
       saveProfile: () => this.saveProfile(), changePassword: e => { e.preventDefault(); this.setState({ view:'login', auReset:'form', auT:{}, acctOpen:false }); window.scrollTo(0, 0); },
       cartAria: hasCart ? 'Open cart, ' + cartCount + ' items' : 'Open cart', showCartTotal: hasCart && s.xwide && wide, cartPad: hasCart && s.xwide && wide ? '12px' : '11px',
