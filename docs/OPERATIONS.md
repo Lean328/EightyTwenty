@@ -39,6 +39,18 @@ python manage.py createsuperuser
 
 Chỉ có một file settings (`backend/config/settings.py`); máy dev khác server ở `DEBUG=True` trong `backend/.env`. Server không cần `DJANGO_SETTINGS_MODULE` (manage.py/wsgi luôn dùng `config.settings`). Kiểm tra security deployment có thể nhắc HSTS preload chưa bật. Preload không tự bật vì là quyết định ở cấp domain. Bản này không có Sentry SDK; SENTRY_DSN trong env là chỗ dành cho tích hợp sau.
 
+## Website (Cloudflare Pages)
+
+Site static `website/` chạy trên Cloudflare Pages, project `eightytwenty` (tài khoản Cloudflare johnthinh2009): https://eightytwenty.pages.dev. Project upload trực tiếp, không nối Git — push lên `main` **không** tự deploy website. Deploy đúng commit đã push, từ thư mục gốc repo (Git Bash):
+
+```sh
+npx wrangler@4 login   # một lần trên máy; chọn đúng tài khoản Cloudflare
+rm -rf /tmp/e82-site && mkdir -p /tmp/e82-site && git archive HEAD website | tar -x -C /tmp/e82-site
+npx wrangler@4 pages deploy /tmp/e82-site/website --project-name eightytwenty --branch main --commit-hash "$(git rev-parse HEAD)"
+```
+
+Wrangler 4.15x mặc định chuyển lệnh Pages sang "Pages trên Workers"; project này đã tạo bằng `pages project create --force` nên `pages deploy` chạy thẳng vào Pages cũ, không cần `--force` nữa. `website/_headers` đặt header bảo mật và cache ảnh. Pages trả `index.html` cho đường dẫn lạ, nên link email `/verify-email` và `/reset-password` mở được site (`website/account.js` xử lý). `config.js` gọi API Render cho mọi host không phải localhost. Đổi domain website thì cập nhật `CLIENT_BASE_URL` trên Render (link trong email xác minh/đặt lại mật khẩu).
+
 ## Email và job
 
 Tích hợp gửi mail là Resend HTTP API. Cấu hình domain gửi/SPF/DKIM tại nhà cung cấp; EMAIL_FROM dùng domain đã verify. Dev không có key sẽ in mail ra console; test dùng locmem. Production không có key không giả báo email đã gửi: outbox chuyển failed và có thể retry sau khi cấu hình.
