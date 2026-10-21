@@ -105,8 +105,10 @@ test('a café selected while bootstrap is loading is not overwritten by a saved 
     location: { hash: '' },
     requestAnimationFrame() {}, setTimeout() {},
     loadData: () => new Promise(resolve => { resolveData = resolve; }),
+    loadAccount: async () => ({ handleAccountLink: async () => '', restoreSession: async () => null }),
   });
-  const isolatedSource = source.replace(/import\(new URL\([^\n]+?\)\.href\)/, 'loadData()');
+  const isolatedSource = source.replace(/import\(new URL\('account\.js[^\n]+?\)\.href\)/, 'loadAccount()')
+    .replace(/import\(new URL\([^\n]+?\)\.href\)/, 'loadData()');
   const Component = new vm.Script(isolatedSource + '\nComponent;').runInContext(context);
   const app = new Component();
   app.hydrateImages = app.observeReveals = () => {};
@@ -118,4 +120,133 @@ test('a café selected while bootstrap is loading is not overwritten by a saved 
   assert.equal(app.state.bk.loc, 'phillip');
   assert.equal(app.state.locId, 'phillip');
   assert.equal(remembered, 'phillip');
+});
+
+// Customer accounts: website/account.js talks to /api/v1/auth and /api/v1/me (fetch is faked).
+const saved = new Map();
+globalThis.location = { hostname: 'site.example', pathname: '/', search: '', replace(url) { this.replaced = url; } };
+globalThis.history = { replaceState(state, title, url) { location.pathname = url; location.search = ''; } };
+globalThis.localStorage = { getItem: key => saved.get(key) ?? null, setItem: (key, value) => saved.set(key, value),
+  removeItem: key => saved.delete(key) };
+const account = await import('../website/account.js');
+function fakeApi(routes) {
+  const calls = [];
+  globalThis.fetch = async (url, init) => {
+    const path = url.replace(/^https?:\/\/[^/]+/, '');
+    const call = { path, method: init.method, auth: init.headers.Authorization, body: init.body && JSON.parse(init.body) };
+    calls.push(call);
+    const [status, data] = routes[path](call, calls);
+    return { ok: status < 400, status, json: async () => data };
+  };
+  return calls;
+}
+const tokens = n => ({ access: 'access-' + n, refresh: 'refresh-' + n });
+const profile = { email: 'guest@example.com', first_name: 'Test', last_name: 'Guest', phone: '0400000000' };
+
+test('signing in stores only the refresh token and loads the profile with the access token', async () => {
+  saved.clear();
+  const calls = fakeApi({ '/api/v1/auth/login': () => [200, tokens(1)], '/api/v1/me': () => [200, profile] });
+  const res = await account.signIn('guest@example.com', 'correct-horse-1');
+  assert.equal(res.ok, true);
+  assert.equal(res.data.first_name, 'Test');
+  assert.deepEqual(calls[0].body, { email: 'guest@example.com', password: 'correct-horse-1' });
+  assert.equal(calls[1].auth, 'Bearer access-1');
+  assert.equal(saved.get('e82-refresh-v1'), 'refresh-1');
+});
+test('a returning visitor is restored with one refresh even when asked twice at once', async () => {
+  saved.clear(); saved.set('e82-refresh-v1', 'refresh-1');
+  const calls = fakeApi({ '/api/v1/auth/refresh': () => [200, tokens(2)], '/api/v1/me': () => [200, profile] });
+  const [a, b] = await Promise.all([account.restoreSession(), account.restoreSession()]);
+  assert.equal(a.email, 'guest@example.com');
+  assert.equal(b.email, 'guest@example.com');
+  assert.equal(calls.filter(c => c.path === '/api/v1/auth/refresh').length, 1);
+  assert.equal(saved.get('e82-refresh-v1'), 'refresh-2');
+});
+test('an expired session is forgotten; a network failure keeps it for next time', async () => {
+  saved.clear(); saved.set('e82-refresh-v1', 'stale');
+  fakeApi({ '/api/v1/auth/refresh': () => [401, { error: { code: 'token_not_valid' } }] });
+  assert.equal(await account.restoreSession(), null);
+  assert.equal(saved.has('e82-refresh-v1'), false);
+  saved.set('e82-refresh-v1', 'still-good');
+  globalThis.fetch = async () => { throw new TypeError('offline'); };
+  assert.equal(await account.restoreSession(), null);
+  assert.equal(saved.get('e82-refresh-v1'), 'still-good');
+});
+test('sign-up sends the honeypot and the API field errors reach the form', async () => {
+  saved.clear();
+  const calls = fakeApi({ '/api/v1/auth/register': () => [400, { error: { code: 'invalid', message: 'Please check the submitted fields.',
+    fields: { email: ['This email is already registered.'], non_field_errors: ['This password is too common.'] } } }] });
+  const res = await account.signUp({ email: 'guest@example.com', password: 'password12', first_name: 'Test', last_name: 'Guest', phone: '' });
+  assert.equal(calls[0].body.website, '');
+  const errors = account.errorsOf(res);
+  assert.equal(errors.email, 'This email is already registered.');
+  assert.equal(errors.non_field_errors, 'This password is too common.');
+  assert.equal(account.errorsOf({ status: 401, data: null }).message, 'Email or password is incorrect.');
+  assert.match(account.errorsOf({ status: 0, data: null }).message, /reach EightyTwenty/);
+});
+test('logging out revokes the refresh token on the server and forgets it', async () => {
+  saved.clear();
+  fakeApi({ '/api/v1/auth/login': () => [200, tokens(3)], '/api/v1/me': () => [200, profile] });
+  await account.signIn('guest@example.com', 'correct-horse-1');
+  const calls = fakeApi({ '/api/v1/auth/logout': () => [204, null] });
+  await account.signOut();
+  assert.deepEqual(calls[0].body, { refresh: 'refresh-3' });
+  assert.equal(calls[0].auth, 'Bearer access-3');
+  assert.equal(saved.has('e82-refresh-v1'), false);
+});
+test('email links: reset opens the API password page, verification is confirmed on the site', async () => {
+  location.pathname = '/reset-password'; location.search = '?uid=MQ&token=abc';
+  assert.equal(await account.handleAccountLink(), '');
+  assert.equal(location.replaced, 'https://eightytwenty-api.onrender.com/account/reset-password?uid=MQ&token=abc');
+  location.pathname = '/verify-email'; location.search = '?uid=MQ&token=abc';
+  const calls = fakeApi({ '/api/v1/auth/verify-email': () => [200, { message: 'Email verified.' }] });
+  assert.match(await account.handleAccountLink(), /verified/);
+  assert.deepEqual(calls[0].body, { uid: 'MQ', token: 'abc' });
+  assert.equal(location.pathname, '/');
+  assert.equal(await account.handleAccountLink(), '');
+});
+
+function mountWithAccount(api) {
+  const context = vm.createContext({
+    DCLogic: class { setState(patch, callback) {
+      Object.assign(this.state, typeof patch === 'function' ? patch(this.state) : patch);
+      callback?.();
+    } },
+    window: { innerWidth: 1440, scrollTo() {} }, document: { querySelector: () => null },
+  });
+  const app = new (new vm.Script(source + '\nComponent;').runInContext(context))();
+  app.A = api; app._account = Promise.resolve(api);
+  return app;
+}
+const settle = () => new Promise(resolve => setImmediate(resolve));
+test('the login form signs in through the account API and opens the real profile', async () => {
+  const seen = [];
+  const app = mountWithAccount({ signIn: async (email, password) => { seen.push([email, password]); return { ok: true, status: 200, data: profile }; } });
+  app.state.au = { email: ' Guest@Example.com ', password: 'correct-horse-1' };
+  app.auSubmit('login')({ preventDefault() {} });
+  await settle();
+  assert.deepEqual(seen, [['guest@example.com', 'correct-horse-1']]);
+  assert.equal(app.state.signedIn, true);
+  assert.deepEqual({ ...app.state.user }, { name: 'Test Guest', email: 'guest@example.com', phone: '0400000000' });
+  assert.equal(app.state.view, 'account');
+  assert.equal(app.state.auBusy, null);
+});
+test('a rejected login stays signed out and says why', async () => {
+  const app = mountWithAccount({ signIn: async () => ({ ok: false, status: 401, data: null }),
+    errorsOf: () => ({ message: 'Email or password is incorrect.' }) });
+  app.state.au = { email: 'guest@example.com', password: 'wrong-password' };
+  app.auSubmit('login')({ preventDefault() {} });
+  await settle();
+  assert.notEqual(app.state.signedIn, true);
+  assert.equal(app.state.auSrv.login, 'Email or password is incorrect.');
+  assert.equal(app.state.auBusy, null);
+});
+test('saving the profile sends name and phone to the API, never the email', async () => {
+  let sent;
+  const app = mountWithAccount({ updateProfile: async fields => { sent = fields; return { ok: true, status: 200, data: { ...profile, ...fields } }; } });
+  app.state.user = { name: 'Test  Guest Smith', email: 'guest@example.com', phone: '0411 111 111' };
+  app.saveProfile();
+  await settle();
+  assert.deepEqual({ ...sent }, { first_name: 'Test', last_name: 'Guest Smith', phone: '0411 111 111' });
+  assert.equal(app.state.profileMsg, 'Changes saved.');
 });

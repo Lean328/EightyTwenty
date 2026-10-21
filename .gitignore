@@ -34,6 +34,7 @@ backups/
 # --- Website / Node ---
 node_modules/
 .vercel/
+.wrangler/
 
 # --- Original photos (local backup only, not deployed) ---
 _image-originals/
