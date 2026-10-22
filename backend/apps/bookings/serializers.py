@@ -34,6 +34,9 @@ class PublicBookingSerializer(AntiSpamMixin, InputSerializer):
     email = serializers.EmailField()
     phone = serializers.CharField(max_length=32)
     notes = serializers.CharField(max_length=3000, allow_blank=True, required=False)
+    seating = serializers.ChoiceField(
+        choices=["indoor", "outdoor"], required=False, default="", allow_blank=True
+    )
     source = serializers.ChoiceField(choices=["web", "app"], default="web")
 
 

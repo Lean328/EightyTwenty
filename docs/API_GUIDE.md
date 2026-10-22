@@ -56,6 +56,7 @@ Adapter website cần timeout, fallback snapshot đã cache và cuối cùng `mo
   "email": "customer@example.com",
   "phone": "0400000000",
   "notes": "Window seat if available",
+  "seating": "outdoor",
   "source": "web",
   "website": "",
   "turnstile_token": "token-from-client-widget"
@@ -64,7 +65,9 @@ Adapter website cần timeout, fallback snapshot đã cache và cuối cùng `mo
 
 Ngày trên chỉ minh họa; chọn ngày trong booking window đã cấu hình. `website` là honeypot, luôn để trống. Turnstile bắt buộc ở production. Mobile cũng cần lấy token Turnstile bằng luồng challenge web; không nhúng secret vào app và không bỏ captcha cho mobile.
 
-3. Thành công: `201 {"reference":"BK-...","status":"requested"}`. UI phải ghi **đã gửi yêu cầu**, chưa phải xác nhận bàn. Lỗi email vẫn trả 201 nếu booking đã lưu; BOS xem trạng thái email riêng.
+3. Thành công: `201 {"reference":"BK-...","status":"requested"}`. UI phải ghi **đã gửi yêu cầu**, chưa phải xác nhận bàn. Lỗi email vẫn trả 201 nếu booking đã lưu; BOS xem trạng thái email riêng. `seating` (`indoor`/`outdoor`, tùy chọn) là sở thích chỗ ngồi.
+   - **Hai chế độ theo `BookingRule.is_enabled` của quán** (22/10/2026). Bật: server kiểm slot (bội số `slot_minutes` trong giờ mở cửa, `min_lead_minutes`, `max_days_ahead`, `max_party_size`) và sức chứa `max_covers_per_slot` (`409 booking_slot_full`). Tắt (mặc định hiện nay): yêu cầu vẫn được **ghi vào BOS** với trạng thái `requested` để quán xác nhận/từ chối, chỉ áp dụng luật chung của mọi kênh (quán `open` và đã publish → không thì `bookings_disabled`; trong giờ mở cửa và không muộn hơn 30 phút trước giờ đóng → `location_closed`; báo trước ≥12 giờ và ≤ `max_days_ahead` (60 ngày nếu chưa có rule) → `invalid_booking_date`; ≤ `max_party_size` (10 nếu chưa có rule) → `party_too_large`). Mọi lỗi có `message` viết cho khách — website hiện nguyên câu đó dưới form.
+   - Mỗi yêu cầu xếp 2 email vào outbox: biên nhận cho khách và bản sao vào hộp thư quán (`Location.email`, không có thì `SiteSettings.contact_email`). Đổi trạng thái trong BOS gửi email trạng thái cho khách.
 4. JWT là tùy chọn ở POST này. Gửi token hợp lệ để booking gắn với `/me/bookings`; guest booking không tự được liên kết chỉ vì email trùng.
 5. Requested/confirmed/seated cùng chiếm sức chứa trong slot. Declined/cancelled giải phóng chỗ. Không hỗ trợ đặt qua đêm hay duration nhiều slot ở Phase 1. Availability là thông tin tại thời điểm đọc; server kiểm tra lại khi POST.
 

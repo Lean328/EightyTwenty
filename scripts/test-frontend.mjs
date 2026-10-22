@@ -88,9 +88,35 @@ test('booking payload still goes through the existing public API', async () => {
   assert.equal(request.body.location, 'phillip');
   assert.equal(request.body.party_size, 3);
   assert.equal(request.body.name, 'Test Guest');
-  assert.equal(request.body.notes, 'Table: Indoor\nCoeliac');
+  assert.equal(request.body.notes, 'Coeliac');
+  assert.equal(request.body.seating, 'indoor');
   assert.equal(app.state.bkRef, 'test-only-reference');
   assert.equal(app.state.bkSending, false);
+});
+
+test('a booking the API refuses shows its message instead of opening an email draft', async () => {
+  let navigated = false;
+  const context = vm.createContext({
+    DCLogic: class {
+      setState(patch, callback) {
+        Object.assign(this.state, typeof patch === 'function' ? patch(this.state) : patch);
+        callback?.();
+      }
+    },
+    window: { innerWidth: 1440, scrollTo() {}, location: { set href(v) { navigated = true; } } },
+  });
+  const Component = new vm.Script(source + '\nComponent;').runInContext(context);
+  const app = new Component();
+  app.D = { LOCATIONS: cafes, SOURCE: 'api', postForm: async () => ({ ok: false,
+    data: { error: { code: 'location_closed', message: 'Café is closed on this date.', fields: {} } } }) };
+  app.state.bk = { loc: 'phillip', size: '2', date: '2026-11-15', time: '10:00',
+    name: 'Guest', phone: '0400000000', email: 'guest@example.com', seat: 'Outdoor', notes: '' };
+  app.bkSubmit();
+  await Promise.resolve();
+  assert.equal(app.state.bkApiErr, 'Café is closed on this date.');
+  assert.equal(app.state.bkDone, false);
+  assert.equal(app.state.bkSending, false);
+  assert.equal(navigated, false);
 });
 
 test('a café selected while bootstrap is loading is not overwritten by a saved default', async () => {

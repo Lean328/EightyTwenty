@@ -54,12 +54,10 @@ def validate_slot(location, rule, date, time, party_size):
     if moment < now + timedelta(minutes=rule.min_lead_minutes) or date > timezone.localdate(
         now
     ) + timedelta(days=rule.max_days_ahead):
-        raise DomainError(
-            "invalid_booking_date", "The requested time is outside the booking window."
-        )
+        raise DomainError("invalid_booking_date", "Please choose a date inside the booking window.")
     hours = hours_for(location, date)
     if not hours or hours.is_closed or not hours.opens_at or not hours.closes_at:
-        raise DomainError("location_closed", "No booking hours are configured for this day.")
+        raise DomainError("location_closed", "The café is closed on this day.")
     start = datetime.combine(date, hours.opens_at)
     requested = datetime.combine(date, time)
     end = datetime.combine(date, hours.closes_at)
@@ -71,7 +69,31 @@ def validate_slot(location, rule, date, time, party_size):
         or difference % (rule.slot_minutes * 60)
         or requested + timedelta(minutes=rule.slot_minutes) > end
     ):
-        raise DomainError("invalid_slot", "Choose a valid slot within opening hours.")
+        raise DomainError("invalid_slot", "Please choose a time within opening hours.")
+
+
+def validate_request(location, rule, date, time, party_size):
+    """
+    A booking *request* for a café whose online-booking rule is off: the café confirms
+    by hand, so only the business rules every channel shares apply (open café, inside
+    opening hours, 12 hours' notice, a sensible party size and horizon). No slot or
+    capacity check; that is what switching the rule on adds.
+    """
+    if not location.is_published or location.status != "open":
+        raise DomainError("bookings_disabled", "This location is not accepting bookings.")
+    maximum = rule.max_party_size if rule else 10
+    if party_size > maximum:
+        raise DomainError(
+            "party_too_large", f"For groups larger than {maximum}, please call the café."
+        )
+    horizon = rule.max_days_ahead if rule else 60
+    if date > timezone.localdate() + timedelta(days=horizon):
+        raise DomainError(
+            "invalid_booking_date", f"Bookings can be made up to {horizon} days ahead."
+        )
+    if problem := app_booking_problems(location, date, time):
+        code = "location_closed" if "closed" in problem else "invalid_booking_date"
+        raise DomainError(code, f"{problem}.")
 
 
 def used_covers(location, date, time):
@@ -85,22 +107,58 @@ def used_covers(location, date, time):
 
 @transaction.atomic
 def create_booking(data, customer=None):
+    """
+    A booking request from the website. With the café's online-booking rule switched on
+    the slot and its capacity are enforced; with it off the request is still recorded for
+    the café to confirm or decline in BOS (the same path the mobile app already uses), so
+    a request never has to fall back to an email draft.
+    """
     location = data["location"]
     rule = BookingRule.objects.select_for_update().filter(location=location).first()
-    validate_slot(location, rule, data["date"], data["time"], data["party_size"])
-    if (
-        used_covers(location, data["date"], data["time"]) + data["party_size"]
-        > rule.max_covers_per_slot
-    ):
-        raise DomainError("booking_slot_full", "This time slot is full.", 409)
+    if rule and rule.is_enabled:
+        validate_slot(location, rule, data["date"], data["time"], data["party_size"])
+        if (
+            used_covers(location, data["date"], data["time"]) + data["party_size"]
+            > rule.max_covers_per_slot
+        ):
+            raise DomainError("booking_slot_full", "This time slot is full.", 409)
+    else:
+        validate_request(location, rule, data["date"], data["time"], data["party_size"])
     booking = Booking.objects.create(**data, customer=customer)
     enqueue_email(
         booking.email,
         f"Booking request {booking.reference}",
-        f"We received your booking request for {location.name}, {booking.date} {booking.time}, party of {booking.party_size}. Your booking is requested, not confirmed. Staff will contact you after reviewing it.",
+        f"We received your booking request for {location.name}, {booking.date} "
+        f"{booking.time:%H:%M}, party of {booking.party_size}. Your booking is requested, "
+        "not confirmed. The café will confirm it with you by email.",
         f"booking-{booking.pk}-requested",
     )
+    notify_cafe(booking)
     return booking
+
+
+def notify_cafe(booking):
+    """The request lands in the café inbox too, as the old email draft used to."""
+    location = booking.location
+    enqueue_email(
+        location.email or SiteSettings.load().contact_email,
+        f"EightyTwenty booking request — {location.name}",
+        "\n".join(
+            [
+                f"Reference: {booking.reference} (BOS workspace → Bookings)",
+                f"Café: {location.name}",
+                f"Guests: {booking.party_size}",
+                f"Date: {booking.date}",
+                f"Time: {booking.time:%H:%M}",
+                f"Table: {booking.get_seating_display() or 'No preference'}",
+                f"Name: {booking.name}",
+                f"Phone: {booking.phone}",
+                f"Email: {booking.email}",
+                f"Special requests: {booking.notes or 'None'}",
+            ]
+        ),
+        f"booking-{booking.pk}-cafe",
+    )
 
 
 @transaction.atomic
@@ -186,25 +244,7 @@ def create_app_booking(customer, data):
         "The café will confirm it with you.",
         f"booking-{booking.pk}-requested",
     )
-    enqueue_email(
-        location.email or SiteSettings.load().contact_email,
-        f"EightyTwenty booking request — {location.name}",
-        "\n".join(
-            [
-                f"Reference: {booking.reference} (BOS workspace → Bookings)",
-                f"Café: {location.name}",
-                f"Guests: {booking.party_size}",
-                f"Date: {booking.date}",
-                f"Time: {booking.time:%H:%M}",
-                f"Table: {booking.get_seating_display() or 'No preference'}",
-                f"Name: {booking.name}",
-                f"Phone: {booking.phone}",
-                f"Email: {booking.email}",
-                f"Special requests: {booking.notes or 'None'}",
-            ]
-        ),
-        f"booking-{booking.pk}-cafe",
-    )
+    notify_cafe(booking)
     return booking
 
 

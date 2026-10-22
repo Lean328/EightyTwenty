@@ -14651,6 +14651,9 @@ components:
       - entity_type
       - id
       - updated_at
+    BlankEnum:
+      enum:
+      - ''
     Booking:
       type: object
       properties:
@@ -20512,6 +20515,11 @@ components:
         notes:
           type: string
           maxLength: 3000
+        seating:
+          default: ''
+          oneOf:
+          - $ref: '#/components/schemas/AppSeatingEnum'
+          - $ref: '#/components/schemas/BlankEnum'
         source:
           allOf:
           - $ref: '#/components/schemas/PublicBookingSourceEnum'

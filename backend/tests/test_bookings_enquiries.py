@@ -1,7 +1,8 @@
-from datetime import date, time
+from datetime import date, time, timedelta
 from unittest.mock import Mock, patch
 
 import pytest
+from django.utils import timezone
 
 from apps.bookings.models import Booking, BookingRule
 from apps.bookings.services import local_datetime
@@ -67,10 +68,51 @@ def test_special_hours_disabled_rule_and_availability(client, booking_data, bran
         == "location_closed"
     )
     BookingRule.objects.filter(location=branch).update(is_enabled=False)
-    assert (
-        client.post("/api/v1/public/bookings", booking_data, format="json").data["error"]["code"]
-        == "bookings_disabled"
+    assert client.get(url).data == []
+    SpecialHours.objects.filter(location=branch).delete()
+    branch.email = "braddon@example.com"
+    branch.save()
+    # Rule off: the request is still recorded for the café to confirm, with the seating
+    # preference, and both the guest and the café inbox are told.
+    recorded = client.post(
+        "/api/v1/public/bookings", {**booking_data, "seating": "outdoor"}, format="json"
     )
+    assert recorded.status_code == 201, recorded.data
+    booking = Booking.objects.get(reference=recorded.data["reference"])
+    assert booking.status == "requested" and booking.seating == "outdoor"
+    assert booking.source == "web"
+    assert EmailMessage.objects.filter(recipient=branch.email).count() == 1
+    assert EmailMessage.objects.filter(recipient=booking.email).count() == 1
+
+
+@pytest.mark.parametrize(
+    "change,code",
+    [
+        ({"party_size": 5}, "party_too_large"),
+        ({"time": "05:00"}, "location_closed"),
+        ({"time": "14:45"}, "location_closed"),
+        ({"date": "2000-01-01"}, "invalid_booking_date"),
+        ({"date": str(timezone.localdate() + timedelta(days=90))}, "invalid_booking_date"),
+    ],
+)
+def test_requests_with_rule_off_keep_the_shared_rules(client, booking_data, branch, change, code):
+    BookingRule.objects.filter(location=branch).update(is_enabled=False)
+    response = client.post("/api/v1/public/bookings", {**booking_data, **change}, format="json")
+    assert response.status_code == 400, response.data
+    assert response.data["error"]["code"] == code
+    assert response.data["error"]["message"]
+    assert not Booking.objects.exists()
+
+
+def test_requests_need_an_open_cafe(client, booking_data, branch):
+    BookingRule.objects.filter(location=branch).delete()
+    branch.status = "tbc"
+    branch.save()
+    response = client.post("/api/v1/public/bookings", booking_data, format="json")
+    assert response.data["error"]["code"] == "bookings_disabled"
+    branch.status = "open"
+    branch.save()
+    assert client.post("/api/v1/public/bookings", booking_data, format="json").status_code == 201
 
 
 def test_cross_branch_bookings_and_my_bookings(client, staff, booking_data, other_branch):
@@ -175,7 +217,8 @@ def test_captcha_fail_closed_and_email_failure_does_not_lose_booking(
             client.post("/api/v1/public/bookings", booking_data, format="json").status_code == 201
         )
     assert Booking.objects.count() == 1
-    assert EmailMessage.objects.get().status == "failed"
+    # Guest receipt and café inbox copy both queued and both retried later.
+    assert list(EmailMessage.objects.values_list("status", flat=True)) == ["failed", "failed"]
 
 
 @pytest.mark.parametrize("day", [date(2026, 10, 4), date(2026, 4, 5)])
