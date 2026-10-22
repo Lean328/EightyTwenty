@@ -1,0 +1,47 @@
+{% load bos_admin %}
+<div class="bos-record bos-record-team">
+  {% include "admin/includes/bos_record_hero.html" with hero=team.hero %}
+
+  <div class="bos-report-grid">
+    <section class="bos-card">
+      <header class="bos-card-head">
+        <div><h2>Cafés</h2><p class="bos-card-sub">{% if original.is_superuser %}The chain owner works with every café{% else %}Where this person signs in and what they see{% endif %}</p></div>
+        {% if bos_can.team %}<a class="bos-link" href="{% url 'admin:bos_team' %}">Team by café</a>{% endif %}
+      </header>
+      {% if original.is_superuser %}
+        <p class="bos-card-sub">Chain-wide access. Nothing to assign.</p>
+      {% elif team.assignments %}
+        <ul class="bos-team-cafes">
+          {% for a in team.assignments %}
+            <li class="{% if not a.is_active %}is-off{% endif %}">
+              {% icon 'map-pin' %}
+              <span>{{ a.location.name }}</span>
+              {% if a.is_active %}<span class="bos-chip bos-chip-small bos-tone-good">Active</span>{% else %}<span class="bos-chip bos-chip-small bos-tone-quiet">Inactive</span>{% endif %}
+            </li>
+          {% endfor %}
+        </ul>
+        <p class="bos-card-foot">Change cafés in the Cafés section of the form below.</p>
+      {% else %}
+        <div class="bos-empty bos-empty-sm">{% icon 'alert' %}<p>No café yet, so this person cannot open the workspace. Add one in the Cafés section below.</p></div>
+      {% endif %}
+    </section>
+
+    <section class="bos-card">
+      <header class="bos-card-head"><div><h2>{{ team.access_title }}</h2><p class="bos-card-sub">Decided by the role, enforced by the server</p></div></header>
+      <ul class="bos-profile-list">
+        {% for icon_name, text in team.access %}<li><span class="bos-profile-list-icon">{% icon icon_name %}</span>{{ text }}</li>{% endfor %}
+      </ul>
+    </section>
+
+    <section class="bos-card">
+      <header class="bos-card-head"><div><h2>Sign-in &amp; till</h2><p class="bos-card-sub">Password, PIN and account state</p></div></header>
+      <dl class="bos-facts">
+        <div><dt>Password</dt><dd>{% if team.has_password %}Set{% else %}Not set{% endif %}</dd></div>
+        <div><dt>Till PIN</dt><dd>{% if original.pos_pin %}<span class="bos-chip bos-chip-small bos-tone-good">Set</span>{% else %}<span class="bos-chip bos-chip-small bos-chip-quiet">Not set</span>{% endif %}</dd></div>
+        <div><dt>Account</dt><dd>{% if original.is_active %}Can sign in{% else %}Locked{% endif %}</dd></div>
+        <div><dt>Joined</dt><dd>{{ team.joined|date:"j M Y" }}</dd></div>
+      </dl>
+      <p class="bos-card-foot">Passwords are changed by the person themselves. Lock the account below instead of deleting it.</p>
+    </section>
+  </div>
+</div>

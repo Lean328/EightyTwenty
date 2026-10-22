@@ -10,7 +10,7 @@
         { id: "content", name: "Content Studio", keys: ["menu.menuitem", "cms.page", "locations.location", "media.mediaasset", "menu.category", "menu.modifiergroup", "menu.modifieroption", "menu.dietarytag", "menu.locationmenuitem", "enquiries.cateringpackage", "locations.locationimage", "cms.contentblock", "cms.navigationitem", "cms.offer", "cms.faq"] },
         { id: "insights", name: "Insights", keys: ["view:bos_reports"] },
         { id: "settings", name: "Settings", utility: true, keys: ["core.sitesettings", "bookings.bookingrule", "locations.openinghours", "locations.specialhours"] },
-        { id: "administration", name: "Administration", utility: true, keys: ["accounts.user", "accounts.staffassignment", "view:bos_system", "notifications.emailmessage", "notifications.pushdevice", "core.auditlog"] }
+        { id: "administration", name: "Administration", utility: true, keys: ["accounts.user", "view:bos_team", "accounts.staffassignment", "view:bos_system", "notifications.emailmessage", "notifications.pushdevice", "core.auditlog"] }
     ];
     function groupFor(key) {
         return groups.find(function (group) { return group.keys.indexOf(key) !== -1; }) || groups[7];

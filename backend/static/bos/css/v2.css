@@ -675,3 +675,40 @@
 @media (prefers-reduced-motion: reduce) {
     .bos-admin a.bos-nav-link, .bos-collapse, .bos-admin .bos-btn, .bos-admin a.bos-side-account, .bos-admin #result_list tbody tr, .bos-admin .bos-overview .bos-stats .bos-stat { transition: none; }
 }
+
+/* ---------- team & accounts ---------------------------------------------- */
+.bos-team-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(21rem, 1fr)); gap: var(--bos-gap); align-items: start; }
+.bos-team-cafe { display: flex; flex-direction: column; }
+.bos-team-cafe .bos-card-head h2 a { color: var(--bos-text); }
+.bos-team-cafe .bos-card-head h2 a:hover { color: var(--bos-accent-text); }
+.bos-team-people { list-style: none; margin: 0; padding: 0; flex: 1 1 auto; }
+.bos-team-person { display: flex; align-items: center; gap: 0.75rem; padding: 0.65rem 0; border-top: 1px solid var(--bos-line); }
+.bos-team-person:first-child { border-top: 0; }
+.bos-team-person.is-off .bos-team-body { opacity: 0.6; }
+.bos-team-avatar, .bos-record-team .bos-record-hero::before { display: grid; place-items: center; flex: none; width: 2.25rem; height: 2.25rem; border-radius: 50%; background: var(--bos-surface-3); color: var(--bos-text-2); font: 700 0.72rem/1 var(--font-family-primary); letter-spacing: 0.02em; }
+.bos-team-avatar.is-owner { background: var(--v2-blush); color: var(--v2-mocha); }
+.bos-team-body { display: grid; min-width: 0; flex: 1 1 auto; line-height: 1.3; }
+.bos-team-body strong { font-size: 0.875rem; font-weight: 600; color: var(--bos-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bos-team-body a:hover strong { color: var(--bos-accent-text); }
+.bos-team-body small { color: var(--bos-muted); font-size: 0.75rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bos-team-tags { display: flex; flex: none; flex-wrap: wrap; justify-content: flex-end; gap: 0.3rem; }
+.bos-team-tags .bos-chip .bos-i { width: 0.8rem; height: 0.8rem; }
+.bos-cafe-pills { display: inline-flex; flex-wrap: wrap; gap: 0.3rem; }
+.bos-cafe-pill { display: inline-flex; align-items: center; padding: 0.15rem 0.6rem; border: 1px solid var(--bos-line); border-radius: 999px; background: var(--bos-surface-2); color: var(--bos-text-2); font-size: 0.72rem; font-weight: 500; white-space: nowrap; }
+.bos-team-cafes { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.4rem; }
+.bos-team-cafes li { display: flex; align-items: center; gap: 0.6rem; padding: 0.55rem 0.75rem; border: 1px solid var(--bos-line); border-radius: 12px; background: var(--bos-surface-2); font-size: 0.875rem; }
+.bos-team-cafes li span:first-of-type { flex: 1 1 auto; font-weight: 500; }
+.bos-team-cafes li.is-off span:first-of-type { color: var(--bos-muted); }
+.bos-team-cafes .bos-i { color: var(--bos-accent-text); }
+.bos-record-team { margin-bottom: 1.25rem; }
+.bos-record-team .bos-report-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.bos-admin .bos-list-heading [data-bos-list-tools] { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+@media (max-width: 1100px) { .bos-record-team .bos-report-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 767px) {
+    .bos-team-grid { grid-template-columns: minmax(0, 1fr); }
+    .bos-record-team .bos-report-grid { grid-template-columns: minmax(0, 1fr); }
+    .bos-team-tags { justify-content: flex-start; }
+    .bos-team-person { flex-wrap: wrap; }
+    .bos-team-person .bos-team-tags { width: 100%; padding-left: 3rem; }
+}
+@media (max-width: 1023px) { .bos-team-page .bos-kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }

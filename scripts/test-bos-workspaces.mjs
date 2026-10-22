@@ -12,7 +12,7 @@ const serverKeys = [...navigation.matchAll(/\("([\w.:]+)", "[^"]+", "[^"]+"\)/g)
 
 test('all server destinations have one workspace, with six primary areas', () => {
     const mapped = api.groups.flatMap(group => Array.from(group.keys));
-    assert.equal(serverKeys.length, 40);
+    assert.equal(serverKeys.length, 41);
     assert.deepEqual([...mapped].sort(), [...serverKeys].sort());
     assert.equal(new Set(mapped).size, mapped.length);
     assert.equal(api.groups.filter(group => !group.utility).length, 6);

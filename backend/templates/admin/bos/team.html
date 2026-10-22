@@ -1,0 +1,123 @@
+{% extends "admin/base_site.html" %}
+{% load bos_admin %}
+
+{% block bodyclass %}{{ block.super }} bos-team-page{% endblock %}
+{% block breadcrumbs %}<div class="breadcrumbs"><a href="{% url 'admin:index' %}">Overview</a> &rsaquo; Team by café</div>{% endblock %}
+{% block content_title %}{% endblock %}
+
+{% block content %}
+<div class="bos-page">
+  <header class="bos-page-head">
+    <div>
+      <p class="bos-eyebrow">People</p>
+      <h1>Team by café</h1>
+      <p class="bos-lead">{% if chain %}Every café with its owner and staff accounts. Open a person to change their details, cafés, access or till PIN.{% else %}Your cafés with the staff accounts you look after. Open a person to change their details or till PIN.{% endif %}</p>
+    </div>
+    <div class="bos-page-tools">
+      <a class="bos-btn bos-btn-ghost" href="{{ team_url }}">{% icon 'users' %} All team accounts</a>
+      {% if add_url %}<a class="bos-btn bos-btn-primary" href="{{ add_url }}">{% icon 'user-plus' %} Add team member</a>{% endif %}
+    </div>
+  </header>
+
+  <section class="bos-kpis" aria-label="Team figures">
+    <article class="bos-kpi">
+      <p class="bos-kpi-label">Cafés</p>
+      <p class="bos-kpi-value">{{ cards|length }}</p>
+      <p class="bos-kpi-note">{% if chain %}Across the chain{% else %}That you run{% endif %}</p>
+    </article>
+    <article class="bos-kpi">
+      <p class="bos-kpi-label">People</p>
+      <p class="bos-kpi-value">{{ totals.people }}</p>
+      <p class="bos-kpi-note">With a café assignment</p>
+    </article>
+    <article class="bos-kpi">
+      <p class="bos-kpi-label">Café owners</p>
+      <p class="bos-kpi-value">{{ totals.owners }}</p>
+      <p class="bos-kpi-note">Run bookings, staff and hours</p>
+    </article>
+    <article class="bos-kpi">
+      <p class="bos-kpi-label">Locked or inactive</p>
+      <p class="bos-kpi-value">{{ totals.locked }}</p>
+      <p class="bos-kpi-note">Cannot sign in right now</p>
+    </article>
+  </section>
+
+  <div class="bos-team-grid">
+    {% for card in cards %}
+      <section class="bos-card bos-team-cafe" aria-labelledby="cafe-{{ card.cafe.pk }}">
+        <header class="bos-card-head">
+          <div>
+            <h2 id="cafe-{{ card.cafe.pk }}">{% if card.url %}<a href="{{ card.url }}">{{ card.cafe.name }}</a>{% else %}{{ card.cafe.name }}{% endif %}</h2>
+            <p class="bos-card-sub">{{ card.active_count }} active{% if card.locked_count %} · {{ card.locked_count }} locked{% endif %}{% if card.cafe.status != "open" %} · {{ card.cafe.get_status_display }}{% endif %}</p>
+          </div>
+          {% if card.add_url %}<a class="bos-btn bos-btn-sm" href="{{ card.add_url }}">{% icon 'plus' %} Add</a>{% endif %}
+        </header>
+
+        {% if card.owners or card.staff %}
+          <ul class="bos-team-people">
+            {% for p in card.owners %}
+              <li class="bos-team-person{% if not p.active %} is-off{% endif %}">
+                <span class="bos-team-avatar is-owner" aria-hidden="true">{{ p.user|initials }}</span>
+                <span class="bos-team-body">
+                  {% if p.url %}<a href="{{ p.url }}"><strong>{{ p.name }}</strong></a>{% else %}<strong>{{ p.name }}</strong>{% endif %}
+                  <small>{{ p.user.email }}</small>
+                </span>
+                <span class="bos-team-tags">
+                  <span class="bos-chip bos-chip-small bos-tone-good">{{ p.role }}</span>
+                  {% if not p.user.is_active %}<span class="bos-chip bos-chip-small bos-tone-bad">Locked</span>{% elif not p.assignment_active %}<span class="bos-chip bos-chip-small bos-tone-quiet">Not at this café</span>{% endif %}
+                </span>
+              </li>
+            {% endfor %}
+            {% for p in card.staff %}
+              <li class="bos-team-person{% if not p.active %} is-off{% endif %}">
+                <span class="bos-team-avatar" aria-hidden="true">{{ p.user|initials }}</span>
+                <span class="bos-team-body">
+                  {% if p.url %}<a href="{{ p.url }}"><strong>{{ p.name }}</strong></a>{% else %}<strong>{{ p.name }}</strong>{% endif %}
+                  <small>{{ p.user.email }}</small>
+                </span>
+                <span class="bos-team-tags">
+                  {% if p.has_pin %}<span class="bos-chip bos-chip-small bos-chip-quiet">{% icon 'key' %} Till</span>{% endif %}
+                  {% if not p.user.is_active %}<span class="bos-chip bos-chip-small bos-tone-bad">Locked</span>{% elif not p.assignment_active %}<span class="bos-chip bos-chip-small bos-tone-quiet">Not at this café</span>{% endif %}
+                </span>
+              </li>
+            {% endfor %}
+          </ul>
+        {% else %}
+          <div class="bos-empty bos-empty-sm">{% icon 'users' %}<p>Nobody is assigned to this café yet.</p></div>
+        {% endif %}
+        <p class="bos-card-foot"><a class="bos-link" href="{{ card.assignments_url }}">Assignments {% icon 'arrow-right' %}</a></p>
+      </section>
+    {% empty %}
+      <div class="bos-empty">{% icon 'store' %}<p><strong>No cafés to show.</strong></p><p>Ask the chain owner to assign you to a café.</p></div>
+    {% endfor %}
+  </div>
+
+  {% if chain %}
+    <section class="bos-card bos-card-flush">
+      <header class="bos-card-head">
+        <div><h2>Not assigned to a café</h2><p class="bos-card-sub">Café owners and staff who cannot open the workspace until they are given a café</p></div>
+      </header>
+      {% if unassigned %}
+        <div class="bos-table-wrap">
+          <table class="bos-table">
+            <thead><tr><th>Name</th><th>Email</th><th>Role</th><th>Status</th><th><span class="bos-sr-only">Open</span></th></tr></thead>
+            <tbody>
+              {% for u in unassigned %}
+                <tr>
+                  <td><strong>{% firstof u.get_full_name u.email %}</strong></td>
+                  <td>{{ u.email }}</td>
+                  <td>{% if u.role == "manager" %}Café owner{% else %}Staff{% endif %}</td>
+                  <td>{% if u.is_active %}<span class="bos-chip bos-chip-small bos-tone-warn">Needs a café</span>{% else %}<span class="bos-chip bos-chip-small bos-tone-bad">Locked</span>{% endif %}</td>
+                  <td class="bos-num"><a class="bos-btn bos-btn-sm" href="{% url 'admin:accounts_user_change' u.pk %}">Open</a></td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="bos-empty bos-empty-sm">{% icon 'check-circle' %}<p>Everyone on the team has a café.</p></div>
+      {% endif %}
+    </section>
+  {% endif %}
+</div>
+{% endblock %}

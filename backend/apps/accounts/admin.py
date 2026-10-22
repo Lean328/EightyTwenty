@@ -5,7 +5,9 @@ from django.contrib.auth.admin import UserAdmin as DjangoUserAdmin
 from django.contrib.auth.forms import AdminUserCreationForm, UserChangeForm
 from django.db.models import Count, Q, Sum
 from django.template.loader import render_to_string
+from django.urls import reverse
 from django.utils.dateformat import format as date_format
+from django.utils.html import format_html, format_html_join
 
 from apps.bookings.models import Booking
 from apps.core import admin_summary as ui
@@ -189,6 +191,85 @@ def customer_summary(user):
     }
 
 
+class TeamRoleFilter(admin.SimpleListFilter):
+    title = "role"
+    parameter_name = "team_role"
+
+    def lookups(self, request, model_admin):
+        if bos_role(request.user) == CHAIN:
+            return [("chain", "Chain owner"), ("manager", "Café owner"), ("staff", "Staff")]
+        return [("staff", "Staff")]
+
+    def queryset(self, request, queryset):
+        if self.value() == "chain":
+            return queryset.filter(is_superuser=True)
+        if self.value() in TEAM_ROLES:
+            return queryset.filter(role=self.value(), is_superuser=False)
+        return queryset
+
+
+class CafeFilter(admin.SimpleListFilter):
+    title = "café"
+    parameter_name = "cafe"
+
+    def lookups(self, request, model_admin):
+        return [(c.pk, c.name) for c in bos_locations(request.user).order_by("sort_order", "name")]
+
+    def queryset(self, request, queryset):
+        if self.value():
+            return queryset.filter(
+                assignments__location=self.value(), assignments__is_active=True
+            ).distinct()
+        return queryset
+
+
+def team_summary(user, request):
+    """Who this team member is and where they work, above the edit form."""
+    from apps.core.admin_views import ROLE_ACCESS
+
+    role = CHAIN if user.is_superuser else user.role
+    role_name = {CHAIN: "Chain owner", "manager": "Café owner", "staff": "Staff"}.get(
+        role, API_ROLE_LABELS.get(role, user.get_role_display())
+    )
+    visible = bos_location_ids(request.user)
+    assignments = [
+        a
+        for a in user.assignments.select_related("location").order_by("location__sort_order")
+        if visible is None or a.location_id in visible
+    ]
+    active_cafes = [a.location for a in assignments if a.is_active]
+    return {
+        "hero": {
+            "eyebrow": "Team member",
+            "title": user.get_full_name() or user.email,
+            "chips": [
+                ui.chip(
+                    role_name, "info" if role == CHAIN else "good" if role == "manager" else "quiet"
+                ),
+                ui.chip("Can sign in", "good") if user.is_active else ui.chip("Locked", "bad"),
+                *([ui.tag("Till PIN set")] if user.pos_pin else []),
+            ],
+            "meta": [
+                *ui.contact(user.phone, user.email),
+                {"icon": "clock", "text": f"Last sign-in {ui.moment(user.last_login) or 'never'}"},
+            ],
+            "stat": {
+                "label": "Works at",
+                "value": "All cafés" if user.is_superuser else str(len(active_cafes)),
+                "sub": "" if user.is_superuser else ("café" if len(active_cafes) == 1 else "cafés"),
+            },
+        },
+        "assignments": assignments,
+        "access": ROLE_ACCESS.get(role, ()),
+        "access_title": (
+            "What staff can do" if role == "staff" else f"What a {role_name.lower()} can do"
+        ),
+        "role_name": role_name,
+        "joined": user.date_joined,
+        "has_password": user.has_usable_password(),
+    }
+
+
 @admin.register(User)
 class UserAdmin(DjangoUserAdmin):
     change_form_template = "admin/bos_user_form.html"
@@ -199,16 +280,30 @@ class UserAdmin(DjangoUserAdmin):
     form = ChangeUserForm
     inlines = (AssignmentInline,)
     ordering = ["first_name", "last_name", "email"]
-    list_display = ["full_name", "email", "team_role", "cafes", "is_active", "last_login"]
+    list_display = ["full_name", "email", "team_role", "cafes", "status", "last_seen"]
     list_display_links = ["full_name"]
     search_fields = ["email", "first_name", "last_name", "phone"]
-    list_filter = ["is_active"]
+    list_filter = [TeamRoleFilter, CafeFilter, "is_active"]
 
     def get_changelist(self, request, **kwargs):
         return TeamChangeList
 
     def changelist_view(self, request, extra_context=None):
-        return super().changelist_view(request, {"list_title": "Team", **(extra_context or {})})
+        context = {
+            "list_title": "Team",
+            "list_links": [
+                {"label": "Team by café", "icon": "store", "url": reverse("admin:bos_team")}
+            ],
+        }
+        return super().changelist_view(request, {**context, **(extra_context or {})})
+
+    @admin.display(description="Status", ordering="is_active")
+    def status(self, obj):
+        return ui.chip("Can sign in", "good") if obj.is_active else ui.chip("Locked", "bad")
+
+    @admin.display(description="Last sign-in", ordering="last_login")
+    def last_seen(self, obj):
+        return ui.moment(obj.last_login) or "Never"
 
     @admin.display(description="Name", ordering="first_name")
     def full_name(self, obj):
@@ -217,8 +312,9 @@ class UserAdmin(DjangoUserAdmin):
     @admin.display(description="Role", ordering="role")
     def team_role(self, obj):
         if obj.is_superuser:
-            return "Chain owner"
-        return dict(CHAIN_ROLE_CHOICES).get(obj.role) or API_ROLE_LABELS.get(obj.role, obj.role)
+            return ui.chip("Chain owner", "info")
+        label = dict(CHAIN_ROLE_CHOICES).get(obj.role) or API_ROLE_LABELS.get(obj.role, obj.role)
+        return ui.chip(label, "good" if obj.role == "manager" else "quiet")
 
     # --- who may do what -------------------------------------------------
     def manages(self, request, obj):
@@ -301,6 +397,9 @@ class UserAdmin(DjangoUserAdmin):
                 super().__init__(*args, **kw)
                 if "locations" in self.fields:
                     self.fields["locations"].queryset = cafes
+                    picked = self.initial.get("locations")
+                    if isinstance(picked, str):  # ?locations=<id> from a café card
+                        self.initial["locations"] = picked.split(",")
                     if not chain and len(cafes) == 1:  # one café: nothing to choose
                         self.fields["locations"].initial = list(cafes)
                 if "role" in self.fields:
@@ -326,7 +425,11 @@ class UserAdmin(DjangoUserAdmin):
 
     def changeform_view(self, request, object_id=None, form_url="", extra_context=None):
         obj = self.get_object(request, object_id) if object_id else None
-        context = {"customer": customer_summary(obj) if obj and obj.role == "customer" else None}
+        customer = bool(obj and obj.role == "customer" and not obj.is_superuser)
+        context = {
+            "customer": customer_summary(obj) if customer else None,
+            "team": team_summary(obj, request) if obj and not customer else None,
+        }
         return super().changeform_view(
             request, object_id, form_url, {**context, **(extra_context or {})}
         )
@@ -358,8 +461,15 @@ class UserAdmin(DjangoUserAdmin):
 
     @admin.display(description="Cafés")
     def cafes(self, obj):
+        if obj.is_superuser:
+            return ui.tag("All cafés", "info")
         names = [a.location.name for a in obj.assignments.all() if a.is_active]
-        return ", ".join(names) if names else "—"
+        if not names:
+            return "—"
+        return format_html(
+            '<span class="bos-cafe-pills">{}</span>',
+            format_html_join("", '<span class="bos-cafe-pill">{}</span>', ((n,) for n in names)),
+        )
 
 
 class TeamChangeList(ChangeList):

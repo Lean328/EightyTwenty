@@ -1,2 +1,2 @@
 {% extends "admin/bos_change_form.html" %}
-{% block form_top %}{{ block.super }}{% if customer %}{% include "admin/bos/record_customer.html" %}{% endif %}{% endblock %}
+{% block form_top %}{{ block.super }}{% if customer %}{% include "admin/bos/record_customer.html" %}{% elif team %}{% include "admin/bos/record_team.html" %}{% endif %}{% endblock %}

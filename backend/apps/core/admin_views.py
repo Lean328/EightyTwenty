@@ -1259,3 +1259,99 @@ def profile_view(site):
         )
 
     return view
+
+
+def team_view(site):
+    """Who works where: every café the viewer runs, with its owners and staff."""
+
+    def view(request):
+        require(site, request, "bos_team")
+        from apps.accounts.models import StaffAssignment, User
+
+        user_admin = site._registry[User]
+        location_admin = site._registry[Location]
+        chain = bos_role(request.user) == CHAIN
+        can_add = user_admin.has_add_permission(request)
+        cafes = list(bos_locations(request.user).order_by("sort_order", "name"))
+        rows = (
+            StaffAssignment.objects.filter(location__in=cafes)
+            .exclude(user__role="customer", user__is_superuser=False)
+            .select_related("user", "location")
+            .order_by("user__first_name", "user__last_name", "user__email")
+        )
+        by_cafe = {cafe.pk: [] for cafe in cafes}
+        for row in rows:
+            by_cafe[row.location_id].append(row)
+
+        def person(row):
+            member = row.user
+            owner = member.is_superuser or member.role == "manager"
+            return {
+                "user": member,
+                "name": member.get_full_name() or member.email,
+                "role": "Chain owner"
+                if member.is_superuser
+                else ("Café owner" if owner else "Staff"),
+                "is_owner": owner,
+                "active": member.is_active and row.is_active,
+                "assignment_active": row.is_active,
+                "has_pin": bool(member.pos_pin),
+                "url": (
+                    reverse("admin:accounts_user_change", args=[member.pk])
+                    if user_admin.has_change_permission(request, member)
+                    else ""
+                ),
+            }
+
+        cards = []
+        totals = {"people": set(), "owners": set(), "locked": set()}
+        for cafe in cafes:
+            people = [person(row) for row in by_cafe[cafe.pk]]
+            for item in people:
+                totals["people"].add(item["user"].pk)
+                if item["is_owner"]:
+                    totals["owners"].add(item["user"].pk)
+                if not item["active"]:
+                    totals["locked"].add(item["user"].pk)
+            cards.append(
+                {
+                    "cafe": cafe,
+                    "url": (
+                        reverse("admin:locations_location_change", args=[cafe.pk])
+                        if location_admin.has_view_permission(request, cafe)
+                        else ""
+                    ),
+                    "owners": [p for p in people if p["is_owner"]],
+                    "staff": [p for p in people if not p["is_owner"]],
+                    "active_count": sum(1 for p in people if p["active"]),
+                    "locked_count": sum(1 for p in people if not p["active"]),
+                    "add_url": (
+                        f"{reverse('admin:accounts_user_add')}?locations={cafe.pk}"
+                        if can_add
+                        else ""
+                    ),
+                    "assignments_url": changelist(StaffAssignment, location__id__exact=cafe.pk),
+                }
+            )
+        unassigned = []
+        if chain:
+            assigned = StaffAssignment.objects.filter(is_active=True).values("user_id")
+            unassigned = list(
+                User.objects.filter(role__in=("manager", "staff"), is_superuser=False)
+                .exclude(pk__in=assigned)
+                .order_by("first_name", "last_name", "email")
+            )
+        return render(
+            request,
+            site,
+            "admin/bos/team.html",
+            "Team by café",
+            cards=cards,
+            totals={key: len(value) for key, value in totals.items()},
+            unassigned=unassigned,
+            chain=chain,
+            add_url=reverse("admin:accounts_user_add") if can_add else "",
+            team_url=changelist(User),
+        )
+
+    return view

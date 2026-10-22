@@ -64,6 +64,7 @@ NAVIGATION = (
         "People",
         (
             ("accounts.user", "Team", "users"),
+            ("view:bos_team", "Team by café", "store"),
             ("accounts.customer", "Customers", "star"),
             ("accounts.staffassignment", "Team assignments", "user-check"),
             ("accounts.customerprofile", "Customer profiles", "user"),
@@ -90,6 +91,7 @@ VIEW_ROLES = {
     "bos_system": (CHAIN,),
     "bos_media_picker": OWNERS,
     "bos_profile": ALL,
+    "bos_team": OWNERS,
 }
 
 # Which items carry a count of work waiting, and the SQL that feeds it.
@@ -171,6 +173,7 @@ class BOSAdminSite(AdminSite):
             ("system/", views.system_view, "bos_system"),
             ("media-picker/", views.media_picker_view, "bos_media_picker"),
             ("profile/", views.profile_view, "bos_profile"),
+            ("team/", views.team_view, "bos_team"),
         ]
         return [
             path(route, self.admin_view(factory(self)), name=name) for route, factory, name in pages
