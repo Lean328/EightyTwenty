@@ -86,6 +86,13 @@ class PublicNavigationSerializer(serializers.Serializer):
     parent = serializers.UUIDField(allow_null=True)
 
 
+class PublicPageSummarySerializer(serializers.Serializer):
+    slug = serializers.CharField()
+    title = serializers.CharField()
+    seo_title = serializers.CharField()
+    seo_description = serializers.CharField()
+
+
 class PublicSettingsSerializer(serializers.Serializer):
     brand_name = serializers.CharField()
     contact_email = serializers.EmailField()
@@ -93,6 +100,9 @@ class PublicSettingsSerializer(serializers.Serializer):
     footer = serializers.CharField()
     announcement = serializers.CharField()
     navigation = PublicNavigationSerializer(many=True)
+    pages = PublicPageSummarySerializer(
+        many=True, help_text="Published CMS pages; fetch blocks from /public/pages/{slug}."
+    )
 
 
 class BootstrapSerializer(serializers.Serializer):

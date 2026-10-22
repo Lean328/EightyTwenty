@@ -45,6 +45,7 @@ export const CATEGORIES = data.CATEGORIES;
 export const MENU = data.MENU;
 export const CATERING = data.CATERING;
 export const ORDER_RULES = Object.assign({}, DEFAULT_ORDER_RULES, data.ORDER_RULES || {});
+export const SETTINGS = data.SETTINGS || {}; // BOS CMS settings; the bundled snapshot has none
 
 // POST a public form (booking / enquiry). Resolves { ok, data } and never throws.
 export async function postForm(path, body) {

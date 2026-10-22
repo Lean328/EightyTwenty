@@ -151,6 +151,15 @@ def test_settings_permissions_validation_and_audit(client, staff, owner):
     )
 
 
+def test_public_settings_list_only_published_pages(client):
+    Page.objects.create(slug="about", title="About", status="published", seo_title="About us")
+    Page.objects.create(slug="draft-page", title="Draft")
+    pages = client.get("/api/v1/public/settings").data["pages"]
+    assert [p["slug"] for p in pages] == ["about"]
+    assert pages[0]["seo_title"] == "About us"
+    assert client.get("/api/v1/public/bootstrap").data["SETTINGS"]["pages"] == pages
+
+
 def test_cms_shape_and_navigation_cycle_validation(owner_client):
     page = Page.objects.create(slug="about", title="About")
     invalid = owner_client.post(

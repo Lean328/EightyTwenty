@@ -202,6 +202,15 @@ def settings_data(settings=None):
             for row in nav
             if row.pk in visible
         ],
+        "pages": [
+            {
+                "slug": page.slug,
+                "title": page.title,
+                "seo_title": page.seo_title,
+                "seo_description": page.seo_description,
+            }
+            for page in published_pages().order_by("slug")
+        ],
     }
 
 

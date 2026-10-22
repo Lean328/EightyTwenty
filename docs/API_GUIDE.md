@@ -33,7 +33,7 @@ Lỗi field có `error.code = "invalid"` và `fields` là object/list lỗi DRF.
 | GET | `/public/menu?location={slug}` | Giá/còn-hết/ẩn của từng chi nhánh |
 | GET | `/public/catering-packages` | Gói catering dạng compatibility |
 | GET | `/public/pages/{slug}` | Page published + block active |
-| GET | `/public/settings` | Thương hiệu, banner, social links, navigation |
+| GET | `/public/settings` | Thương hiệu, banner, social links, navigation, `pages` (slug/title/SEO của page đã publish) |
 
 Bootstrap giữ shape trong kiến trúc: `MENU[].mods[].options` là tuple `[name, priceAUD]`, `CATERING[].id` là tên gói cũ. Không dùng UUID BOS để thay slug website. `available:false` chỉ xuất hiện khi món hết; món ẩn không xuất hiện. Không có override thì dùng giá gốc. Khi không truyền location, API trả menu toàn chuỗi.
 

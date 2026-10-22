@@ -20834,6 +20834,22 @@ components:
       - seo_title
       - slug
       - title
+    PublicPageSummary:
+      type: object
+      properties:
+        slug:
+          type: string
+        title:
+          type: string
+        seo_title:
+          type: string
+        seo_description:
+          type: string
+      required:
+      - seo_description
+      - seo_title
+      - slug
+      - title
     PublicSettings:
       type: object
       properties:
@@ -20854,12 +20870,18 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PublicNavigation'
+        pages:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicPageSummary'
+          description: Published CMS pages; fetch blocks from /public/pages/{slug}.
       required:
       - announcement
       - brand_name
       - contact_email
       - footer
       - navigation
+      - pages
       - social_links
     PushTokenInRequest:
       type: object

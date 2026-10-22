@@ -105,6 +105,7 @@
 <div style="min-height:100vh;background:#F3EEE5;padding-bottom:{{ pagePadBottom }}">
 
   <!-- ============ TOP NAVIGATION ============ -->
+  <sc-if value="{{ cmsAnnounce.show }}" hint-placeholder-val="{{ false }}"><div role="status" style="background:#4B2E26;color:#F3EEE5;font:400 13px/1.45 Figtree;text-align:center;padding:9px clamp(16px,3vw,40px)">{{ cmsAnnounce.text }}</div></sc-if>
   <header style="position:sticky;top:0;z-index:60;background:rgba(243,238,229,.94);backdrop-filter:blur(10px);border-bottom:1px solid rgba(75,46,38,.12)">
     <div style="max-width:1400px;margin:0 auto;padding:0 clamp(16px,3vw,40px);height:72px;display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);align-items:center;gap:clamp(12px,2vw,24px)">
       <!-- left: primary nav (desktop) / menu button (mobile) -->
@@ -115,6 +116,7 @@
             <a href="#locations" onClick="{{ goLocations }}" style="white-space:nowrap;font:500 14px/1 Figtree;color:#3A2B24;padding:8px 0;border-bottom:2px solid {{ navLocLine }}">Locations</a>
             <a href="#catering" onClick="{{ goCatering }}" style="white-space:nowrap;font:500 14px/1 Figtree;color:#3A2B24;padding:8px 0;border-bottom:2px solid {{ navCatLine }}">Catering</a>
             <a href="#about" onClick="{{ goAbout }}" style="white-space:nowrap;font:500 14px/1 Figtree;color:#3A2B24;padding:8px 0;border-bottom:2px solid {{ navAboutLine }}">About</a>
+            <sc-for list="{{ cmsHeaderNav }}" as="n" hint-placeholder-count="0"><a href="{{ n.href }}" target="{{ n.target }}" rel="{{ n.rel }}" onClick="{{ n.go }}" style="white-space:nowrap;font:500 14px/1 Figtree;color:#3A2B24;padding:8px 0;border-bottom:2px solid {{ n.line }}">{{ n.label }}</a></sc-for>
           </nav>
         </sc-if>
         <sc-if value="{{ narrow }}" hint-placeholder-val="{{ false }}">
@@ -323,6 +325,7 @@
       <a href="#about" onClick="{{ goAbout }}" style="font:400 28px/1.2 Figtree;color:#3A2B24;padding:8px 0;border-bottom:1px solid rgba(75,46,38,.12)">About</a>
       <a href="#wholesale" onClick="{{ goWholesale }}" style="font:400 22px/1.2 Figtree;color:#4B2E26;padding:8px 0">Wholesale</a>
       <a href="#giftcards" onClick="{{ goGift }}" style="font:400 22px/1.2 Figtree;color:#4B2E26;padding:8px 0">Gift Cards</a>
+      <sc-for list="{{ cmsHeaderNav }}" as="n" hint-placeholder-count="0"><a href="{{ n.href }}" target="{{ n.target }}" rel="{{ n.rel }}" onClick="{{ n.go }}" style="font:400 22px/1.2 Figtree;color:#4B2E26;padding:8px 0">{{ n.label }}</a></sc-for>
       <div style="flex:1"></div>
     </div>
   </sc-if>
@@ -1067,7 +1070,7 @@
         <a href="#accessibility" onClick="{{ goAccess }}" style="font:400 15px/1.4 Figtree;color:#7A6259;border-left:2px solid transparent;padding-left:12px">Accessibility</a>
         <a href="#cookies" onClick="{{ goCookies }}" style="font:400 15px/1.4 Figtree;color:#7A6259;border-left:2px solid transparent;padding-left:12px">Cookie policy</a>
       </aside>
-      <article style="max-width:70ch">
+      <article style="max-width:70ch"><sc-if value="{{ cmsLegalOn }}" hint-placeholder-val="{{ false }}">{{ cmsArticle }}</sc-if><sc-if value="{{ cmsLegalOff }}" hint-placeholder-val="{{ true }}">
         <div data-reveal>
           <h1 style="margin:0;font:300 clamp(38px,4.6vw,60px)/1.02 'Newsreader',serif;letter-spacing:-.01em">Privacy policy</h1>
           <p style="margin:12px 0 0;font:400 13px/1.5 Figtree;color:#7A6259">Last updated 20 September 2026</p>
@@ -1107,7 +1110,7 @@
           <h2 style="margin:0 0 12px;font:400 clamp(22px,2.2vw,28px)/1.15 'Newsreader',serif">Contact us</h2>
           <p style="margin:0;font:400 15px/1.7 Figtree;color:#4B2E26">Privacy questions: <a href="mailto:info@eightytwentyfood.com.au" style="color:#8B5827;text-decoration:underline;text-underline-offset:3px">info@eightytwentyfood.com.au</a>. For anything about a specific order or booking, the café you ordered from is usually quickest. Numbers are on each <a href="#locations" onClick="{{ goLocations }}" style="color:#8B5827;text-decoration:underline;text-underline-offset:3px">location page</a>.</p>
         </section>
-      </article>
+      </sc-if></article>
     </main>
   </sc-if>
 
@@ -1121,7 +1124,7 @@
         <a href="#accessibility" onClick="{{ goAccess }}" style="font:400 15px/1.4 Figtree;color:#7A6259;border-left:2px solid transparent;padding-left:12px">Accessibility</a>
         <a href="#cookies" onClick="{{ goCookies }}" style="font:400 15px/1.4 Figtree;color:#7A6259;border-left:2px solid transparent;padding-left:12px">Cookie policy</a>
       </aside>
-      <article style="max-width:70ch">
+      <article style="max-width:70ch"><sc-if value="{{ cmsLegalOn }}" hint-placeholder-val="{{ false }}">{{ cmsArticle }}</sc-if><sc-if value="{{ cmsLegalOff }}" hint-placeholder-val="{{ true }}">
         <div data-reveal>
           <h1 style="margin:0;font:300 clamp(38px,4.6vw,60px)/1.02 'Newsreader',serif;letter-spacing:-.01em">Refund policy</h1>
           <p style="margin:12px 0 0;font:400 13px/1.5 Figtree;color:#7A6259">Last updated 20 September 2026</p>
@@ -1155,7 +1158,7 @@
           <h2 style="margin:0 0 12px;font:400 clamp(22px,2.2vw,28px)/1.15 'Newsreader',serif">How to make a claim</h2>
           <p style="margin:0;font:400 15px/1.7 Figtree;color:#4B2E26">Call the café you ordered from, using the number on its <a href="#locations" onClick="{{ goLocations }}" style="color:#8B5827;text-decoration:underline;text-underline-offset:3px">location page</a>, or email <a href="mailto:info@eightytwentyfood.com.au" style="color:#8B5827;text-decoration:underline;text-underline-offset:3px">info@eightytwentyfood.com.au</a> with your order number and what went wrong.</p>
         </section>
-      </article>
+      </sc-if></article>
     </main>
   </sc-if>
 
@@ -1169,7 +1172,7 @@
         <a href="#accessibility" onClick="{{ goAccess }}" style="font:500 15px/1.4 Figtree;color:#3A2B24;border-left:2px solid #B67A4B;padding-left:12px">Accessibility</a>
         <a href="#cookies" onClick="{{ goCookies }}" style="font:400 15px/1.4 Figtree;color:#7A6259;border-left:2px solid transparent;padding-left:12px">Cookie policy</a>
       </aside>
-      <article style="max-width:70ch">
+      <article style="max-width:70ch"><sc-if value="{{ cmsLegalOn }}" hint-placeholder-val="{{ false }}">{{ cmsArticle }}</sc-if><sc-if value="{{ cmsLegalOff }}" hint-placeholder-val="{{ true }}">
         <div data-reveal>
           <h1 style="margin:0;font:300 clamp(38px,4.6vw,60px)/1.02 'Newsreader',serif;letter-spacing:-.01em">Accessibility</h1>
           <p style="margin:12px 0 0;font:400 13px/1.5 Figtree;color:#7A6259">Last updated 20 September 2026</p>
@@ -1199,7 +1202,7 @@
           <h2 style="margin:0 0 12px;font:400 clamp(22px,2.2vw,28px)/1.15 'Newsreader',serif">Tell us what isn't working</h2>
           <p style="margin:0;font:400 15px/1.7 Figtree;color:#4B2E26">If you hit a barrier on this site or in one of our cafés, we want to hear about it. Email <a href="mailto:info@eightytwentyfood.com.au" style="color:#8B5827;text-decoration:underline;text-underline-offset:3px">info@eightytwentyfood.com.au</a> with what happened and the page or café involved, and we'll get back to you and fix what we can. If you need information from this site in another format, ask and we'll provide it.</p>
         </section>
-      </article>
+      </sc-if></article>
     </main>
   </sc-if>
 
@@ -1213,7 +1216,7 @@
         <a href="#accessibility" onClick="{{ goAccess }}" style="font:400 15px/1.4 Figtree;color:#7A6259;border-left:2px solid transparent;padding-left:12px">Accessibility</a>
         <a href="#cookies" onClick="{{ goCookies }}" style="font:500 15px/1.4 Figtree;color:#3A2B24;border-left:2px solid #B67A4B;padding-left:12px">Cookie policy</a>
       </aside>
-      <article style="max-width:70ch">
+      <article style="max-width:70ch"><sc-if value="{{ cmsLegalOn }}" hint-placeholder-val="{{ false }}">{{ cmsArticle }}</sc-if><sc-if value="{{ cmsLegalOff }}" hint-placeholder-val="{{ true }}">
         <div data-reveal>
           <h1 style="margin:0;font:300 clamp(38px,4.6vw,60px)/1.02 'Newsreader',serif;letter-spacing:-.01em">Cookie policy</h1>
           <p style="margin:12px 0 0;font:400 13px/1.5 Figtree;color:#7A6259">Last updated 20 September 2026</p>
@@ -1250,8 +1253,13 @@
           <h2 style="margin:0 0 12px;font:400 clamp(22px,2.2vw,28px)/1.15 'Newsreader',serif">Changes and questions</h2>
           <p style="margin:0;font:400 15px/1.7 Figtree;color:#4B2E26">If we add or remove cookies we'll update this page and the date at the top. Questions about cookies or anything else on this site: <a href="mailto:info@eightytwentyfood.com.au" style="color:#8B5827;text-decoration:underline;text-underline-offset:3px">info@eightytwentyfood.com.au</a>.</p>
         </section>
-      </article>
+      </sc-if></article>
     </main>
+  </sc-if>
+
+  <!-- ============ CMS PAGE (BOS → Website → Pages) ============ -->
+  <sc-if value="{{ isCmsPage }}" hint-placeholder-val="{{ false }}">
+    <main data-screen-label="Page" style="max-width:1400px;margin:0 auto;padding:clamp(28px,4vw,56px) clamp(16px,3vw,40px) 80px"><article style="max-width:70ch">{{ cmsArticle }}</article></main>
   </sc-if>
 
   <!-- ============ FOOTER ============ -->
@@ -1266,14 +1274,14 @@
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,240px),1fr));gap:40px clamp(24px,4vw,64px);align-items:start">
           <div style="display:grid;gap:22px;align-content:start;grid-column:span 1;max-width:34ch">
             <div aria-label="eighty twenty" style="display:grid;justify-items:start;gap:0;color:#F3EEE5;font:400 39px/.78 'Newsreader',serif;letter-spacing:.1em;text-transform:lowercase"><span>eighty</span><span style="font-style:italic">twenty</span></div>
-            <p style="margin:0;font:400 clamp(20px,1.6vw,24px)/1.35 Figtree;color:#F3EEE5;letter-spacing:-.005em;text-wrap:balance">Clean, natural, unprocessed food<br>and eighty twenty coffee.</p>
+            <sc-if value="{{ cmsFooterOff }}" hint-placeholder-val="{{ true }}"><p style="margin:0;font:400 clamp(20px,1.6vw,24px)/1.35 Figtree;color:#F3EEE5;letter-spacing:-.005em;text-wrap:balance">Clean, natural, unprocessed food<br>and eighty twenty coffee.</p></sc-if><sc-if value="{{ cmsFooterOn }}" hint-placeholder-val="{{ false }}"><p style="margin:0;font:400 clamp(20px,1.6vw,24px)/1.35 Figtree;color:#F3EEE5;letter-spacing:-.005em;text-wrap:balance;white-space:pre-line">{{ cmsFooter }}</p></sc-if>
             <p style="margin:-8px 0 0;font:400 13px/1.6 Figtree;color:rgba(243,238,229,.62)">Ten cafés across Canberra, open from 6am.</p>
             <div style="display:grid;gap:12px;padding-top:8px">
               <span aria-hidden="true" style="display:block;width:36px;height:1px;background:#B67A4B"></span>
               <div style="display:flex;gap:10px">
-              <a href="https://www.instagram.com/eightytwentyfood/" target="_blank" rel="noopener" aria-label="Instagram" data-soc style="display:grid;place-items:center;width:38px;height:38px;border-radius:50%;border:1px solid rgba(243,238,229,.22);color:rgba(243,238,229,.85)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.4" cy="6.6" r=".9" fill="currentColor" stroke="none"/></svg></a>
-              <a href="https://www.facebook.com/eightytwentyfood" target="_blank" rel="noopener" aria-label="Facebook" data-soc style="display:grid;place-items:center;width:38px;height:38px;border-radius:50%;border:1px solid rgba(243,238,229,.22);color:rgba(243,238,229,.85)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 8h2.5V5H14a3.5 3.5 0 0 0-3.5 3.5V11H8v3h2.5v7h3v-7H16l.5-3h-3V8.8c0-.5.3-.8.5-.8z"/></svg></a>
-              <a href="https://www.tiktok.com/@eightytwentyfood" target="_blank" rel="noopener" aria-label="TikTok" data-soc style="display:grid;place-items:center;width:38px;height:38px;border-radius:50%;border:1px solid rgba(243,238,229,.22);color:rgba(243,238,229,.85)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 4v11.5a3.5 3.5 0 1 1-3.5-3.5"/><path d="M13 4c.5 2.6 2.3 4.2 5 4.5"/></svg></a>
+              <a href="{{ socialInstagram }}" target="_blank" rel="noopener" aria-label="Instagram" data-soc style="display:grid;place-items:center;width:38px;height:38px;border-radius:50%;border:1px solid rgba(243,238,229,.22);color:rgba(243,238,229,.85)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="5"/><circle cx="12" cy="12" r="4"/><circle cx="17.4" cy="6.6" r=".9" fill="currentColor" stroke="none"/></svg></a>
+              <a href="{{ socialFacebook }}" target="_blank" rel="noopener" aria-label="Facebook" data-soc style="display:grid;place-items:center;width:38px;height:38px;border-radius:50%;border:1px solid rgba(243,238,229,.22);color:rgba(243,238,229,.85)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 8h2.5V5H14a3.5 3.5 0 0 0-3.5 3.5V11H8v3h2.5v7h3v-7H16l.5-3h-3V8.8c0-.5.3-.8.5-.8z"/></svg></a>
+              <a href="{{ socialTiktok }}" target="_blank" rel="noopener" aria-label="TikTok" data-soc style="display:grid;place-items:center;width:38px;height:38px;border-radius:50%;border:1px solid rgba(243,238,229,.22);color:rgba(243,238,229,.85)"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 4v11.5a3.5 3.5 0 1 1-3.5-3.5"/><path d="M13 4c.5 2.6 2.3 4.2 5 4.5"/></svg></a>
             </div>
             </div>
           </div>
@@ -1286,6 +1294,7 @@
             <a href="#giftcards" onClick="{{ goGift }}" data-ul style="font:400 15px/1.3 Figtree;color:rgba(243,238,229,.82)">Gift Cards</a>
             <a href="#wholesale" onClick="{{ goWholesale }}" data-ul style="font:400 15px/1.3 Figtree;color:rgba(243,238,229,.82)">Wholesale</a>
             <a href="#about" onClick="{{ goAbout }}" data-ul style="font:400 15px/1.3 Figtree;color:rgba(243,238,229,.82)">About</a>
+            <sc-for list="{{ cmsFooterNav }}" as="n" hint-placeholder-count="0"><a href="{{ n.href }}" target="{{ n.target }}" rel="{{ n.rel }}" onClick="{{ n.go }}" data-ul style="font:400 15px/1.3 Figtree;color:rgba(243,238,229,.82)">{{ n.label }}</a></sc-for>
           </nav>
           <nav aria-label="Footer locations" style="display:grid;gap:12px;align-content:start;grid-column:span 1">
             <p style="margin:0 0 6px;font:500 11px/1 Figtree;letter-spacing:.18em;text-transform:uppercase;color:rgba(243,238,229,.72)">Locations</p>
@@ -1296,7 +1305,7 @@
         </div>
         <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:16px 24px;margin-top:clamp(40px,5vw,64px);padding-top:22px;border-top:1px solid rgba(243,238,229,.12)">
           <div style="display:flex;flex-wrap:wrap;gap:8px 28px;font:400 13px/1.5 Figtree;color:rgba(243,238,229,.7)">
-            <a href="mailto:info@eightytwentyfood.com.au" data-ul style="color:rgba(243,238,229,.82)">info@eightytwentyfood.com.au</a>
+            <a href="{{ contactMailto }}" data-ul style="color:rgba(243,238,229,.82)">{{ contactEmail }}</a>
             <span>Same-day bookings <a href="sms:0422573102" data-ul style="color:rgba(243,238,229,.82)">0422 573 102</a></span>
           </div>
           <nav aria-label="Legal" style="display:flex;flex-wrap:wrap;align-items:center;gap:8px 22px;font:400 13px/1.5 Figtree">
@@ -1440,7 +1449,15 @@ class Component extends DCLogic {
   componentDidMount() {
     const p = this.props || {};
     if (p.startView) this.setState({ view:p.startView });
-    import(new URL('eightytwenty-data.js?v=phillip-preference-20261020', location.href).href).then(m => {
+    this._seoDefault = { title: document.title, description: document.querySelector('meta[name="description"]')?.getAttribute('content') || '' };
+    import(new URL('cms.js?v=cms-20261022', location.href).href).then(C => {
+      this.C = C;
+      const path = location.pathname.replace(/\/+$/, '');
+      const r = path && !['/verify-email', '/reset-password', '/index.html'].includes(path) ? C.route(path) : null;
+      if (r && r.view === 'page') this.setState({ view:'page', pageSlug:r.slug }); else if (r && r.view && r.view !== 'home') this.setState({ view:r.view });
+      this.syncCms();
+    }).catch(() => {});
+    import(new URL('eightytwenty-data.js?v=cms-20261022', location.href).href).then(m => {
       this.D = m;
       const preferred = this._chosenLocation || m.preferredLocation(m.LOCATIONS, p.defaultLocation);
       if (this._chosenLocation) m.rememberLocation(preferred);
@@ -1462,7 +1479,38 @@ class Component extends DCLogic {
     this._onItemKeyDown = e => { if (e.key === 'Escape' && this.state.item) { e.preventDefault(); this.closeItem(); } };
     window.addEventListener('keydown', this._onItemKeyDown);
   }
-  componentDidUpdate() { this.hydrateImages(); this.observeReveals(); this.syncItemScrollLock(); }
+  componentDidUpdate() { this.hydrateImages(); this.observeReveals(); this.syncItemScrollLock(); this.syncCms(); }
+  // BOS CMS: SEO for every view; legal pages and CMS-only pages take their body from a published page.
+  syncCms() { const C = this.C, s = this.state; if (!C || !s.ready) return; const slug = s.view === 'page' ? s.pageSlug : C.VIEW_SLUGS[s.view]; const key = s.view + ':' + (slug || ''); if (this._cmsKey === key) return; this._cmsKey = key;
+    const S = this.D.SETTINGS, listed = C.pageList(S), summary = slug ? C.published(S, slug) : null; this.applySeo(summary);
+    if (!slug || !(s.view === 'page' || (C.LEGAL_VIEWS.includes(s.view) && (summary || !listed)))) { if (s.cmsPage) this.setState({ cmsPage:null }); return; }
+    this.setState({ cmsPage:{ key, loading:true, data:null } });
+    C.fetchPage(slug).then(data => { if (this._cmsKey !== key) return; this.setState({ cmsPage:{ key, loading:false, data } }); if (data) this.applySeo(data); }); }
+  applySeo(page) { const d = this.C.seo(page, this._seoDefault); document.title = d.title; document.querySelector('meta[name="description"]')?.setAttribute('content', d.description); }
+  cmsLink(url, view) { const r = this.C && this.C.route(url); if (!r) return null; if (r.href) return { href:r.href, target:'_blank', rel:'noopener', go:undefined, on:false };
+    return { href:'#' + (r.slug || r.view), target:'_self', rel:'', go:this.go(r.view, r.slug ? { pageSlug:r.slug } : null), on: r.slug ? view === 'page' && this.state.pageSlug === r.slug : view === r.view }; }
+  cmsVals(view) { const C = this.C, S = this.D.SETTINGS || {}, email = S.contact_email || 'info@eightytwentyfood.com.au';
+    const builtIn = ['#home', '#menu', '#locations', '#location', '#reserve', '#catering', '#giftcards', '#wholesale', '#about', '#privacy', '#refund', '#accessibility', '#cookies', '#login', '#signup', '#account'];
+    const nav = menu => (C ? C.navItems(S, menu) : []).map(n => { const l = this.cmsLink(n.url, view); return l && !builtIn.includes(l.href) && Object.assign({ label:n.label, line: l.on ? '#B67A4B' : 'transparent' }, l); }).filter(Boolean);
+    const soc = (name, fallback) => C ? C.social(S, name, fallback) : fallback; const cp = this.state.cmsPage, legal = !!(C && C.LEGAL_VIEWS.includes(view) && cp && cp.data && (cp.data.blocks || []).length); // an empty published page keeps the built-in copy
+    return { cmsAnnounce:{ show:!!S.announcement, text:S.announcement || '' }, cmsFooterOn:!!S.footer, cmsFooterOff:!S.footer, cmsFooter:S.footer || '',
+      socialInstagram: soc('instagram', 'https://www.instagram.com/eightytwentyfood/'), socialFacebook: soc('facebook', 'https://www.facebook.com/eightytwentyfood'), socialTiktok: soc('tiktok', 'https://www.tiktok.com/@eightytwentyfood'),
+      contactEmail: email, contactMailto: 'mailto:' + email, cmsHeaderNav: nav('header'), cmsFooterNav: nav('footer'),
+      isCmsPage: view === 'page', cmsLegalOn: legal, cmsLegalOff: !legal, cmsArticle: this.cmsArticle() }; }
+  cmsArticle() { const s = this.state, cp = s.cmsPage, E = React.createElement; if (!cp || cp.loading) return null;
+    const H1 = { margin:0, font:"300 clamp(38px,4.6vw,60px)/1.02 'Newsreader',serif", letterSpacing:'-.01em' }, H2 = { margin:'clamp(36px,4vw,52px) 0 12px', font:"400 clamp(22px,2.2vw,28px)/1.15 'Newsreader',serif" };
+    const P = { margin:'24px 0 0', font:'400 17px/1.7 Figtree', color:'#4B2E26', whiteSpace:'pre-line' }, LINK = { color:'#8B5827', textDecoration:'underline', textUnderlineOffset:3 };
+    const IMG = { display:'block', width:'100%', borderRadius:10, marginTop:24, background:'#ECE4D6' };
+    if (!cp.data) return E('div', null, E('h1', { style:H1 }, 'Page not found'), E('p', { style:P }, 'This page isn’t available. ', E('a', { href:'#home', onClick:this.go('home'), style:LINK }, 'Back to the home page'), '.'));
+    const page = cp.data, kids = [E('h1', { key:'t', style:H1 }, page.title), E('div', { key:'l', style:{ width:56, height:2, background:'#B67A4B', marginTop:18 } })];
+    (page.blocks || []).forEach((b, i) => { const d = b.data || {}, k = b.key || i;
+      if (b.type === 'hero') kids.push(E('section', { key:k }, E('h2', { style:H2 }, d.title), d.subtitle ? E('p', { style:Object.assign({}, P, { marginTop:8 }) }, d.subtitle) : null, d.image_url ? E('img', { src:d.image_url, alt:'', style:IMG }) : null));
+      else if (b.type === 'rich_text') String(d.text || '').split(/\n\s*\n/).filter(t => t.trim()).forEach((t, j) => kids.push(E('p', { key:k + '-' + j, style:P }, t.trim())));
+      else if (b.type === 'image') kids.push(E('img', { key:k, src:d.url, alt:d.alt || '', style:IMG }));
+      else if (b.type === 'gallery') kids.push(E('div', { key:k, style:{ display:'grid', gridTemplateColumns:'repeat(auto-fit,minmax(200px,1fr))', gap:12, marginTop:24 } }, (d.images || []).map((g, j) => E('img', { key:j, src:g.url, alt:g.alt || '', style:Object.assign({}, IMG, { marginTop:0, aspectRatio:'4 / 3', objectFit:'cover' }) }))));
+      else if (b.type === 'cta') { const l = this.cmsLink(d.url, s.view); if (l) kids.push(E('a', { key:k, href:l.href, target:l.target, rel:l.rel || undefined, onClick:l.go, style:{ display:'inline-flex', alignItems:'center', height:46, padding:'0 20px', marginTop:24, borderRadius:999, background:'#4B2E26', color:'#F3EEE5', font:'500 14px/1 Figtree', textDecoration:'none' } }, d.label)); }
+      else if (b.type === 'faq') kids.push(E('section', { key:k, style:{ marginTop:24 } }, (d.items || []).map((q, j) => E('details', { key:j, style:{ borderTop:'1px solid rgba(75,46,38,.12)', padding:'14px 0' } }, E('summary', { style:{ cursor:'pointer', font:'500 16px/1.4 Figtree', color:'#3A2B24' } }, q.question), E('p', { style:Object.assign({}, P, { marginTop:10, fontSize:15 }) }, q.answer))))); });
+    return E('div', null, kids); }
   syncItemScrollLock() {
     if (this.state.item && !this._itemScrollLocked) {
       this._itemScrollLocked = true;
@@ -1707,7 +1755,7 @@ class Component extends DCLogic {
       pickerLocs: locations.map(l => { const on = l.id === s.locId; const AREA = { braddon:'Lonsdale St', civic:'City', coombs:'Molonglo', greenway:'Tuggeranong', gungahlin:'North', dickson:'Inner North', belconnen:'North', phillip:'Woden', kingston:'Inner South', akuna:'City' }; return Object.assign({}, l, { on, area: AREA[l.id] || l.sub, accent: on ? '#B67A4B' : 'transparent', nameColor: on ? '#3A2B24' : '#4B2E26', choose: () => { this.rememberLocation(l.id); this.setState({ locId:l.id, picker:false, method: l.methods.includes(s.method) ? s.method : 'Pickup', bk: Object.assign({}, s.bk, { loc:l.id }) }); }, opacity: l.tbc ? .5 : 1 }); }),
       footerLocs: locations.filter(l => !l.tbc),
       isHome: view === 'home', isMenu, isLocations: view === 'locations', isLocation: view === 'location', isReserve: view === 'reserve', isCatering: view === 'catering', isAbout: view === 'about', isWholesale: view === 'wholesale', isGift: view === 'giftcards', isCheckout: view === 'checkout', isConfirm: view === 'confirm',
-      showFooter: view !== 'checkout',
+      showFooter: view !== 'checkout', ...this.cmsVals(view),
       isPrivacy: view === 'privacy', isRefund: view === 'refund', isAccess: view === 'accessibility', isCookies: view === 'cookies',
       goPrivacy: this.go('privacy'), goRefund: this.go('refund'), goAccess: this.go('accessibility'), goCookies: this.go('cookies'),
       legalCols: narrow ? 'minmax(0,1fr)' : '200px minmax(0,1fr)',

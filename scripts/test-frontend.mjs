@@ -106,8 +106,11 @@ test('a café selected while bootstrap is loading is not overwritten by a saved 
     requestAnimationFrame() {}, setTimeout() {},
     loadData: () => new Promise(resolve => { resolveData = resolve; }),
     loadAccount: async () => ({ handleAccountLink: async () => '', restoreSession: async () => null }),
+    loadCms: () => new Promise(() => {}),
+    document: { title: '', querySelector: () => null },
   });
   const isolatedSource = source.replace(/import\(new URL\('account\.js[^\n]+?\)\.href\)/, 'loadAccount()')
+    .replace(/import\(new URL\('cms\.js[^\n]+?\)\.href\)/, 'loadCms()')
     .replace(/import\(new URL\([^\n]+?\)\.href\)/, 'loadData()');
   const Component = new vm.Script(isolatedSource + '\nComponent;').runInContext(context);
   const app = new Component();
@@ -267,6 +270,111 @@ test('the reservations tab lists the account bookings from the API', async () =>
   assert.equal(row.size, 3);
   assert.equal(row.seat, ' · Outdoor');
   assert.equal(row.status, 'Confirmed');
+});
+// BOS CMS → website (website/cms.js + the component's CMS slots).
+const cms = await import('../website/cms.js');
+const cmsSettings = {
+  contact_email: 'hello@example.com', footer: 'Fresh food daily.', announcement: 'Closed on Christmas Day',
+  social_links: { Instagram: 'https://instagram.example/e82', facebook: 'javascript:alert(1)' },
+  navigation: [
+    { id: 'n1', menu: 'header', label: 'Our story', url: '/our-story', parent: null },
+    { id: 'n2', menu: 'footer', label: 'Careers', url: 'https://jobs.example/e82', parent: null },
+    { id: 'n3', menu: 'footer', label: 'Child', url: '/privacy', parent: 'n2' },
+    { id: 'n4', menu: 'footer', label: 'Bad', url: '/../etc', parent: null },
+    { id: 'n5', menu: 'header', label: 'Menu', url: '/menu', parent: null },
+  ],
+  pages: [{ slug: 'privacy', title: 'Privacy', seo_title: 'Privacy | E82', seo_description: 'How we use data' }],
+};
+test('CMS links route to site views, CMS pages or external URLs only', () => {
+  assert.deepEqual(cms.route('/privacy'), { view: 'privacy' });
+  assert.deepEqual(cms.route('/refunds'), { view: 'refund' });
+  assert.deepEqual(cms.route('/bookings'), { view: 'reserve' });
+  assert.deepEqual(cms.route('/our-story'), { view: 'page', slug: 'our-story' });
+  assert.deepEqual(cms.route('https://jobs.example/e82'), { href: 'https://jobs.example/e82' });
+  assert.equal(cms.route('javascript:alert(1)'), null);
+  assert.deepEqual(cms.navItems(cmsSettings, 'footer').map(n => n.label), ['Careers']);
+  assert.equal(cms.social(cmsSettings, 'instagram', 'x'), 'https://instagram.example/e82');
+  assert.equal(cms.social(cmsSettings, 'facebook', 'fallback'), 'fallback');
+  assert.deepEqual(cms.seo(cms.published(cmsSettings, 'privacy'), { title: 'T', description: 'D' }), { title: 'Privacy | E82', description: 'How we use data' });
+  assert.deepEqual(cms.seo(null, { title: 'T', description: 'D' }), { title: 'T', description: 'D' });
+});
+test('pages are fetched once per slug and a missing page resolves null', async () => {
+  const seen = [];
+  globalThis.fetch = async url => { seen.push(url); return url.endsWith('/privacy') ? { ok: true, json: async () => ({ slug: 'privacy', title: 'Privacy', blocks: [] }) } : { ok: false }; };
+  assert.equal((await cms.fetchPage('privacy')).title, 'Privacy');
+  await cms.fetchPage('privacy');
+  assert.equal(await cms.fetchPage('nope'), null);
+  assert.deepEqual(seen.map(u => u.replace(/^https?:\/\/[^/]+/, '')), ['/api/v1/public/pages/privacy', '/api/v1/public/pages/nope']);
+});
+function mountWithCms(settings, page) {
+  const context = vm.createContext({
+    DCLogic: class { setState(patch, callback) {
+      Object.assign(this.state, typeof patch === 'function' ? patch(this.state) : patch);
+      callback?.();
+    } },
+    window: { innerWidth: 1440, scrollTo() {} }, document: { title: 'Default', querySelector: () => null },
+    React: { createElement: (type, props, ...children) => ({ type, props, children: children.flat() }) },
+  });
+  const app = new (new vm.Script(source + '\nComponent;').runInContext(context))();
+  app.D = { LOCATIONS: cafes, SETTINGS: settings };
+  app.C = Object.assign({}, cms, { fetchPage: async () => page });
+  app._seoDefault = { title: 'Default', description: '' };
+  app.state.ready = true;
+  return { app, context };
+}
+const text = node => node == null ? '' : typeof node === 'string' ? node : (node.children || []).map(text).join(' ');
+test('BOS settings fill the announcement, footer, socials, contact and CMS navigation', () => {
+  const { app } = mountWithCms(cmsSettings, null);
+  const v = app.cmsVals('home');
+  assert.deepEqual({ ...v.cmsAnnounce }, { show: true, text: 'Closed on Christmas Day' });
+  assert.equal(v.cmsFooterOn, true);
+  assert.equal(v.contactMailto, 'mailto:hello@example.com');
+  assert.equal(v.socialInstagram, 'https://instagram.example/e82');
+  assert.equal(v.socialFacebook, 'https://www.facebook.com/eightytwentyfood');
+  assert.deepEqual(v.cmsHeaderNav.map(n => n.href), ['#our-story']); // built-in Menu link is not duplicated
+  assert.equal(v.cmsFooterNav[0].target, '_blank');
+  const empty = mountWithCms({}, null).app.cmsVals('home');
+  assert.equal(empty.cmsAnnounce.show, false);
+  assert.equal(empty.cmsFooterOff, true);
+  assert.equal(empty.contactEmail, 'info@eightytwentyfood.com.au');
+  assert.equal(empty.cmsHeaderNav.length, 0);
+});
+test('a published legal page replaces the built-in copy and sets SEO; others keep it', async () => {
+  const page = { slug: 'privacy', title: 'Privacy', seo_title: 'Privacy | E82', seo_description: 'How we use data', blocks: [
+    { key: 'intro', type: 'rich_text', data: { text: 'First paragraph.\n\nSecond paragraph.' } },
+    { key: 'faq', type: 'faq', data: { items: [{ question: 'Do you sell data?', answer: 'No.' }] } },
+    { key: 'go', type: 'cta', data: { label: 'Book a table', url: '/bookings' } },
+  ] };
+  const { app, context } = mountWithCms(cmsSettings, page);
+  app.state.view = 'privacy';
+  app.syncCms();
+  await settle();
+  assert.equal(context.document.title, 'Privacy | E82');
+  const v = app.cmsVals('privacy');
+  assert.equal(v.cmsLegalOn, true);
+  const words = text(v.cmsArticle);
+  for (const w of ['Privacy', 'First paragraph.', 'Second paragraph.', 'Do you sell data?', 'Book a table']) assert.ok(words.includes(w), w);
+  app.state.view = 'refund';
+  app.syncCms();
+  await settle();
+  assert.equal(app.state.cmsPage, null);
+  assert.equal(app.cmsVals('refund').cmsLegalOff, true);
+  assert.equal(context.document.title, 'Default');
+});
+test('a published legal page with no blocks keeps the built-in copy but still sets SEO', async () => {
+  const { app, context } = mountWithCms(cmsSettings, { slug: 'privacy', title: 'Privacy', seo_title: 'Privacy | E82', seo_description: '', blocks: [] });
+  app.state.view = 'privacy';
+  app.syncCms();
+  await settle();
+  assert.equal(app.cmsVals('privacy').cmsLegalOff, true);
+  assert.equal(context.document.title, 'Privacy | E82');
+});
+test('an unknown CMS page path shows a not-found message, not a blank screen', async () => {
+  const { app } = mountWithCms(cmsSettings, null);
+  app.state.view = 'page'; app.state.pageSlug = 'gone';
+  app.syncCms();
+  await settle();
+  assert.match(text(app.cmsVals('page').cmsArticle), /Page not found/);
 });
 test('saving the profile sends name and phone to the API, never the email', async () => {
   let sent;
