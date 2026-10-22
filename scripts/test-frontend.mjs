@@ -369,6 +369,45 @@ test('a published legal page with no blocks keeps the built-in copy but still se
   assert.equal(app.cmsVals('privacy').cmsLegalOff, true);
   assert.equal(context.document.title, 'Privacy | E82');
 });
+test('home page hero blocks map to the five hero slots, tagline, intro and CTA', () => {
+  const page = { slug: 'home', title: 'Home', blocks: [
+    { key: 'hero-1', type: 'hero', data: { title: 'Fuel your\nmorning.', subtitle: 'Wholesome food, great coffee.', image_url: '/img/menu/a.webp' } },
+    { key: 'hero-2', type: 'hero', data: { title: 'Brunch without | the fuss.', image_url: 'javascript:alert(1)' } },
+    { key: 'hero-3', type: 'hero', data: { title: 'One line' } },
+    { key: 'intro', type: 'hero', data: { title: 'Simple food.', subtitle: 'Our way' } },
+    { key: 'intro-cta', type: 'cta', data: { label: 'See the menu', url: '/menu' } },
+    { key: 'body', type: 'rich_text', data: { text: 'ignored here' } },
+  ] };
+  const h = cms.homeContent(page);
+  assert.equal(h.tagline, 'Wholesome food, great coffee.');
+  assert.deepEqual(h.slides.map(s => s.lines), [['Fuel your', 'morning.'], ['Brunch without', 'the fuss.'], ['One line', '']]);
+  assert.deepEqual(h.slides.map(s => s.image), ['/img/menu/a.webp', '', '']);
+  assert.equal(h.slides[0].alt, 'Fuel your morning.');
+  assert.deepEqual(h.intro, { eyebrow: 'Our way', title: 'Simple food.' });
+  assert.deepEqual(h.cta, { label: 'See the menu', url: '/menu' });
+  assert.deepEqual(cms.homeContent({ blocks: [] }), { tagline: '', slides: [], intro: null, cta: null });
+  assert.equal(cms.homeContent(null).slides.length, 0);
+});
+test('the home intro keeps the built-in copy until the CMS supplies it, and the hero is posted to the iframe', async () => {
+  const { app, context } = mountWithCms(cmsSettings, null);
+  const before = app.cmsVals('home');
+  assert.equal(before.homeTitle, 'Simple food. Good coffee. Everyday balance.');
+  assert.equal(before.homeCta.href, '#menu');
+  assert.equal(before.homeCtaLabel, 'Explore the menu →');
+  app.state.homeCms = cms.homeContent({ blocks: [
+    { key: 'hero-1', type: 'hero', data: { title: 'Fresh | every day.', subtitle: 'Hello' } },
+    { key: 'intro', type: 'hero', data: { title: 'Real food.', subtitle: 'The way' } },
+    { key: 'intro-cta', type: 'cta', data: { label: 'Book a table', url: '/bookings' } } ] });
+  const v = app.cmsVals('home');
+  assert.deepEqual([v.homeEyebrow, v.homeTitle, v.homeCtaLabel, v.homeCta.href], ['The way', 'Real food.', 'Book a table', '#reserve']);
+  let posted;
+  context.document.querySelector = sel => sel.startsWith('iframe') ? { contentWindow: { postMessage: (m, origin) => { posted = { m, origin }; } } } : null;
+  context.location = { origin: 'https://site.example' };
+  app.postHero();
+  assert.equal(posted.m.type, 'e82-hero');
+  assert.equal(posted.m.data.tagline, 'Hello');
+  assert.deepEqual(posted.m.data.slides[0].lines, ['Fresh', 'every day.']);
+});
 test('an unknown CMS page path shows a not-found message, not a blank screen', async () => {
   const { app } = mountWithCms(cmsSettings, null);
   app.state.view = 'page'; app.state.pageSlug = 'gone';

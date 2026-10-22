@@ -39,6 +39,29 @@ export function social(settings, name, fallback) {
   return key && /^https:\/\//.test(links[key]) ? links[key] : fallback;
 }
 
+// Home page blocks → hero and intro. Rotating hero: `hero` blocks keyed hero-1…hero-5 (sort_order =
+// slot), title = headline ("Fuel your\nmorning." or "Fuel your | morning."), subtitle = tagline,
+// image_url = dish photo. Intro: `hero` block `intro` (title + subtitle eyebrow) and `cta` block `intro-cta`.
+export const HERO_SLOTS = 5;
+const imageUrl = u => (/^https:\/\/[^\\]+$/.test(u || '') || /^\/(?!\/)[^\\]+$/.test(u || '')) ? u : '';
+export function homeContent(page) {
+  const blocks = (page && page.blocks) || [];
+  const heroes = blocks.filter(b => b.type === 'hero' && /^hero(-\d+)?$/.test(b.key || ''));
+  const tagline = (heroes.map(h => h.data && h.data.subtitle).find(Boolean) || '').trim();
+  const slides = heroes.slice(0, HERO_SLOTS).map(h => {
+    const d = h.data || {};
+    const lines = String(d.title || '').split(/\s*(?:\n|\|)\s*/).map(s => s.trim()).filter(Boolean);
+    return { lines:[lines[0] || '', lines.slice(1).join(' ')], image: imageUrl(d.image_url), alt: lines.join(' ') };
+  });
+  const intro = blocks.find(b => b.type === 'hero' && b.key === 'intro');
+  const cta = blocks.find(b => b.type === 'cta' && b.key === 'intro-cta');
+  return {
+    tagline, slides,
+    intro: intro ? { eyebrow: String(intro.data.subtitle || '').trim(), title: String(intro.data.title || '').trim() } : null,
+    cta: cta && cta.data.label && route(cta.data.url) ? { label: cta.data.label, url: cta.data.url } : null,
+  };
+}
+
 export const seo = (page, fallback) => ({
   title: (page && (page.seo_title || (page.title && page.title + ' | EightyTwenty'))) || fallback.title,
   description: (page && page.seo_description) || fallback.description,

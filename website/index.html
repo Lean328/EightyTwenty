@@ -336,13 +336,13 @@
 
       <!-- HERO: LOCKED LUMI LANE ROTATING EFFECT (moved to first view; component itself unchanged) -->
       <section aria-label="Rotating dish showcase (locked component)" style="position:relative;background:transparent">
-        <iframe title="Lumi Lane rotating dish and headline effect (unchanged)" src="lumi-lane-original/lumi-hero.html?v=frontend-qa" style="display:block;width:100%;height:{{ lumiHeight }};border:0;background:#FAEDDD"></iframe>
+        <iframe title="Lumi Lane rotating dish and headline effect (unchanged)" src="lumi-lane-original/lumi-hero.html?v=cms-hero-20261022" style="display:block;width:100%;height:{{ lumiHeight }};border:0;background:#FAEDDD"></iframe>
       </section>
 
       <section aria-labelledby="home-brand-title" style="max-width:1400px;margin:0 auto;padding:clamp(56px,7vw,96px) clamp(16px,3vw,40px) 0">
-        <p style="margin:0 0 16px;font:500 11px/1.2 Figtree;letter-spacing:.18em;text-transform:uppercase;color:#8B5827">The EightyTwenty way</p>
-        <h1 id="home-brand-title" style="max-width:780px;margin:0;font:300 clamp(42px,6vw,80px)/1.02 'Newsreader',serif;letter-spacing:-.02em">Simple food. Good coffee. Everyday balance.</h1>
-        <a href="#menu" onClick="{{ goMenu }}" style="display:inline-block;margin-top:24px;padding:10px 0;border-bottom:1px solid #B67A4B;font:500 14px/1.3 Figtree;color:#4B2E26">Explore the menu →</a>
+        <p style="margin:0 0 16px;font:500 11px/1.2 Figtree;letter-spacing:.18em;text-transform:uppercase;color:#8B5827">{{ homeEyebrow }}</p>
+        <h1 id="home-brand-title" style="max-width:780px;margin:0;font:300 clamp(42px,6vw,80px)/1.02 'Newsreader',serif;letter-spacing:-.02em">{{ homeTitle }}</h1>
+        <a href="{{ homeCta.href }}" target="{{ homeCta.target }}" rel="{{ homeCta.rel }}" onClick="{{ homeCta.go }}" style="display:inline-block;margin-top:24px;padding:10px 0;border-bottom:1px solid #B67A4B;font:500 14px/1.3 Figtree;color:#4B2E26">{{ homeCtaLabel }}</a>
       </section>
 
       <!-- EXTRAS -->
@@ -1450,7 +1450,9 @@ class Component extends DCLogic {
     const p = this.props || {};
     if (p.startView) this.setState({ view:p.startView });
     this._seoDefault = { title: document.title, description: document.querySelector('meta[name="description"]')?.getAttribute('content') || '' };
-    import(new URL('cms.js?v=cms-20261022', location.href).href).then(C => {
+    this._onHeroReady = e => { if (e.origin === location.origin && e.data && e.data.type === 'e82-hero-ready') this.postHero(); };
+    window.addEventListener('message', this._onHeroReady);
+    import(new URL('cms.js?v=cms-hero-20261022', location.href).href).then(C => {
       this.C = C;
       const path = location.pathname.replace(/\/+$/, '');
       const r = path && !['/verify-email', '/reset-password', '/index.html'].includes(path) ? C.route(path) : null;
@@ -1481,11 +1483,15 @@ class Component extends DCLogic {
   }
   componentDidUpdate() { this.hydrateImages(); this.observeReveals(); this.syncItemScrollLock(); this.syncCms(); }
   // BOS CMS: SEO for every view; legal pages and CMS-only pages take their body from a published page.
-  syncCms() { const C = this.C, s = this.state; if (!C || !s.ready) return; const slug = s.view === 'page' ? s.pageSlug : C.VIEW_SLUGS[s.view]; const key = s.view + ':' + (slug || ''); if (this._cmsKey === key) return; this._cmsKey = key;
-    const S = this.D.SETTINGS, listed = C.pageList(S), summary = slug ? C.published(S, slug) : null; this.applySeo(summary);
+  syncCms() { const C = this.C, s = this.state; if (!C || !s.ready) return; const S = this.D.SETTINGS, listed = C.pageList(S);
+    if (!this._homeCms && (C.published(S, 'home') || !listed)) { this._homeCms = true; C.fetchPage('home').then(p => { if (!p) return; const home = C.homeContent(p); home.slides.forEach(sl => { if (sl.image) sl.image = new URL(sl.image, location.origin).href; }); this.setState({ homeCms: home }, () => this.postHero()); }); }
+    const slug = s.view === 'page' ? s.pageSlug : C.VIEW_SLUGS[s.view]; const key = s.view + ':' + (slug || ''); if (this._cmsKey === key) return; this._cmsKey = key;
+    const summary = slug ? C.published(S, slug) : null; this.applySeo(summary);
     if (!slug || !(s.view === 'page' || (C.LEGAL_VIEWS.includes(s.view) && (summary || !listed)))) { if (s.cmsPage) this.setState({ cmsPage:null }); return; }
     this.setState({ cmsPage:{ key, loading:true, data:null } });
     C.fetchPage(slug).then(data => { if (this._cmsKey !== key) return; this.setState({ cmsPage:{ key, loading:false, data } }); if (data) this.applySeo(data); }); }
+  // The hero iframe asks for CMS copy when it loads; we also push it whenever the home page arrives.
+  postHero() { const h = this.state.homeCms, f = document.querySelector('iframe[src^="lumi-lane-original/"]'); if (h && f && f.contentWindow) f.contentWindow.postMessage({ type:'e82-hero', data:{ tagline:h.tagline, slides:h.slides } }, location.origin); }
   applySeo(page) { const d = this.C.seo(page, this._seoDefault); document.title = d.title; document.querySelector('meta[name="description"]')?.setAttribute('content', d.description); }
   cmsLink(url, view) { const r = this.C && this.C.route(url); if (!r) return null; if (r.href) return { href:r.href, target:'_blank', rel:'noopener', go:undefined, on:false };
     return { href:'#' + (r.slug || r.view), target:'_self', rel:'', go:this.go(r.view, r.slug ? { pageSlug:r.slug } : null), on: r.slug ? view === 'page' && this.state.pageSlug === r.slug : view === r.view }; }
@@ -1496,7 +1502,10 @@ class Component extends DCLogic {
     return { cmsAnnounce:{ show:!!S.announcement, text:S.announcement || '' }, cmsFooterOn:!!S.footer, cmsFooterOff:!S.footer, cmsFooter:S.footer || '',
       socialInstagram: soc('instagram', 'https://www.instagram.com/eightytwentyfood/'), socialFacebook: soc('facebook', 'https://www.facebook.com/eightytwentyfood'), socialTiktok: soc('tiktok', 'https://www.tiktok.com/@eightytwentyfood'),
       contactEmail: email, contactMailto: 'mailto:' + email, cmsHeaderNav: nav('header'), cmsFooterNav: nav('footer'),
-      isCmsPage: view === 'page', cmsLegalOn: legal, cmsLegalOff: !legal, cmsArticle: this.cmsArticle() }; }
+      isCmsPage: view === 'page', cmsLegalOn: legal, cmsLegalOff: !legal, cmsArticle: this.cmsArticle(), ...this.homeVals(view) }; }
+  homeVals(view) { const h = this.state.homeCms || {}, intro = h.intro || {}, cta = h.cta && this.cmsLink(h.cta.url, view);
+    return { homeEyebrow: intro.eyebrow || 'The EightyTwenty way', homeTitle: intro.title || 'Simple food. Good coffee. Everyday balance.',
+      homeCta: cta || { href:'#menu', target:'_self', rel:'', go:this.go('menu') }, homeCtaLabel: cta ? h.cta.label : 'Explore the menu →' }; }
   cmsArticle() { const s = this.state, cp = s.cmsPage, E = React.createElement; if (!cp || cp.loading) return null;
     const H1 = { margin:0, font:"300 clamp(38px,4.6vw,60px)/1.02 'Newsreader',serif", letterSpacing:'-.01em' }, H2 = { margin:'clamp(36px,4vw,52px) 0 12px', font:"400 clamp(22px,2.2vw,28px)/1.15 'Newsreader',serif" };
     const P = { margin:'24px 0 0', font:'400 17px/1.7 Figtree', color:'#4B2E26', whiteSpace:'pre-line' }, LINK = { color:'#8B5827', textDecoration:'underline', textUnderlineOffset:3 };
@@ -1552,7 +1561,7 @@ class Component extends DCLogic {
   }
 
   hydrateImages() { document.querySelectorAll('img[data-src]').forEach(img => { const v = img.getAttribute('data-src') || ''; if (v && !v.includes('{{') && img.getAttribute('src') !== v) img.setAttribute('src', v); }); }
-  componentWillUnmount() { clearInterval(this._bkT); clearTimeout(this._itemCloseT); if (this._revealScroll) { window.removeEventListener('scroll', this._revealScroll); window.removeEventListener('resize', this._revealScroll); } window.removeEventListener('resize', this._onResize); window.removeEventListener('keydown', this._onItemKeyDown); this.unlockItemScroll(); clearTimeout(this._toastT); }
+  componentWillUnmount() { clearInterval(this._bkT); clearTimeout(this._itemCloseT); if (this._revealScroll) { window.removeEventListener('scroll', this._revealScroll); window.removeEventListener('resize', this._revealScroll); } window.removeEventListener('resize', this._onResize); window.removeEventListener('keydown', this._onItemKeyDown); window.removeEventListener('message', this._onHeroReady); this.unlockItemScroll(); clearTimeout(this._toastT); }
 
   $(n) { return '$' + n.toFixed(2); }
   rememberLocation(id) { this._chosenLocation = id; if (this.D.rememberLocation) this.D.rememberLocation(id); }

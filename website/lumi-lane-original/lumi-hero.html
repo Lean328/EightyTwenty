@@ -109,7 +109,7 @@
 <!-- LOCKED: Lumi Lane rotating image/text effect. Markup, CSS and script below are copied verbatim from the original Lumi Lane source. Do not edit in Phase 2. -->
 <main data-view="landing" class="relative flex min-h-[100svh] flex-col overflow-hidden px-4 pb-32 pt-20 text-center sm:px-6 sm:pt-24">
 
-  <p class="font-script text-3xl text-[#C45441] sm:text-4xl">Wholesome food, great coffee.</p>
+  <p id="hero-tagline" class="font-script text-3xl text-[#C45441] sm:text-4xl">Wholesome food, great coffee.</p>
 
   <h1 id="hero-headline" class="mx-auto mt-4 grid max-w-[26ch] font-serif text-[clamp(1.5rem,7.6vw,6.4rem)] leading-[0.93] tracking-tight text-cocoa" style="font-weight:500">
     <span class="hero-line">Fuel your<br>morning.</span>
@@ -159,6 +159,9 @@
       ['Coffee worth', 'getting up for.'],
       ['Mindful by nature,', 'indulgent by choice.']
     ];
+
+    // CMS hook (BOS home page): lets the script below swap copy/images without touching the motion.
+    window.__e82Hero = { dishes: dishes, copy: COPY, layers: layers, live: function () { return live; }, active: function () { return activeIndex(); } };
 
     var REST = 1.6;   // seconds the hero dish holds the centre
     var MOVE = 0.7;   // seconds of dish travel per swap
@@ -334,6 +337,34 @@
     GS.set(layers[1], { opacity: 0 });
     paint();
     schedule();          // autoplay: no click, hover, scroll or keypress needed
+  })();
+</script>
+<script>
+  // BOS CMS → hero. The parent page posts the published "home" page's hero blocks; each
+  // replaces one of the five slots (headline lines, dish image) and the tagline. The
+  // orbit, timings and layout above are untouched; anything not provided keeps the built-in copy.
+  (function () {
+    var H = window.__e82Hero;
+    if (!H || window.parent === window) return;
+    function apply(d) {
+      var tag = document.getElementById('hero-tagline');
+      if (tag && d.tagline) tag.textContent = d.tagline;
+      // Which slot the visible headline shows right now (exact even mid-swap, unlike the ring position).
+      var shownLayer = H.layers[H.live()];
+      var shown = H.copy.map(function (c) { return c[0] + '<br>' + c[1]; }).indexOf(shownLayer.innerHTML);
+      (d.slides || []).forEach(function (s, i) {
+        if (!s || i >= H.dishes.length) return;
+        if (s.image) { H.dishes[i].src = s.image; H.dishes[i].alt = s.alt || H.dishes[i].alt; }
+        if (s.lines && s.lines[0]) {
+          H.copy[i] = [s.lines[0], s.lines[1] || ''];
+          if (shown === i) shownLayer.innerHTML = s.lines[0] + '<br>' + (s.lines[1] || '');
+        }
+      });
+    }
+    window.addEventListener('message', function (e) {
+      if (e.origin === location.origin && e.data && e.data.type === 'e82-hero' && e.data.data) apply(e.data.data);
+    });
+    window.parent.postMessage({ type: 'e82-hero-ready' }, location.origin);
   })();
 </script>
 </body>
