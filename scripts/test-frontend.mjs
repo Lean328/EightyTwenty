@@ -415,6 +415,29 @@ test('an unknown CMS page path shows a not-found message, not a blank screen', a
   await settle();
   assert.match(text(app.cmsVals('page').cmsArticle), /Page not found/);
 });
+test('forgot password posts the email with the honeypot and shows the sent state or the API error', async () => {
+  saved.clear();
+  const calls = fakeApi({ '/api/v1/auth/password/reset': () => [200, { message: 'If the account exists, an email will be sent.' }] });
+  assert.equal((await account.requestPasswordReset('guest@example.com')).ok, true);
+  assert.deepEqual(calls[0].body, { email: 'guest@example.com', website: '' });
+  const ok = mountWithAccount({ requestPasswordReset: async () => ({ ok: true, status: 200, data: {} }) });
+  ok.state.au = { resetEmail: ' Guest@Example.com ' };
+  ok.auResetSubmit()({ preventDefault() {} });
+  await settle();
+  assert.equal(ok.state.auReset, 'sent');
+  assert.equal(ok.state.auBusy, null);
+  const limited = mountWithAccount({ requestPasswordReset: async () => ({ ok: false, status: 429, data: null }), errorsOf: () => ({ message: 'Too many attempts. Please wait a minute and try again.' }) });
+  limited.state.au = { resetEmail: 'guest@example.com' };
+  limited.auResetSubmit()({ preventDefault() {} });
+  await settle();
+  assert.notEqual(limited.state.auReset, 'sent');
+  assert.match(limited.state.auSrv['r-resetEmail'], /Too many attempts/);
+  const invalid = mountWithAccount({ requestPasswordReset: async () => { throw new Error('must not be called'); } });
+  invalid.state.au = { resetEmail: 'not-an-email' };
+  invalid.auResetSubmit()({ preventDefault() {} });
+  await settle();
+  assert.equal(invalid.state.auReset, undefined);
+});
 test('saving the profile sends name and phone to the API, never the email', async () => {
   let sent;
   const app = mountWithAccount({ updateProfile: async fields => { sent = fields; return { ok: true, status: 200, data: { ...profile, ...fields } }; } });

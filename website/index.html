@@ -197,12 +197,12 @@
         <form onSubmit="{{ submitReset }}" noValidate="{{ true }}" style="grid-column:{{ authLoginCol }};display:{{ authResetDisp }};flex-direction:column;justify-content:center;gap:16px;padding:clamp(24px,4vw,56px);opacity:{{ authLoginOp }};transform:translateX({{ authLoginTx }});transition:opacity .45s ease {{ authLoginDelay }},transform .6s cubic-bezier(.65,0,.35,1);pointer-events:{{ authLoginPe }}">
           <div><h1 style="margin:0;font:300 clamp(30px,3.2vw,40px)/1.05 'Newsreader',serif">Reset your password</h1><p style="margin:10px 0 0;font:400 15px/1.5 Figtree;color:#7A6259">Enter the email address linked to your account.</p></div>
           <label style="display:grid;gap:8px;font:500 12px/1 Figtree"><span>Email</span><span style="position:relative;display:block"><input data-af="r-resetEmail" type="email" inputMode="email" value="{{ au.resetEmail }}" onChange="{{ auSet.resetEmail }}" onBlur="{{ auBlurR.resetEmail }}" autocomplete="email" aria-invalid="{{ auFR.resetEmail.invalid }}" style="width:100%;box-sizing:border-box;height:46px;padding:0 38px 0 12px;border-radius:8px;border:1px solid {{ auFR.resetEmail.border }};background:#F8F4EC"><svg aria-hidden="true" viewBox="0 0 20 20" width="16" height="16" style="position:absolute;top:15px;right:12px;display:{{ auFR.resetEmail.icon }}"><circle cx="10" cy="10" r="8.4" fill="none" stroke="#B4431F" stroke-width="1.3"></circle><path d="M10 5.8v5" stroke="#B4431F" stroke-width="1.6" stroke-linecap="round"></path><circle cx="10" cy="14.2" r="1" fill="#B4431F"></circle></svg></span><sc-if value="{{ auFR.resetEmail.show }}" hint-placeholder-val="{{ false }}"><span role="alert" style="font:400 12px/1.4 Figtree;color:#B4431F">{{ auFR.resetEmail.msg }}</span></sc-if></label>
-          <button type="submit" style="height:50px;border-radius:999px;border:0;background:#4B2E26;color:#F3EEE5;font:500 15px/1 Figtree;cursor:pointer">Continue</button>
+          <button type="submit" style="height:50px;border-radius:999px;border:0;background:#4B2E26;color:#F3EEE5;font:500 15px/1 Figtree;cursor:pointer">{{ auResetLabel }}</button>
           <p style="margin:0;font:400 13px/1.4 Figtree;color:#7A6259"><a href="#login" onClick="{{ backToLogin }}" style="color:#3A2B24;text-decoration:underline;text-underline-offset:3px">Back to log in</a></p>
         </form>
         <!-- reset integration status -->
         <div style="grid-column:{{ authLoginCol }};display:{{ authSentDisp }};flex-direction:column;justify-content:center;gap:16px;padding:clamp(24px,4vw,56px);opacity:{{ authLoginOp }};transform:translateX({{ authLoginTx }});transition:opacity .45s ease {{ authLoginDelay }},transform .6s cubic-bezier(.65,0,.35,1);pointer-events:{{ authLoginPe }}">
-          <div><h1 style="margin:0;font:300 clamp(30px,3.2vw,40px)/1.05 'Newsreader',serif">Password reset unavailable</h1><p role="status" style="margin:10px 0 0;font:400 15px/1.5 Figtree;color:#7A6259">Online password reset is not connected yet. For account help, email <a href="mailto:info@eightytwentyfood.com.au" style="color:#8B5827;text-decoration:underline">info@eightytwentyfood.com.au</a>.</p></div>
+          <div><h1 style="margin:0;font:300 clamp(30px,3.2vw,40px)/1.05 'Newsreader',serif">Check your email</h1><p role="status" style="margin:10px 0 0;font:400 15px/1.5 Figtree;color:#7A6259">If there's an account for <strong style="font-weight:500;color:#3A2B24">{{ au.resetEmail }}</strong>, we've sent a link to set a new password. It expires in a few hours. Nothing there? Check your spam folder, or email <a href="{{ contactMailto }}" style="color:#8B5827;text-decoration:underline">{{ contactEmail }}</a>.</p></div>
           <p style="margin:0;font:400 13px/1.4 Figtree;color:#7A6259"><a href="#login" onClick="{{ backToLogin }}" style="color:#3A2B24;text-decoration:underline;text-underline-offset:3px">Back to log in</a></p>
         </div>
         <!-- sign-up form (right half) -->
@@ -1672,7 +1672,12 @@ class Component extends DCLogic {
   // The frontend validates the address only; a future auth adapter must send the reset request.
   auResetSubmit() { return e => { e.preventDefault(); const vals = Object.assign({}, this.state.au || {}); vals.resetEmail = this.auNorm('resetEmail', vals.resetEmail); const err = this.auCheck('resetEmail', 'reset', vals);
     if (err) { this.setState(st => ({ au: vals, auT: Object.assign({}, st.auT || {}, { 'r-resetEmail':1 }) }), () => { const el = document.querySelector('[data-af="r-resetEmail"]'); if (el && el.focus) el.focus(); }); return; }
-    this.setState({ au: vals, auReset:'sent' }); }; }
+    if (this.state.auBusy) return;
+    this.setState({ au: vals, auBusy:'reset', auSrv:{} });
+    this._account.then(A => A ? A.requestPasswordReset(vals.resetEmail) : { ok:false, status:0, data:null }).then(res => {
+      if (res.ok) { this.setState({ auBusy:null, auReset:'sent' }); return; }
+      const err = this.A ? this.A.errorsOf(res) : { message:'We couldn’t reach EightyTwenty. Check your connection and try again.' };
+      this.setState({ auBusy:null, auSrv:{ 'r-resetEmail': err.email || err.message } }, () => { const el = document.querySelector('[data-af="r-resetEmail"]'); if (el && el.focus) el.focus(); }); }); }; }
   auSubmit(mode) { return e => { e.preventDefault(); const fields = this.auFields(mode); const vals = Object.assign({ name:'', email:'', phone:'', password:'', confirm:'' }, this.state.au || {}); fields.forEach(f => { vals[f] = this.auNorm(f, vals[f]); }); const touch = {}; fields.forEach(f => { touch[this.auKey(mode, f)] = 1; }); const bad = fields.filter(f => this.auCheck(f, mode, vals));
     if (bad.length) { this.setState(st => ({ au: vals, auT: Object.assign({}, st.auT || {}, touch) }), () => { const el = document.querySelector('[data-af="' + this.auKey(mode, bad[0]) + '"]'); if (el && el.focus) el.focus(); }); return; }
     if (this.state.auBusy) return;
@@ -1790,7 +1795,8 @@ class Component extends DCLogic {
           goForgot: e => { e.preventDefault(); this.setState({ auReset:'form', auT:{} }); },
           backToLogin: e => { e.preventDefault(); this.setState({ auReset:null, auT:{} }); },
           submitReset: this.auResetSubmit(),
-          auFR: { resetEmail: (() => { const err = (s.auT || {})['r-resetEmail'] ? this.auCheck('resetEmail', 'reset', s.au || {}) : null; return { border: err ? '#B4431F' : 'rgba(75,46,38,.2)', icon: err ? 'block' : 'none', msg: err || '', show: !!err, invalid: err ? 'true' : 'false' }; })() },
+          auResetLabel: s.auBusy === 'reset' ? 'Sending…' : 'Continue',
+          auFR: { resetEmail: (() => { const err = ((s.auT || {})['r-resetEmail'] ? this.auCheck('resetEmail', 'reset', s.au || {}) : null) || (s.auSrv || {})['r-resetEmail'] || null; return { border: err ? '#B4431F' : 'rgba(75,46,38,.2)', icon: err ? 'block' : 'none', msg: err || '', show: !!err, invalid: err ? 'true' : 'false' }; })() },
           auBlurR: { resetEmail: this.auBlur('reset', 'resetEmail') } }; })(),
       au: Object.assign({ name:'', email:'', phone:'', password:'', confirm:'', resetEmail:'' }, s.au || {}), auSet: ['name','email','phone','password','confirm','resetEmail'].reduce((o, f) => { o[f] = e => { const v = e.target.value; this.setState(st => ({ au: Object.assign({}, st.au, { [f]: v }), auSrv:{} })); }; return o; }, {}),
       ...(() => { const vals = Object.assign({ name:'', email:'', phone:'', password:'', confirm:'' }, s.au || {}); const T = s.auT || {};

@@ -45,7 +45,7 @@ Site static `website/` chạy trên Cloudflare Pages, project `eightytwenty` (t�
 
 ```sh
 npx wrangler@4 login   # một lần trên máy; chọn đúng tài khoản Cloudflare
-rm -rf /tmp/e82-site && mkdir -p /tmp/e82-site && git archive HEAD website | tar -x -C /tmp/e82-site
+rm -rf /tmp/e82-site && mkdir -p /tmp/e82-site && git -c core.autocrlf=false archive HEAD website | tar -x -C /tmp/e82-site   # -c: giữ LF trên Windows
 npx wrangler@4 pages deploy /tmp/e82-site/website --project-name eightytwenty --branch main --commit-hash "$(git rev-parse HEAD)"
 ```
 
