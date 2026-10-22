@@ -119,6 +119,61 @@ test('a booking the API refuses shows its message instead of opening an email dr
   assert.equal(navigated, false);
 });
 
+function enquiryHarness(postForm) {
+  let navigated = false;
+  const context = vm.createContext({
+    DCLogic: class {
+      setState(patch, callback) {
+        Object.assign(this.state, typeof patch === 'function' ? patch(this.state) : patch);
+        callback?.();
+      }
+    },
+    window: { innerWidth: 1440, scrollTo() {}, location: { set href(v) { navigated = true; } } },
+  });
+  const Component = new vm.Script(source + '\nComponent;').runInContext(context);
+  const app = new Component();
+  app.D = { LOCATIONS: cafes, CATERING: [{ id: 'Breakfast' }, { id: 'Lunch' }], SOURCE: 'api', postForm };
+  app.state.ctab = 1;
+  app.state.ct = { date: '2026-12-05' };
+  const control = (label, value, tag = 'input') => ({ value, tagName: tag, closest: () => ({ querySelector: () => ({ textContent: label }) }), getAttribute: () => null });
+  const controls = [control('First name', 'Test'), control('Last name', 'Caterer'), control('Email', 'cater@example.com'), control('Phone', '0400000000'),
+    control('Company name (optional)', 'Test Co'), control('Occasion?', 'Office breakfast'), control('How many people?', '25'), control('Location?', 'Civic office'),
+    control('Catering menu', 'Lunch', 'select'), control('Enquiry', 'Vegan options please', 'textarea')];
+  const event = { preventDefault() {}, currentTarget: { querySelectorAll: () => controls, reportValidity: () => true } };
+  return { app, event, navigated: () => navigated };
+}
+
+test('a catering enquiry sends every field to the API and succeeds only with a real reference', async () => {
+  let request;
+  const { app, event, navigated } = enquiryHarness(async (path, body) => { request = { path, body }; return { ok: true, data: { reference: 'EQ-TEST' } }; });
+  app.submitEnquiry('catering')(event);
+  await Promise.resolve();
+  assert.equal(request.path, '/api/v1/public/enquiries');
+  assert.equal(request.body.kind, 'catering');
+  assert.equal(request.body.name, 'Test Caterer');
+  assert.equal(request.body.email, 'cater@example.com');
+  assert.equal(request.body.company, 'Test Co');
+  assert.equal(request.body.event_date, '2026-12-05');
+  assert.equal(request.body.headcount, 25);
+  assert.equal(request.body.package, 'lunch');
+  assert.equal(JSON.stringify(request.body.payload), JSON.stringify({ occasion: 'Office breakfast', eventLocation: 'Civic office' }));
+  assert.ok(request.body.message.includes('Enquiry: Vegan options please'));
+  assert.equal(app.state.enquiryRef, 'EQ-TEST');
+  assert.equal(app.state.enquiryDraft, 'catering');
+  assert.equal(navigated(), false);
+});
+
+test('a catering enquiry the API refuses shows the message and never opens an email draft', async () => {
+  const { app, event, navigated } = enquiryHarness(async () => ({ ok: false, data: { error: { code: 'invalid', message: 'Please check the submitted fields.', fields: { event_date: 'Choose today or a future date.' } } } }));
+  app.submitEnquiry('catering')(event);
+  await Promise.resolve();
+  assert.equal(app.state.enquiryError, 'Please check the submitted fields. event date: Choose today or a future date.');
+  assert.equal(app.state.enquiryErrorKind, 'catering');
+  assert.equal(app.state.enquiryRef, '');
+  assert.equal(app.state.enquiryDraft, null);
+  assert.equal(navigated(), false);
+});
+
 test('a café selected while bootstrap is loading is not overwritten by a saved default', async () => {
   let resolveData;
   let remembered;

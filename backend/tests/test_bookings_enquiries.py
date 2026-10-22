@@ -193,6 +193,38 @@ def test_enquiry_ingest_scoped_queue_and_assignment(
     assert client.get("/api/v1/bos/enquiries").data["count"] == 3
 
 
+def test_website_catering_enquiry_keeps_every_field(client, owner):
+    from apps.enquiries.models import CateringPackage
+
+    package = CateringPackage.objects.create(slug="lunch", name="Lunch", price_cents=2750)
+    body = {
+        "kind": "catering",
+        "name": "Test Caterer",
+        "email": "cater@example.com",
+        "phone": "0400000000",
+        "company": "Test Co",
+        "event_date": str(timezone.localdate() + timedelta(days=30)),
+        "headcount": 25,
+        "package": "lunch",
+        "message": "First name: Test\nEnquiry: Vegan options please",
+        "payload": {"occasion": "Office lunch", "eventLocation": "Civic office"},
+    }
+    result = client.post("/api/v1/public/enquiries", body, format="json")
+    assert result.status_code == 201, result.data
+    record = Enquiry.objects.get(reference=result.data["reference"])
+    assert (record.package, record.headcount, record.company) == (package, 25, "Test Co")
+    assert record.payload["eventLocation"] == "Civic office" and record.status == "new"
+    assert EmailMessage.objects.filter(recipient="cater@example.com").count() == 1
+    client.force_authenticate(owner)
+    listed = client.get("/api/v1/bos/enquiries?kind=catering").data
+    assert listed["count"] == 1 and listed["results"][0]["reference"] == record.reference
+    # A past event date is refused with a field message the website can show.
+    bad = client.post(
+        "/api/v1/public/enquiries", {**body, "event_date": "2000-01-01"}, format="json"
+    )
+    assert bad.status_code == 400 and "event_date" in bad.data["error"]["fields"]
+
+
 def test_captcha_fail_closed_and_email_failure_does_not_lose_booking(
     client, booking_data, settings, django_capture_on_commit_callbacks
 ):
