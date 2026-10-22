@@ -1,0 +1,429 @@
+/* EightyTwenty BOS — v2 design layer.
+
+   Loads after admin.css and experience.css and only refines: a dark espresso
+   sidebar beside an ivory workspace, Newsreader for page identity, Figtree for
+   everything operational, hairlines over shadows, caramel for the one thing
+   that wants your eye. Every selector mirrors the one it refines so nothing
+   here needs to know about the markup beyond the classes that already exist.
+
+   Palette (from the customer website): espresso #2a1a13, chocolate #4b2e26,
+   ivory #fffdf1, cream #f7f1e3, sand #dcc8ad, caramel #c98951. */
+
+/* ---------- tokens ---------------------------------------------------- */
+:root[data-theme="light"], :root:not([data-theme]) {
+    --et-ivory: #fffdf1;
+    --et-cream: #f7f1e3;
+    --et-sand: #dcc8ad;
+    --et-espresso: #2a1a13;
+    --et-chocolate: #4b2e26;
+    --et-caramel: #c98951;
+
+    --bos-bg: #fffdf1;
+    --bos-surface: #fffefb;
+    --bos-surface-2: #f7f1e3;
+    --bos-surface-3: #efe6d6;
+    --bos-field-bg: #ffffff;
+    --bos-line: #ebe2d3;
+    --bos-line-strong: #a08b78;
+    --bos-text: #2a1a13;
+    --bos-text-2: #5a4940;
+    --bos-muted: #78665b;
+
+    --bos-accent: #4b2e26;
+    --bos-accent-hover: #2a1a13;
+    --bos-accent-ink: #fffdf1;
+    --bos-accent-soft: #f4e6d4;
+    --bos-accent-text: #96572a;
+    --bos-focus: rgba(201, 137, 81, 0.38);
+    --bos-mark: #b4431f;
+
+    --bos-chart: #c98951;
+    --bos-chart-today: #4b2e26;
+    --bos-chart-zero: #efe6d6;
+    --bos-chart-rule: #ece3d4;
+
+    --bos-sidebar: #2a1a13;
+    --bos-sidebar-text: #fffdf1;
+    --bos-sidebar-link: #dcc8ad;
+    --bos-sidebar-muted: rgba(220, 200, 173, 0.62);
+    --bos-sidebar-hover: rgba(255, 253, 241, 0.06);
+    --bos-sidebar-active: #fffdf1;
+    --bos-sidebar-active-bg: #4b2e26;
+    --bos-sidebar-line: rgba(255, 253, 241, 0.09);
+    --bos-sidebar-badge-bg: #c98951;
+    --bos-sidebar-badge-fg: #2a1a13;
+    --bos-logo-filter: invert(1) sepia(0.18) brightness(1.08);
+
+    --bos-topbar-bg: #fffdf1;
+    --bos-scrim: rgba(42, 26, 19, 0.55);
+    --bos-shadow-sm: 0 1px 2px rgba(42, 26, 19, 0.05);
+    --bos-shadow: 0 1px 2px rgba(42, 26, 19, 0.05), 0 10px 28px -20px rgba(42, 26, 19, 0.22);
+    --bos-shadow-lg: 0 24px 56px -24px rgba(42, 26, 19, 0.35), 0 2px 8px rgba(42, 26, 19, 0.08);
+}
+:root[data-theme="dark"] {
+    --bos-sidebar: #1a110d;
+    --bos-sidebar-active-bg: #3a2620;
+    --bos-sidebar-badge-bg: #c98951;
+    --bos-sidebar-badge-fg: #2a1a13;
+    --bos-chart: #d2a578;
+}
+:root[data-theme] {
+    --bos-radius: 12px;
+    --bos-radius-sm: 8px;
+    --bos-control: 2.375rem;
+    --bos-sidebar-width: 15.5rem;
+    --bos-sidebar-rail: 4.5rem;
+}
+
+/* ---------- shell ------------------------------------------------------ */
+.bos-admin { background: var(--bos-bg); }
+.bos-content { background: var(--bos-bg); padding: 1.75rem 2.25rem 4.5rem; }
+
+/* Sidebar: deep espresso, cream type, a caramel bar on the active item. */
+.bos-sidebar {
+    background: var(--bos-sidebar);
+    color: var(--bos-sidebar-text);
+    border-right: 0;
+    box-shadow: inset -1px 0 0 var(--bos-sidebar-line);
+}
+.bos-admin .bos-brand { padding: 1.5rem 1.25rem 1.6rem; gap: 0.6rem; }
+.bos-brand-word { height: 2rem; filter: var(--bos-logo-filter); }
+.bos-brand-tag { color: var(--et-caramel); font-size: 0.8rem; letter-spacing: 0; }
+.bos-nav { padding: 0 0.85rem; }
+.bos-nav-title, .bos-navigation-ready .bos-utility-nav .bos-nav-title {
+    margin: 1.4rem 0.75rem 0.5rem;
+    color: var(--bos-sidebar-muted);
+    font: 600 0.6875rem/1.4 var(--font-family-primary);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+.bos-admin a.bos-nav-link, .bos-collapse {
+    position: relative;
+    min-height: 2.6rem;
+    border-radius: 8px;
+    color: var(--bos-sidebar-link);
+    font-weight: 500;
+    transition: background-color 0.16s ease, color 0.16s ease;
+}
+.bos-admin a.bos-nav-link .bos-i { opacity: 0.8; transition: opacity 0.16s ease, color 0.16s ease; }
+.bos-admin a.bos-nav-link:hover, .bos-collapse:hover {
+    background: var(--bos-sidebar-hover);
+    color: var(--bos-sidebar-text);
+}
+.bos-admin a.bos-nav-link:hover .bos-i { opacity: 1; }
+.bos-admin a.bos-nav-link.is-active {
+    background: var(--bos-sidebar-active-bg);
+    color: var(--bos-sidebar-active);
+    font-weight: 600 !important;
+}
+.bos-admin a.bos-nav-link.is-active::before {
+    content: "";
+    position: absolute;
+    left: -0.85rem;
+    top: 0.55rem;
+    bottom: 0.55rem;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: var(--et-caramel);
+}
+.bos-admin a.bos-nav-link.is-active .bos-i { color: var(--et-caramel); opacity: 1; }
+.bos-nav-badge {
+    min-width: 1.35rem;
+    height: 1.25rem;
+    border-radius: 999px;
+    background: var(--bos-sidebar-badge-bg);
+    color: var(--bos-sidebar-badge-fg);
+    font-weight: 700;
+    font-size: 0.6875rem;
+}
+.bos-admin a:focus-visible.bos-nav-link, .bos-collapse:focus-visible { outline-color: var(--et-caramel); }
+.bos-sidebar-foot {
+    display: grid;
+    gap: 0.35rem;
+    padding: 0.75rem 0.85rem 0.9rem;
+    border-top: 1px solid var(--bos-sidebar-line);
+}
+.bos-collapse { color: var(--bos-sidebar-muted); }
+
+/* Account block at the foot of the sidebar: who is signed in, one tap to the profile. */
+.bos-admin a.bos-side-account {
+    display: flex;
+    align-items: center;
+    gap: 0.7rem;
+    min-height: 3rem;
+    padding: 0.45rem 0.65rem;
+    border-radius: 8px;
+    color: var(--bos-sidebar-text);
+    transition: background-color 0.16s ease;
+}
+.bos-admin a.bos-side-account:hover { background: var(--bos-sidebar-hover); color: var(--bos-sidebar-text); }
+.bos-side-account .bos-avatar {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 8px;
+    background: var(--et-caramel);
+    color: var(--et-espresso);
+    font-size: 0.7rem;
+    font-weight: 700;
+}
+.bos-side-account .bos-nav-text { display: grid; min-width: 0; line-height: 1.25; }
+.bos-side-account strong { font-size: 0.8125rem; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bos-side-account small { color: var(--bos-sidebar-muted); font-size: 0.6875rem; }
+@media (min-width: 1024px) {
+    .bos-nav-collapsed .bos-admin a.bos-side-account, .bos-nav-collapsed a.bos-side-account { justify-content: center; padding-inline: 0; }
+    .bos-nav-collapsed .bos-side-account .bos-nav-text { display: none; }
+    .bos-nav-collapsed .bos-admin a.bos-nav-link.is-active::before { left: -0.5rem; }
+}
+
+/* Topbar: ivory, hairline below, quiet controls. */
+.bos-topbar {
+    min-height: 3.75rem;
+    padding: 0.6rem 2.25rem;
+    background: var(--bos-topbar-bg);
+    border-bottom: 1px solid var(--bos-line);
+}
+.bos-search-trigger {
+    height: 2.35rem;
+    border: 1px solid var(--bos-line);
+    border-radius: 999px;
+    background: var(--bos-surface);
+    color: var(--bos-muted);
+    box-shadow: var(--bos-shadow-sm);
+}
+.bos-search-trigger:hover { border-color: var(--bos-line-strong); color: var(--bos-text); }
+.bos-search-trigger kbd { border-radius: 5px; }
+.bos-user summary, .bos-icon-btn { border-radius: 8px; }
+.bos-topbar .bos-avatar { border-radius: 8px; background: var(--et-chocolate); color: var(--et-ivory); }
+.bos-context { background: var(--bos-surface); }
+
+/* ---------- type -------------------------------------------------------- */
+.bos-admin #content > h1, .bos-admin .bos-hero h1, .bos-page-head h1,
+.bos-admin .bos-profile-id h1, .bos-list-heading h1, .bos-record-hero h1, .bos-login-card h1 {
+    font-family: var(--bos-serif);
+    font-size: 2.125rem;
+    font-weight: 400;
+    line-height: 1.1;
+    letter-spacing: -0.015em;
+    color: var(--bos-text);
+}
+.bos-eyebrow { color: var(--bos-accent-text); font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; font-size: 0.6875rem; }
+.bos-lead { color: var(--bos-text-2); font-size: 0.9375rem; }
+.bos-list-count { font-size: 0.8125rem; }
+
+/* ---------- surfaces ---------------------------------------------------- */
+.bos-admin :is(.bos-card, fieldset.module, .inline-group, .bos-record-hero, .bos-profile-hero, .bos-overview-top > section:first-child, .bos-overview .bos-stats, #changelist, .bos-toolbar) {
+    border: 1px solid var(--bos-line);
+    border-radius: var(--bos-radius);
+    background: var(--bos-surface);
+    box-shadow: var(--bos-shadow-sm);
+}
+.bos-card-head h2, .bos-section-head h2 { font-size: 0.9375rem; font-weight: 650; letter-spacing: -0.005em; }
+.bos-card-sub { color: var(--bos-muted); }
+.bos-admin .bos-link { color: var(--bos-accent-text); }
+.bos-admin .bos-link:hover { color: var(--bos-text); }
+
+/* KPI tiles: a quiet label, a serif number, a note — separated by hairlines. */
+.bos-admin .bos-overview .bos-stat, .bos-kpi { padding: 1.1rem 1.35rem 1.15rem; }
+.bos-stat-label, .bos-kpi-label, .bos-metric-label {
+    color: var(--bos-muted);
+    font-size: 0.6875rem;
+    font-weight: 650;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+}
+.bos-stat-value, .bos-kpi-value, .bos-metric-value, .bos-report-value, .bos-record-stat dd, .bos-record-big {
+    font-family: var(--bos-serif);
+    font-size: 2rem;
+    font-weight: 400;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+}
+.bos-stat-note { color: var(--bos-muted); font-size: 0.8125rem; }
+.bos-admin .bos-overview .bos-stat:hover { background: var(--bos-surface-2); }
+.bos-delta { border-radius: 999px; padding: 0.1rem 0.5rem; font-size: 0.6875rem; font-weight: 650; }
+.bos-overview .bos-todo-count { font-family: var(--bos-serif); font-size: 1.5rem; font-weight: 400; min-width: 2.25rem; }
+.bos-admin .bos-overview a.bos-todo:hover { background: var(--bos-surface-2); }
+.bos-todo.is-urgent .bos-todo-count { color: var(--bos-mark); }
+.bos-todo.is-clear .bos-todo-count { color: var(--bos-muted); }
+.bos-day-badge { border-radius: 8px; border-color: var(--bos-line); }
+.bos-day-badge::before { background: var(--et-caramel); }
+
+/* ---------- buttons ----------------------------------------------------- */
+.bos-admin :is(.bos-btn, .button, input[type="submit"], input[type="button"], .object-tools a, .bos-select-trigger, .bos-segment, .bos-segment a) { border-radius: 8px; }
+.bos-admin .bos-btn, .bos-admin .object-tools a, .bos-admin input[type="submit"], .bos-admin .button {
+    min-height: var(--bos-control);
+    font-weight: 600;
+    font-size: 0.8125rem;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+}
+.bos-admin .bos-btn-primary, .bos-admin a.bos-btn-primary, .bos-admin input[type="submit"].default, .bos-admin .object-tools a, .bos-admin .bos-list-heading .object-tools a {
+    background: var(--bos-accent);
+    color: var(--bos-accent-ink);
+    border-color: transparent;
+    box-shadow: 0 1px 0 rgba(42, 26, 19, 0.12);
+}
+.bos-admin .bos-btn-primary:hover, .bos-admin a.bos-btn-primary:hover, .bos-admin input[type="submit"].default:hover, .bos-admin .object-tools a:hover { background: var(--bos-accent-hover); color: var(--bos-accent-ink); }
+.bos-admin .bos-btn:not(.bos-btn-primary):not(.bos-btn-danger), .bos-admin #toolbar input[type="submit"], .bos-admin .button:not(.default) {
+    background: var(--bos-surface);
+    color: var(--bos-text);
+    border: 1px solid var(--bos-line);
+}
+.bos-admin .bos-btn:not(.bos-btn-primary):not(.bos-btn-danger):hover, .bos-admin .button:not(.default):hover { border-color: var(--bos-line-strong); background: var(--bos-surface-2); }
+.bos-admin :is(button, a, input, select, textarea, summary):focus-visible { outline: 2px solid var(--et-caramel); outline-offset: 2px; }
+
+/* ---------- lists & tables --------------------------------------------- */
+.bos-admin #changelist { overflow: hidden; }
+.bos-admin #toolbar, .bos-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.8rem 1rem;
+    background: var(--bos-surface);
+    border-bottom: 1px solid var(--bos-line);
+    border-radius: 0;
+}
+.bos-admin #toolbar #searchbar, .bos-admin .bos-toolbar input[type="search"] {
+    height: var(--bos-control);
+    max-width: 24rem;
+    border-radius: 8px;
+    background: var(--bos-field-bg);
+}
+.bos-admin #changelist-filter { padding: 0.65rem 1rem; border-radius: 0; background: var(--bos-surface-2); border-bottom: 1px solid var(--bos-line); }
+.bos-admin #changelist-filter h2 { display: none; }
+.bos-filter select, .bos-admin .bos-select-trigger { border-radius: 8px; background: var(--bos-field-bg); font-weight: 500; }
+.bos-admin #result_list thead th, .bos-admin .bos-table thead th {
+    background: var(--bos-surface-2);
+    color: var(--bos-muted);
+    border-bottom: 1px solid var(--bos-line);
+}
+.bos-admin #result_list thead th .text :is(a, span), .bos-admin .bos-table thead th { font-size: 0.6875rem; font-weight: 650; letter-spacing: 0.06em; text-transform: uppercase; color: var(--bos-muted); }
+.bos-admin #result_list tbody tr, .bos-admin .bos-table tbody tr { border-bottom: 1px solid var(--bos-line); transition: background-color 0.12s ease; }
+.bos-admin #result_list tbody tr:hover, .bos-admin .bos-table tbody tr:hover { background: var(--bos-surface-2); }
+.bos-admin #result_list tbody :is(th, td), .bos-admin .bos-table tbody td { padding-block: 0.8rem; font-size: 0.8125rem; color: var(--bos-text-2); }
+.bos-admin #result_list tbody th, .bos-admin #result_list tbody th a, .bos-admin .bos-table tbody td strong { color: var(--bos-text); font-weight: 600; }
+.bos-admin .bos-thumb { border-radius: 8px; box-shadow: 0 0 0 1px var(--bos-line); }
+.bos-admin .paginator { padding: 0.8rem 1rem; color: var(--bos-muted); border-top: 1px solid var(--bos-line); }
+.bos-admin .actions { border-radius: 10px; }
+.bos-chip { border-radius: 5px; padding: 0.15rem 0.5rem; font-size: 0.6875rem; font-weight: 650; letter-spacing: 0.01em; }
+.bos-cell-sub { color: var(--bos-muted); }
+
+/* ---------- forms ------------------------------------------------------- */
+.bos-admin fieldset.module > h2, .bos-admin .inline-group h2 {
+    padding: 0.9rem 1.35rem;
+    background: var(--bos-surface-2);
+    border-bottom: 1px solid var(--bos-line);
+    color: var(--bos-text);
+    font: 650 0.8125rem/1.4 var(--font-family-primary);
+    letter-spacing: 0.01em;
+}
+.bos-admin .form-row { padding: 0.95rem 1.35rem; }
+.bos-admin .form-row label, .bos-admin .aligned label { color: var(--bos-text-2); font-size: 0.8125rem; font-weight: 600; }
+.bos-admin .form-row .help, .bos-admin .help { color: var(--bos-muted); font-size: 0.75rem; }
+.bos-admin input[type="text"], .bos-admin input[type="password"], .bos-admin input[type="email"], .bos-admin input[type="url"],
+.bos-admin input[type="number"], .bos-admin input[type="tel"], .bos-admin input[type="search"], .bos-admin input[type="date"],
+.bos-admin input[type="time"], .bos-admin input[type="datetime-local"], .bos-admin textarea, .bos-admin select, .bos-admin .vTextField {
+    border: 1px solid var(--bos-line);
+    border-radius: 8px;
+    background: var(--bos-field-bg);
+    color: var(--bos-text);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+.bos-admin :is(input, textarea, select):not([type="checkbox"]):not([type="radio"]):not([type="submit"]):focus {
+    border-color: var(--et-caramel);
+    box-shadow: 0 0 0 3px var(--bos-focus);
+    outline: none;
+}
+.bos-admin .form-row.errors { background: color-mix(in srgb, var(--bos-bad-bg) 35%, transparent); }
+.bos-admin .errorlist li { border-radius: 6px; }
+.bos-admin .submit-row { border-top: 1px solid var(--bos-line); background: color-mix(in srgb, var(--bos-bg) 88%, white); backdrop-filter: blur(8px); }
+
+/* ---------- empty states ------------------------------------------------ */
+.bos-empty { padding: 3rem 1.5rem; color: var(--bos-muted); }
+.bos-empty-mark {
+    width: 3.25rem;
+    height: 3.25rem;
+    margin-bottom: 0.6rem;
+    border-radius: 50%;
+    background: var(--bos-accent-soft);
+    color: var(--bos-accent-text);
+}
+.bos-empty p { margin: 0.15rem 0; }
+.bos-empty p strong { font-family: var(--bos-serif); font-size: 1.25rem; font-weight: 400; color: var(--bos-text); }
+.bos-empty .bos-btn { margin-top: 0.75rem; }
+
+/* ---------- misc components --------------------------------------------- */
+.bos-record-hero, .bos-profile-hero { padding: 1.5rem 1.75rem; }
+.bos-admin .bos-segment { background: var(--bos-surface-2); border-color: var(--bos-line); }
+.bos-admin .bos-segment a.is-on { background: var(--bos-surface); box-shadow: var(--bos-shadow-sm); color: var(--bos-text); }
+.bos-tip { border-radius: 6px; }
+.bos-palette-box, .bos-directory, .bos-menu { border-radius: 12px; box-shadow: var(--bos-shadow-lg); }
+.bos-admin .bos-alert, .bos-admin .messagelist li { border-radius: 10px; }
+.bos-login-card { border-radius: 14px; box-shadow: var(--bos-shadow); }
+
+/* ---------- refinements after visual review ------------------------------ */
+.bos-admin .bos-hero, .bos-page-head { padding-bottom: 1.25rem; margin-bottom: 1.25rem; border-bottom: 1px solid var(--bos-line); }
+.bos-admin #toolbar #searchbar, .bos-admin .bos-toolbar input[type="search"] { background-color: var(--bos-field-bg); }
+.bos-admin #changelist .toplinks {
+    display: flex;
+    gap: 0.35rem;
+    overflow-x: auto;
+    scrollbar-width: thin;
+    padding: 0.6rem 1rem;
+    background: var(--bos-surface);
+    border-bottom: 1px solid var(--bos-line);
+}
+.bos-admin #changelist .toplinks a {
+    flex: none;
+    margin: 0;
+    padding: 0.25rem 0.65rem;
+    border: 1px solid var(--bos-line);
+    border-radius: 999px;
+    color: var(--bos-text-2);
+    font-size: 0.75rem;
+    font-weight: 500;
+    white-space: nowrap;
+    transition: background-color 0.12s ease, border-color 0.12s ease;
+}
+.bos-admin #changelist .toplinks a:hover { background: var(--bos-surface-2); border-color: var(--bos-line-strong); color: var(--bos-text); }
+.bos-admin .bos-alert, .bos-admin .errornote { border: 1px solid var(--bos-line); background: var(--bos-surface-2); color: var(--bos-text-2); }
+.bos-admin .bos-alert.is-bad, .bos-admin .errornote { border-color: color-mix(in srgb, var(--bos-bad-fg) 30%, transparent); background: var(--bos-bad-bg); color: var(--bos-bad-fg); }
+.bos-admin .bos-list-heading .object-tools a { border-radius: 999px; padding-inline: 1.1rem; }
+.bos-admin .bos-btn-primary, .bos-admin a.bos-btn-primary, .bos-admin input[type="submit"].default { border-radius: 999px; padding-inline: 1.1rem; }
+.bos-admin .bos-btn-sm { border-radius: 999px; }
+
+/* Drawer close button lives on the dark sidebar: no white tile, cream glyph. */
+.bos-sidebar .bos-icon-btn, .bos-sidebar .bos-nav-close {
+    background: transparent;
+    border: 1px solid var(--bos-sidebar-line);
+    color: var(--bos-sidebar-link);
+    border-radius: 8px;
+}
+.bos-sidebar .bos-icon-btn:hover, .bos-sidebar .bos-nav-close:hover { background: var(--bos-sidebar-hover); color: var(--bos-sidebar-text); }
+/* Date hierarchy stays one scrollable strip on every width. */
+.bos-admin #changelist .toplinks { flex-wrap: nowrap; }
+.bos-admin #changelist .toplinks li, .bos-admin #changelist .toplinks .date-back { flex: none; margin: 0; padding: 0; list-style: none; }
+.bos-admin :is(.bos-btn, .button, input[type="submit"], input[type="button"], .object-tools a) { background-image: none; }
+
+/* ---------- responsive -------------------------------------------------- */
+@media (max-width: 1100px) {
+    .bos-overview-top, .bos-overview-analysis { grid-template-columns: minmax(0, 1fr); }
+    .bos-location-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 1023px) {
+    .bos-content { padding: 1.25rem 1.25rem 4rem; }
+    .bos-topbar { padding: 0.5rem 1.25rem; }
+    body.bos-nav-open .bos-sidebar { box-shadow: 24px 0 64px -32px rgba(0, 0, 0, 0.55); }
+}
+@media (max-width: 767px) {
+    .bos-content { padding: 1rem 1rem 4rem; }
+    .bos-overview .bos-stats { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .bos-admin .bos-overview .bos-stat:nth-child(2n) { border-right: 0; }
+    .bos-admin .bos-overview .bos-stat:nth-child(n + 3) { border-top: 1px solid var(--bos-line); }
+    .bos-location-grid { grid-template-columns: minmax(0, 1fr); }
+    .bos-admin #content > h1, .bos-admin .bos-hero h1, .bos-list-heading h1, .bos-record-hero h1 { font-size: 1.75rem; }
+    .bos-stat-value, .bos-kpi-value { font-size: 1.625rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .bos-admin a.bos-nav-link, .bos-collapse, .bos-admin .bos-btn, .bos-admin a.bos-side-account, .bos-admin #result_list tbody tr { transition: none; }
+}

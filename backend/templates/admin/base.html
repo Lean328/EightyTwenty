@@ -11,6 +11,7 @@
 {% block extrastyle %}{% endblock %}
 <link rel="stylesheet" href="{% static 'bos/css/admin.css' %}">
 <link rel="stylesheet" href="{% static 'bos/css/experience.css' %}">
+<link rel="stylesheet" href="{% static 'bos/css/v2.css' %}">
 {% block extrahead %}{% endblock %}
 <script src="{% static 'bos/js/workspaces.js' %}" defer></script>
 <script src="{% static 'bos/js/admin.js' %}" defer></script>
@@ -55,6 +56,12 @@
       </nav>
 
       <div class="bos-sidebar-foot">
+        {% if has_permission %}
+        <a class="bos-side-account" href="{% url 'admin:bos_profile' %}" data-bos-tip="My profile" aria-label="My profile">
+          <span class="bos-avatar" aria-hidden="true">{{ user|initials }}</span>
+          <span class="bos-nav-text"><strong>{% firstof user.get_full_name user.email %}</strong><small>{% firstof bos_role_name user.get_role_display %}</small></span>
+        </a>
+        {% endif %}
         <button type="button" class="bos-collapse" data-bos-collapse aria-label="Collapse menu" data-bos-tip="Collapse menu">
           {% icon 'panel' %}<span class="bos-nav-text">Collapse</span>
         </button>
