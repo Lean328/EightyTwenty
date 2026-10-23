@@ -338,7 +338,8 @@ def test_payments_are_idempotent_and_capped(till, cafe, menu):
     assert pay(till, number, 2000, method="card", surcharge=59).status_code == 200
     over = pay(till, number, 2000, ref="P2")
     assert over.status_code == 422 and "more than the $15.60 due" in over.json()["error"]["message"]
-    done = pay(till, number, 1560, ref="P3", cashPaid=2000, change=440)
+    done = pay(till, number, 1560, ref="P3", cashPaid=1560, rounding=0, change=440)
+    assert done.status_code == 200, done.data
     assert done.json()["paid"] and done.json()["methods"] == ["card", "cash"]
     order = Order.objects.get()
     assert order.payments.count() == 2 and order.surcharge_cents == 59
@@ -1175,3 +1176,74 @@ def test_close_shift_checks_sales_against_recorded_payments(till, cafe, menu):
     assert shift.cash_sales_cents == 3560
     assert shift.expected_cents == 23560
     assert shift.variance_cents == 0
+
+@pytest.mark.parametrize("terminal", ["OTHER-TILL", ""])
+def test_cash_shift_rejects_other_or_missing_terminal(till, cafe, terminal):
+    opened = post(till, "/shifts", shift_body())
+    assert opened.status_code == 201, opened.data
+
+    till.credentials(HTTP_X_TERMINAL_ID=terminal)
+    move = {"id": "WRONG-TILL-MOVE", "type": "out", "amount": 1000, "reason": "Cash out", "by": "Mia"}
+
+    moved = post(till, "/shifts/SH1/moves", move)
+    assert moved.status_code == 409, moved.data
+
+    close = shift_body(
+        status="closed", cashSales=0, cashRefunds=0, counted=20000,
+        expected=20000, variance=0, closedAt="3:00 pm", closedBy="Mia",
+    )
+    closed = post(till, "/shifts/SH1", close, method="put")
+    assert closed.status_code == 409, closed.data
+
+    shift = CashShift.objects.get(reference="SH1")
+    assert shift.status == "open"
+    assert shift.moves == []
+
+
+def test_closed_shift_retry_still_checks_terminal(till, cafe):
+    opened = post(till, "/shifts", shift_body())
+    assert opened.status_code == 201, opened.data
+
+    close = shift_body(
+        status="closed", cashSales=0, cashRefunds=0, counted=20000,
+        expected=20000, variance=0, closedAt="3:00 pm", closedBy="Mia",
+    )
+    first = post(till, "/shifts/SH1", close, method="put")
+    assert first.status_code == 200, first.data
+
+    till.credentials(HTTP_X_TERMINAL_ID="OTHER-TILL")
+    retry = post(till, "/shifts/SH1", close, method="put")
+    assert retry.status_code == 409, retry.data
+
+
+@pytest.mark.parametrize("last_digit", range(10))
+def test_cash_payment_accepts_correct_rounding(till, cafe, menu, last_digit):
+    created = create(till)
+    amount = 1000 + last_digit
+    rounded = ((amount + 2) // 5) * 5
+
+    response = pay(
+        till, created["id"], amount, ref="CASH-ROUND-001",
+        cashPaid=rounded, rounding=rounded - amount, change=2000 - rounded,
+    )
+    assert response.status_code == 200, response.data
+
+    payment = Order.objects.get(number=created["id"]).payments.get()
+    assert payment.amount_cents == amount
+    assert payment.cash_paid_cents == rounded
+    assert payment.rounding_cents == rounded - amount
+
+
+@pytest.mark.parametrize("details", [
+    {"amount": 1003, "cashPaid": 1003, "rounding": 0},
+    {"amount": 1003, "cashPaid": 1000, "rounding": 2},
+    {"amount": 1003, "cashPaid": 1005, "rounding": -2},
+    {"method": "card", "amount": 1000, "cashPaid": 1000},
+])
+def test_payment_rejects_inconsistent_cash_details(till, cafe, menu, details):
+    created = create(till)
+    body = {"method": "cash", "ref": "INVALID-CASH-001", **details}
+
+    response = post(till, f"/orders/{quote(created['id'])}/payments", body)
+    assert response.status_code == 422, response.data
+    assert not Order.objects.get(number=created["id"]).payments.exists()

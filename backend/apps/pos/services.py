@@ -688,7 +688,13 @@ def shift_for(user, reference, lock=False):
         raise not_found(f"Shift {reference} was not found.")
     return shift
 
+def require_shift_terminal(request, shift):
+    terminal = terminal_of(request)
+    if not terminal or terminal != shift.terminal_id:
+        raise AppError("CONFLICT", "This cash shift belongs to another terminal.", 409)
+
 def cash_move(request, shift, move):
+    require_shift_terminal(request, shift)
     existing = next((row for row in shift.moves if row.get("id") == move["id"]), None)
 
     if existing is not None:
@@ -724,13 +730,12 @@ def cash_shift_totals(shift):
     return sales, refunds
 
 def close_shift(request, shift, data):
+    require_shift_terminal(request, shift)
     if shift.status == "closed":
         if shift.counted_cents == data["counted"]:
             return shift
         raise AppError("CONFLICT", "This shift is already closed.", 409)
 
-    if terminal_of(request) != shift.terminal_id:
-        raise AppError("CONFLICT", "This shift belongs to another terminal.", 409)
 
     sales, refunds = cash_shift_totals(shift)
     if data["cashSales"] != sales or data["cashRefunds"] != refunds:

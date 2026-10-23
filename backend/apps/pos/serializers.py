@@ -95,6 +95,24 @@ class PosPaymentIn(serializers.Serializer):
     rounding = serializers.IntegerField(min_value=-100, max_value=100, required=False, default=0)
     change = cents(required=False, allow_null=True)
     shiftId = serializers.CharField(max_length=60, required=False)
+
+    def validate(self, data):
+        rounding = data.get("rounding", 0)
+        cash_paid = data.get("cashPaid")
+        change = data.get("change")
+
+        if data["method"] != "cash":
+            if rounding != 0 or cash_paid is not None or change is not None:
+                raise serializers.ValidationError({"method": "Cash details are only allowed for cash payments."})
+            return data
+
+        rounded = ((data["amount"] + 2) // 5) * 5
+        if rounding != rounded - data["amount"]:
+            raise serializers.ValidationError({"rounding": "Cash rounding must match the nearest five cents."})
+        if cash_paid is not None and cash_paid != rounded:
+            raise serializers.ValidationError({"cashPaid": "Cash paid must match the rounded payment amount."})
+
+        return data
     
 
 
