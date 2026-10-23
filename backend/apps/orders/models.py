@@ -155,6 +155,14 @@ class OrderPayment(BaseModel):
         return f"{self.get_method_display()} ${self.amount_cents / 100:.2f}"
 
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="payments")
+    shift = models.ForeignKey(
+        "pos.CashShift",
+        on_delete=models.PROTECT,
+        related_name="payments",
+        null=True,
+        blank=True,
+        help_text="Cash shift associated with this payment.",
+    )
     method = models.CharField(
         max_length=6,
         choices=[
@@ -193,6 +201,14 @@ class OrderAdjustment(BaseModel):
         return f"{self.get_mode_display()} ${self.amount_cents / 100:.2f}"
 
     order = models.ForeignKey(Order, on_delete=models.CASCADE, related_name="adjustments")
+    shift = models.ForeignKey(
+        "pos.CashShift",
+        on_delete=models.PROTECT,
+        related_name="adjustments",
+        null=True,
+        blank=True,
+        help_text="Cash shift associated with this adjustment.",
+    )
     key = models.CharField(max_length=60)
     mode = models.CharField(
         max_length=6, choices=[("cancel", "Cancel"), ("void", "Void"), ("refund", "Refund")]

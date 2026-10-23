@@ -94,6 +94,8 @@ class PosPaymentIn(serializers.Serializer):
     cashPaid = cents(required=False, allow_null=True)
     rounding = serializers.IntegerField(min_value=-100, max_value=100, required=False, default=0)
     change = cents(required=False, allow_null=True)
+    shiftId = serializers.CharField(max_length=60, required=False)
+    
 
 
 class PosOrderIn(serializers.Serializer):
@@ -139,17 +141,39 @@ class PosPrepIn(serializers.Serializer):
     status = serializers.ChoiceField(choices=TILL_STATUSES)
     note = text(300)
 
+class PosRefundAllocationIn(serializers.Serializer):
+    method = serializers.ChoiceField(choices=METHODS)
+    amount = cents(min_value=1)
+    ref = serializers.CharField(max_length=80)
+    giftLast4 = serializers.CharField(max_length=4, required=False, allow_null=True, allow_blank=True, default=None)
 
 class PosAdjustmentIn(serializers.Serializer):
     key = serializers.CharField(max_length=60)
     mode = serializers.ChoiceField(choices=ADJUSTMENT_MODES)
     amount = cents(help_text="Cents returned to the customer.")
-    alloc = serializers.ListField(child=serializers.DictField(), required=False, default=list)
+    alloc = PosRefundAllocationIn(many=True, required=False, default=list)
     reason = text(200)
     by = text(120)
     approver = text(120)
     at = text(40)
     items = serializers.DictField(child=serializers.IntegerField(min_value=0), required=False)
+    shiftId = serializers.CharField(max_length=60, required=False)
+
+    def validate(self, data):
+        allocations = data.get("alloc", [])
+
+        if allocations:
+            if sum(row["amount"] for row in allocations) != data["amount"]:
+                raise serializers.ValidationError({"alloc": "Allocated amounts must equal the refund amount."})
+
+            references = [row["ref"] for row in allocations]
+            if len(references) != len(set(references)):
+                raise serializers.ValidationError({"alloc": "Each payment reference may appear only once."})
+
+        if data.get("shiftId") and data["amount"] > 0 and not allocations:
+            raise serializers.ValidationError({"alloc": "Refunds linked to a shift must include payment allocations."})
+
+        return data
 
 
 class PosLineQtyIn(serializers.Serializer):

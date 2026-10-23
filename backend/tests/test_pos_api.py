@@ -538,20 +538,32 @@ def shift_body(**overrides):
 def test_cash_shift_open_move_close(till, cafe):
     assert post(till, "/shifts", shift_body()).status_code == 201
     assert post(till, "/shifts", shift_body(id="SH2")).status_code == 409
+
     move = {"id": "M1", "type": "out", "amount": 4500, "reason": "Banking drop", "by": "Mia"}
     assert len(post(till, "/shifts/SH1/moves", move).json()["moves"]) == 1
     assert len(post(till, "/shifts/SH1/moves", move).json()["moves"]) == 1
-    assert till.get(f"{BASE}/snapshot?cafe=braddon").json()["currentShift"]["id"] == "SH1"
-    close = shift_body(status="closed", cashSales=48650, cashRefunds=630, moves=[move],
-                       closedAt="3:08 pm", closedBy="Mia", counted=63500, expected=63520,
-                       variance=-20)  # fmt: skip
-    wrong = {**close, "expected": 60000, "variance": 3500}
+
+    snapshot = till.get(f"{BASE}/snapshot?cafe=braddon").json()
+    assert snapshot["currentShift"]["id"] == "SH1"
+
+    close = shift_body(
+        status="closed", cashSales=0, cashRefunds=0, moves=[move],
+        closedAt="3:08 pm", closedBy="Mia", counted=15480,
+        expected=15500, variance=-20,
+    )
+    wrong = {**close, "expected": 15000, "variance": 480}
     assert post(till, "/shifts/SH1", wrong, method="put").status_code == 422
-    closed = post(till, "/shifts/SH1", close, method="put").json()
-    assert closed["status"] == "closed" and closed["variance"] == -20
-    assert CashShift.objects.get().expected_cents == 63520
-    snap = till.get(f"{BASE}/snapshot?cafe=braddon").json()
-    assert snap["currentShift"] is None and snap["closedShifts"][0]["id"] == "SH1"
+
+    response = post(till, "/shifts/SH1", close, method="put")
+    assert response.status_code == 200, response.data
+    closed = response.json()
+    assert closed["status"] == "closed"
+    assert closed["variance"] == -20
+    assert CashShift.objects.get().expected_cents == 15500
+
+    snapshot = till.get(f"{BASE}/snapshot?cafe=braddon").json()
+    assert snapshot["currentShift"] is None
+    assert snapshot["closedShifts"][0]["id"] == "SH1"
 
 
 def test_transactions_and_audit_are_kept_once(till, cafe):
@@ -871,3 +883,295 @@ def test_dashboard_figures_come_from_real_records(till, cafe, menu, regular, app
     assert reports["loyaltyActivity"][0]["when"].startswith("Today")
     assert reports["days"][-1]["sales"] == 35.6  # till order; the app order is not accepted
     assert reports["salesTodayComparison"] == ""  # nothing sold a week ago to compare with
+
+@pytest.mark.parametrize(
+    "changed",
+    [
+        {},
+        {"amount": 3500},
+        {"method": "card"},
+        {"tip": 100},
+    ],
+)
+def test_payment_reference_checks_retry_details(
+    till, cafe, menu, changed
+):
+    created = create(till)
+    number = created["id"]
+
+    first = pay(till, number, 3560, ref="RETRY-CHECK-001")
+    assert first.status_code in (200, 201), first.data
+
+    body = {
+        "method": "cash",
+        "amount": 3560,
+        "tip": 0,
+        "surcharge": 0,
+        "ref": "RETRY-CHECK-001",
+        "by": "Mia Tran",
+        **changed,
+    }
+
+    response = post(
+        till,
+        f"/orders/{quote(number)}/payments",
+        body,
+    )
+
+    if changed:
+        assert response.status_code == 409, response.data
+    else:
+        assert response.status_code in (200, 201), response.data
+
+    order = Order.objects.get(number=number)
+    assert order.payments.count() == 1
+
+    payment = order.payments.get()
+    assert payment.method == "cash"
+    assert payment.amount_cents == 3560
+    assert payment.tip_cents == 0
+
+@pytest.mark.parametrize("changed", [
+    {"amount": 5000},
+    {"type": "in"},
+    {"reason": "Changed reason"},
+])
+def test_cash_move_reference_rejects_changed_details(till, cafe, changed):
+    opened = post(till, "/shifts", shift_body())
+    assert opened.status_code == 201, opened.data
+
+    move = {
+        "id": "MOVE-CONFLICT-001",
+        "type": "out",
+        "amount": 4500,
+        "reason": "Banking drop",
+        "by": "Mia",
+    }
+
+    first = post(till, "/shifts/SH1/moves", move)
+    assert first.status_code == 200, first.data
+
+    retry = post(till, "/shifts/SH1/moves", move)
+    assert retry.status_code == 200, retry.data
+
+    conflict = post(till, "/shifts/SH1/moves", {**move, **changed})
+    assert conflict.status_code == 409, conflict.data
+
+    shift = CashShift.objects.get(reference="SH1")
+    assert len(shift.moves) == 1
+    assert shift.moves[0] == {**move, "approver": "", "at": ""}
+
+def test_payment_is_linked_to_requested_shift(till, cafe, menu):
+    opened = post(till, "/shifts", shift_body())
+    assert opened.status_code == 201, opened.data
+    created = create(till)
+
+    paid = pay(till, created["id"], 3560, ref="SHIFT-PAY-001", shiftId="SH1")
+    assert paid.status_code == 200, paid.data
+
+    order = Order.objects.get(number=created["id"])
+    payment = order.payments.get()
+    assert payment.shift.reference == "SH1"
+
+    retry = pay(till, created["id"], 3560, ref="SHIFT-PAY-001", shiftId="SH1")
+    assert retry.status_code == 200, retry.data
+    assert order.payments.count() == 1
+
+    changed = pay(till, created["id"], 3560, ref="SHIFT-PAY-001", shiftId="OTHER-SHIFT")
+    assert changed.status_code == 409, changed.data
+
+
+def test_payment_rejects_unknown_shift(till, cafe, menu):
+    created = create(till)
+
+    response = pay(till, created["id"], 3560, ref="SHIFT-PAY-002", shiftId="MISSING")
+    assert response.status_code == 409, response.data
+    assert not Order.objects.get(number=created["id"]).payments.exists()
+
+
+def test_payment_rejects_shift_from_another_terminal(till, cafe, menu):
+    opened = post(till, "/shifts", shift_body())
+    assert opened.status_code == 201, opened.data
+    created = create(till)
+
+    till.credentials(HTTP_X_TERMINAL_ID="OTHER-TILL")
+    response = pay(till, created["id"], 3560, ref="SHIFT-PAY-003", shiftId="SH1")
+
+    assert response.status_code == 409, response.data
+    assert not Order.objects.get(number=created["id"]).payments.exists()
+
+def test_refund_is_linked_to_shift_and_rejects_changed_amount(till, cafe, menu):
+    opened = post(till, "/shifts", shift_body())
+    assert opened.status_code == 201, opened.data
+    created = create(till)
+    number = created["id"]
+
+    paid = pay(till, number, 3560, ref="REFUND-PAY-001", shiftId="SH1")
+    assert paid.status_code == 200, paid.data
+
+    body = {
+        "adjustment": {
+            "key": "REFUND-SHIFT-001",
+            "mode": "refund",
+            "amount": 3560,
+            "alloc": [{"method": "cash", "amount": 3560, "ref": "REFUND-PAY-001"}],
+            "reason": "Customer requested a refund",
+            "by": "Mia Tran",
+            "shiftId": "SH1",
+        },
+        "lines": [{"key": "L1", "qty": 2}, {"key": "L2", "qty": 1}],
+        "total": 35.6,
+        "status": "refunded",
+    }
+    path = f"/orders/{quote(number)}/adjustments"
+
+    response = post(till, path, body)
+    assert response.status_code == 200, response.data
+
+    order = Order.objects.get(number=number)
+    assert order.adjustments.get().shift.reference == "SH1"
+
+    retry = post(till, path, body)
+    assert retry.status_code == 200, retry.data
+    assert order.adjustments.count() == 1
+
+    changed_adjustment = {
+        **body["adjustment"],
+        "amount": 3500,
+        "alloc": [{"method": "cash", "amount": 3500, "ref": "REFUND-PAY-001"}],
+    }
+    changed = {**body, "adjustment": changed_adjustment}
+    conflict = post(till, path, changed)
+    assert conflict.status_code == 409, conflict.data
+    assert order.adjustments.get().amount_cents == 3560
+
+@pytest.mark.parametrize("allocations", [
+    [{"method": "cash", "amount": 3500, "ref": "PAY-ALLOC-001"}],
+    [{"method": "cash", "amount": -100, "ref": "PAY-ALLOC-001"}],
+    [{"method": "invalid", "amount": 3560, "ref": "PAY-ALLOC-001"}],
+    [
+        {"method": "cash", "amount": 1780, "ref": "PAY-ALLOC-001"},
+        {"method": "cash", "amount": 1780, "ref": "PAY-ALLOC-001"},
+    ],
+])
+def test_refund_rejects_invalid_allocations(till, cafe, menu, allocations):
+    created = create(till)
+    number = created["id"]
+    paid = pay(till, number, 3560, ref="PAY-ALLOC-001")
+    assert paid.status_code == 200, paid.data
+
+    body = {
+        "adjustment": {
+            "key": "REFUND-ALLOC-001",
+            "mode": "refund",
+            "amount": 3560,
+            "alloc": allocations,
+        },
+        "lines": [{"key": "L1", "qty": 2}, {"key": "L2", "qty": 1}],
+        "total": 35.6,
+        "status": "refunded",
+    }
+
+    response = post(till, f"/orders/{quote(number)}/adjustments", body)
+    assert response.status_code == 422, response.data
+    assert not Order.objects.get(number=number).adjustments.exists()
+
+@pytest.mark.parametrize("allocations", [
+    [{"method": "cash", "amount": 3560, "ref": "UNKNOWN"}],
+    [{"method": "card", "amount": 3560, "ref": "CASH-ORIGINAL"}],
+    [
+        {"method": "cash", "amount": 1001, "ref": "CASH-ORIGINAL"},
+        {"method": "card", "amount": 2559, "ref": "CARD-ORIGINAL"},
+    ],
+])
+def test_refund_allocations_must_match_original_payments(till, cafe, menu, allocations):
+    created = create(till)
+    number = created["id"]
+
+    cash = pay(till, number, 1000, ref="CASH-ORIGINAL")
+    assert cash.status_code == 200, cash.data
+    card = pay(till, number, 2560, ref="CARD-ORIGINAL", method="card")
+    assert card.status_code == 200, card.data
+
+    body = {
+        "adjustment": {
+            "key": "REFUND-ORIGINAL-CHECK",
+            "mode": "refund",
+            "amount": 3560,
+            "alloc": allocations,
+        },
+        "lines": [{"key": "L1", "qty": 2}, {"key": "L2", "qty": 1}],
+        "total": 35.6,
+        "status": "refunded",
+    }
+
+    response = post(till, f"/orders/{quote(number)}/adjustments", body)
+    assert response.status_code == 422, response.data
+
+    order = Order.objects.get(number=number)
+    assert not order.adjustments.exists()
+    assert order.status == "confirmed"
+
+@pytest.mark.parametrize("second_amount, expected_status", [(400, 200), (401, 422)])
+def test_refund_uses_remaining_balance_per_payment(till, cafe, menu, second_amount, expected_status):
+    created = create(till)
+    number = created["id"]
+
+    cash = pay(till, number, 1000, ref="CASH-PARTIAL")
+    assert cash.status_code == 200, cash.data
+    card = pay(till, number, 2560, ref="CARD-PARTIAL", method="card")
+    assert card.status_code == 200, card.data
+
+    path = f"/orders/{quote(number)}/adjustments"
+
+    def refund_body(key, amount):
+        return {
+            "adjustment": {
+                "key": key,
+                "mode": "refund",
+                "amount": amount,
+                "alloc": [{"method": "cash", "amount": amount, "ref": "CASH-PARTIAL"}],
+                "reason": "Partial refund",
+            },
+            "lines": [{"key": "L1", "qty": 2}, {"key": "L2", "qty": 1}],
+            "total": 35.6,
+            "status": "new",
+        }
+
+    first = post(till, path, refund_body("PARTIAL-REFUND-1", 600))
+    assert first.status_code == 200, first.data
+
+    second = post(till, path, refund_body("PARTIAL-REFUND-2", second_amount))
+    assert second.status_code == expected_status, second.data
+
+    order = Order.objects.get(number=number)
+    refunds = list(order.adjustments.order_by("created_at"))
+    assert len(refunds) == (2 if expected_status == 200 else 1)
+    assert sum(refund.amount_cents for refund in refunds) == (1000 if expected_status == 200 else 600)
+
+def test_close_shift_checks_sales_against_recorded_payments(till, cafe, menu):
+    opened = post(till, "/shifts", shift_body())
+    assert opened.status_code == 201, opened.data
+    created = create(till)
+
+    paid = pay(till, created["id"], 3560, ref="CLOSE-PAY-001", shiftId="SH1")
+    assert paid.status_code == 200, paid.data
+
+    close = shift_body(
+        status="closed", cashSales=3560, cashRefunds=0,
+        closedAt="3:00 pm", closedBy="Mia", counted=23560,
+        expected=23560, variance=0,
+    )
+    forged = {**close, "cashSales": 0, "expected": 20000, "variance": 3560}
+
+    rejected = post(till, "/shifts/SH1", forged, method="put")
+    assert rejected.status_code == 422, rejected.data
+    assert CashShift.objects.get(reference="SH1").status == "open"
+
+    accepted = post(till, "/shifts/SH1", close, method="put")
+    assert accepted.status_code == 200, accepted.data
+
+    shift = CashShift.objects.get(reference="SH1")
+    assert shift.cash_sales_cents == 3560
+    assert shift.expected_cents == 23560
+    assert shift.variance_cents == 0

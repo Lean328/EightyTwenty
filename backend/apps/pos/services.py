@@ -318,9 +318,55 @@ def refunded_cents(order):
     return order.adjustments.aggregate(total=Sum("amount_cents"))["total"] or 0
 
 
+def resolve_cash_shift(request, location, reference):
+    if reference is None:
+        return None
+
+    shift = CashShift.objects.select_for_update().filter(
+        reference=reference,
+        location=location,
+        terminal_id=terminal_of(request),
+    ).first()
+
+    if shift is None:
+        raise AppError("CONFLICT", "This cash shift does not belong to the order location and terminal.", 409)
+    if shift.status != "open":
+        raise AppError("CONFLICT", "This cash shift is already closed.", 409)
+
+    return shift
+
 def record_payment(request, order, data, save=True):
     """Records a tender already taken (cash counted, card approved on the terminal)."""
-    if order.payments.filter(reference=data["ref"]).exists():
+    existing = order.payments.filter(reference=data["ref"]).first()
+
+    if existing is not None:
+        expected = {
+            "method": data["method"],
+            "amount_cents": data["amount"],
+            "tip_cents": data.get("tip") or 0,
+            "surcharge_cents": data.get("surcharge") or 0,
+            "gift_last4": data.get("giftLast4") or "",
+            "split_mode": data.get("mode") or "",
+            "items": data.get("items") or {},
+            "cash_paid_cents": data.get("cashPaid"),
+            "rounding_cents": data.get("rounding") or 0,
+            "change_cents": data.get("change"),
+            "staff_name": data.get("by") or "",
+            "taken_at": data.get("at") or "",
+            "terminal_id": terminal_of(request),
+        }
+
+        saved_shift = existing.shift.reference if existing.shift_id else None
+        shift_changed = saved_shift != data.get("shiftId")
+
+        if shift_changed or any(getattr(existing, field) != value for field, value in expected.items()):
+            raise AppError(
+                "CONFLICT",
+                "This payment reference was already used "
+                "with different payment details.",
+                409,
+            )
+
         return order
     if order.status in {"declined", "cancelled", "refunded"}:
         raise AppError(
@@ -332,8 +378,18 @@ def record_payment(request, order, data, save=True):
             f"{money(data['amount'])} is more than the {money(max(0, due))} due on {order.number}.",
             amount="invalid",
         )
+
+    shift = None
+    if data.get("shiftId"):
+        shift = resolve_cash_shift(request, order.location, data.get("shiftId"))
+
+        if shift is None:
+            raise AppError("CONFLICT", "This cash shift does not belong to the order location and terminal.", 409)
+        if shift.status != "open":
+            raise AppError("CONFLICT", "This cash shift is already closed.", 409)
     OrderPayment.objects.create(
         order=order,
+        shift=shift,
         method=data["method"],
         amount_cents=data["amount"],
         tip_cents=data.get("tip") or 0,
@@ -418,15 +474,93 @@ def set_prep(request, order, data):
     return order
 
 
+def validate_refund_allocations(order, change):
+    allocations = change.get("alloc") or []
+    if not allocations:
+        return
+
+    payments = {
+        payment.reference: {
+            "method": payment.method,
+            "amount": payment.amount_cents,
+            "giftLast4": payment.gift_last4 or None,
+        }
+        for payment in order.payments.all()
+    }
+
+    if order.channel == "app":
+        charged = order.total_cents - order.surcharge_cents
+        if charged > 0:
+            payments[f"app-{order.pk}"] = {
+                "method": "wallet" if order.payment_choice == "apple_pay" else "card",
+                "amount": charged,
+                "giftLast4": None,
+            }
+        if order.gift_card_cents:
+            payments[f"app-gift-{order.pk}"] = {
+                "method": "gift",
+                "amount": order.gift_card_cents,
+                "giftLast4": None,
+            }
+
+    used = {}
+    for previous in order.adjustments.all():
+        if previous.amount_cents and not previous.allocation:
+            raise invalid("An earlier refund has no payment allocation. Reconcile it before issuing another allocated refund.", alloc="invalid")
+
+        for row in previous.allocation:
+            reference = row.get("ref")
+            amount = row.get("amount")
+            if reference not in payments or type(amount) is not int or amount < 0:
+                raise invalid("An earlier refund has an invalid allocation. Reconcile it before continuing.", alloc="invalid")
+            used[reference] = used.get(reference, 0) + amount
+
+    requested = {}
+    for row in allocations:
+        reference = row["ref"]
+        payment = payments.get(reference)
+
+        if payment is None:
+            raise invalid("The referenced payment does not belong to this order.", alloc="invalid")
+        if row["method"] != payment["method"]:
+            raise invalid("The refund method must match the original payment.", alloc="invalid")
+        if (row.get("giftLast4") or None) != payment["giftLast4"]:
+            raise invalid("The gift card details must match the original payment.", alloc="invalid")
+
+        requested[reference] = requested.get(reference, 0) + row["amount"]
+        remaining = payment["amount"] - used.get(reference, 0)
+        if requested[reference] > remaining:
+            raise invalid("The refund exceeds the remaining amount of the original payment.", alloc="invalid")
+
+
 def adjust(request, order, data):
     change = data["adjustment"]
-    if order.adjustments.filter(key=change["key"]).exists():
+    existing = order.adjustments.filter(key=change["key"]).first()
+
+    if existing is not None:
+        expected = {
+            "mode": change["mode"],
+            "amount_cents": change["amount"],
+            "allocation": change.get("alloc") or [],
+            "items": change.get("items") or {},
+            "reason": change.get("reason") or "",
+            "staff_name": change.get("by") or "",
+            "approver_name": change.get("approver") or "",
+            "made_at": change.get("at") or "",
+            "terminal_id": terminal_of(request),
+        }
+        saved_shift = existing.shift.reference if existing.shift_id else None
+        changed = any(getattr(existing, field) != value for field, value in expected.items())
+
+        if changed or saved_shift != change.get("shiftId"):
+            raise AppError("CONFLICT", "This adjustment reference was already used with different details.", 409)
         return order
     status = FROM_TILL.get(data["status"])
     if status is None or status in {"failed"}:
         raise invalid("That status can’t follow a refund, void or cancellation.", status="invalid")
     if order.status in {"declined", "cancelled", "refunded"}:
         raise AppError("CONFLICT", f"Order {order.number} is already {order.status}.", 409)
+
     refundable = paid_cents(order) - refunded_cents(order)
     if change["amount"] > refundable:
         raise invalid(
@@ -438,6 +572,9 @@ def adjust(request, order, data):
         raise invalid(
             "A refund, void or cancellation can’t raise the order total.", total="invalid"
         )
+
+    validate_refund_allocations(order, change)
+    shift = resolve_cash_shift(request, order.location, change.get("shiftId"))
     lines = {line.key or str(line.pk): line for line in order.lines.all()}
     kept = {row["key"]: row["qty"] for row in data["lines"]}
     unknown = [key for key in kept if key not in lines]
@@ -453,6 +590,7 @@ def adjust(request, order, data):
     before = snapshot(order)
     OrderAdjustment.objects.create(
         order=order,
+        shift=shift,
         key=change["key"],
         mode=change["mode"],
         amount_cents=change["amount"],
@@ -550,12 +688,17 @@ def shift_for(user, reference, lock=False):
         raise not_found(f"Shift {reference} was not found.")
     return shift
 
-
 def cash_move(request, shift, move):
-    if any(row.get("id") == move["id"] for row in shift.moves):
+    existing = next((row for row in shift.moves if row.get("id") == move["id"]), None)
+
+    if existing is not None:
+        if existing != move:
+            raise AppError("CONFLICT", "This cash movement reference was already used with different details.", 409)
         return shift
+
     if shift.status != "open":
         raise AppError("CONFLICT", "This shift is already closed.", 409)
+
     shift.moves = [*shift.moves, move]
     shift.updated_by = request.user
     shift.save(update_fields=["moves", "updated_by", "updated_at"])
@@ -567,36 +710,67 @@ def expected_cash(shift_float, sales, refunds, moves):
     return shift_float + sales - refunds + moved
 
 
+def cash_shift_totals(shift):
+    sales = sum(
+        payment.amount_cents + payment.rounding_cents
+        for payment in shift.payments.filter(method="cash")
+    )
+    refunds = sum(
+        row["amount"]
+        for adjustment in shift.adjustments.all()
+        for row in adjustment.allocation
+        if row.get("method") == "cash"
+    )
+    return sales, refunds
+
 def close_shift(request, shift, data):
     if shift.status == "closed":
         if shift.counted_cents == data["counted"]:
             return shift
         raise AppError("CONFLICT", "This shift is already closed.", 409)
-    known = {row.get("id") for row in shift.moves}
-    moves = [*shift.moves, *[m for m in data.get("moves") or [] if m["id"] not in known]]
-    expected = expected_cash(shift.float_cents, data["cashSales"], data["cashRefunds"], moves)
-    if data["expected"] != expected or data["variance"] != data["counted"] - expected:
+
+    if terminal_of(request) != shift.terminal_id:
+        raise AppError("CONFLICT", "This shift belongs to another terminal.", 409)
+
+    sales, refunds = cash_shift_totals(shift)
+    if data["cashSales"] != sales or data["cashRefunds"] != refunds:
         raise invalid(
-            f"The drawer does not add up: expected {money(expected)} "
-            f"(float + cash sales − cash refunds ± cash in/out).",
-            expected="invalid",
+            f"Cash totals do not match server records: sales {money(sales)}, refunds {money(refunds)}. Sync all transactions before closing.",
+            cashSales="invalid",
+            cashRefunds="invalid",
         )
+
+    known = {row.get("id"): row for row in shift.moves}
+    moves = list(shift.moves)
+
+    for move in data.get("moves") or []:
+        existing = known.get(move["id"])
+        if existing is not None:
+            if existing != move:
+                raise AppError("CONFLICT", "A cash movement reference has different details.", 409)
+        else:
+            moves.append(move)
+            known[move["id"]] = move
+
+    expected = expected_cash(shift.float_cents, sales, refunds, moves)
+    if data["expected"] != expected or data["variance"] != data["counted"] - expected:
+        raise invalid("The expected cash or variance does not match server calculations.", expected="invalid")
+
     shift.moves = moves
-    shift.cash_sales_cents = data["cashSales"]
-    shift.cash_refunds_cents = data["cashRefunds"]
+    shift.cash_sales_cents = sales
+    shift.cash_refunds_cents = refunds
     shift.status = "closed"
     shift.closed_at = timezone.now()
     shift.closed_label = data.get("closedAt") or ""
     shift.closed_by = data.get("closedBy") or ""
     shift.counted_cents = data["counted"]
     shift.expected_cents = expected
-    shift.variance_cents = data["variance"]
+    shift.variance_cents = data["counted"] - expected
     shift.note = data.get("note") or ""
     shift.approved_by = data.get("approvedBy") or ""
     shift.updated_by = request.user
     shift.save()
     return shift
-
 
 def record_transaction(request, data):
     location = location_for(request.user, data["cafeId"])
