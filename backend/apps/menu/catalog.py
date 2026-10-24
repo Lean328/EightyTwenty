@@ -13,6 +13,7 @@ from .models import (
     MenuItemDietaryTag,
     MenuItemModifierGroup,
     ModifierOption,
+    LocationModifierAvailability,
 )
 from .services import effective_price
 
@@ -38,7 +39,7 @@ class Entry:
         return self.item.category.slug
 
 
-def menu_items(location=None, slugs=None, any_location=False):
+def menu_items(location=None, slugs=None, any_location=False, include_unavailable_modifiers=False):
     """
     Published items with live prices, in menu order.
 
@@ -72,6 +73,12 @@ def menu_items(location=None, slugs=None, any_location=False):
         if location
         else {}
     )
+    unavailable_modifiers = set()
+    if location is not None and not include_unavailable_modifiers:
+        unavailable_modifiers = set(
+            LocationModifierAvailability.objects.filter(location=location, available=False).values_list("label", flat=True)
+        )
+
     entries = []
     for item in qs:  # same order as the website bootstrap (sort_order, slug)
         override = overrides.get(item.pk)
@@ -83,7 +90,8 @@ def menu_items(location=None, slugs=None, any_location=False):
                 name=link.modifier_group.name,
                 required=link.modifier_group.is_required,
                 max_select=link.modifier_group.max_select,
-                options=[(o.name, o.price_delta_cents) for o in link.modifier_group.options.all()],
+                options=[(option.name, option.price_delta_cents) for option in link.modifier_group.options.all() if option.name not in unavailable_modifiers
+                ],
             )
             for link in item.modifier_links.all()
         ]
@@ -91,7 +99,7 @@ def menu_items(location=None, slugs=None, any_location=False):
             Entry(
                 item=item,
                 price_cents=effective_price(item, override),
-                available=not override or override.is_available,
+                available=(not override or override.is_available) and not any(group.required and not group.options for group in groups),
                 groups=groups,
             )
         )

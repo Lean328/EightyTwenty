@@ -12,6 +12,14 @@ import dj_database_url
 import environ
 from django.core.exceptions import ImproperlyConfigured
 
+from corsheaders.defaults import default_headers
+
+CORS_ALLOW_HEADERS = [
+    *default_headers,
+    "x-terminal-id",
+    "idempotency-key",
+]
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 env = environ.Env()
 environ.Env.read_env(BASE_DIR / ".env", overwrite=False)

@@ -29,13 +29,13 @@ from apps.locations.models import Location
 from apps.loyalty import services as loyalty
 from apps.loyalty.models import STAMPS_PER_REWARD
 from apps.menu.catalog import menu_items
-from apps.menu.models import MenuItem
+from apps.menu.models import Category, MenuItem, LocationModifierAvailability
 from apps.menu.services import set_availability
 from apps.mobile.errors import AppError, invalid, not_found
 from apps.orders import services as order_services
 from apps.orders.models import Order, OrderAdjustment, OrderLine, OrderPayment
 
-from .models import CashShift, Promotion, TillTransaction
+from .models import CashShift, Promotion, TillTransaction, TillSettings
 
 # POS OrderStatus ↔ stored status. "new" is confirmed (accepted) for till orders; an app order
 # waiting for the café is "received" and shows on the till as new + accepted: false.
@@ -1050,3 +1050,64 @@ def upsert_catering(request, reference, data):
         enquiry.save()
     audit(request, enquiry, before, "pos_create" if before is None else "pos_update")
     return enquiry
+
+def set_category_order(request, cafe, ids):
+    location = location_for(request.user, cafe)
+
+    if request.user.role not in {"owner", "admin", "manager"}:
+        raise AppError("FORBIDDEN", "A manager account is required to change category order.", 403)
+
+    valid = set(Category.objects.filter(is_active=True, slug__in=ids).values_list("slug", flat=True))
+    if any(category not in valid for category in ids):
+        raise invalid("One or more categories are unknown or inactive.", ids="invalid")
+
+    TillSettings.objects.update_or_create(location=location, defaults={"category_order": ids})
+
+def set_item_price(request, cafe, item_slug, price):
+    location = location_for(request.user, cafe)
+
+    if request.user.role not in {"owner", "admin"}:
+        raise AppError("FORBIDDEN", "Only owner/admin accounts can change menu prices.", 403)
+
+    item = item_for(item_slug)
+    if item.location_id is not None and item.location_id != location.pk:
+        raise not_found("This item does not belong to the selected cafe.")
+
+    set_availability(request, location.slug, [item.slug], {"price_override_cents": int(price * 100)})
+
+def set_modifier_availability(request, cafe, label, available):
+    location = location_for(request.user, cafe)
+
+    if request.user.role not in {"owner", "admin", "manager"}:
+        raise AppError("FORBIDDEN", "A manager account is required to change modifier availability.", 403)
+
+    entries = menu_items(location, include_unavailable_modifiers=True)
+    labels = {name for entry in entries for group in entry.groups for name, price in group.options}
+    if label not in labels:
+        raise not_found("This modifier is not on the selected cafe menu.")
+
+    row = LocationModifierAvailability.objects.filter(location=location, label=label).first()
+    before = snapshot(row) if row else None
+    row, created = LocationModifierAvailability.objects.update_or_create(
+        location=location,
+        label=label,
+        defaults={"available": available, "updated_by": request.user},
+        create_defaults={"available": available, "created_by": request.user, "updated_by": request.user},
+    )
+    audit(request, row, before, "create" if created else "update")
+
+def update_till_toggles(request, cafe, toggles):
+    location = location_for(request.user, cafe)
+
+    if request.user.role not in {"owner", "admin"}:
+        raise AppError("FORBIDDEN", "Only owner/admin accounts can change till settings.", 403)
+
+    settings, created = TillSettings.objects.select_for_update().get_or_create(
+        location=location,
+        defaults={"created_by": request.user, "updated_by": request.user},
+    )
+    before = None if created else snapshot(settings)
+    settings.toggles = {**settings.toggles, **toggles}
+    settings.updated_by = request.user
+    settings.save(update_fields=["toggles", "updated_by", "updated_at"])
+    audit(request, settings, before, "create" if created else "update")

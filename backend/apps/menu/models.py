@@ -156,3 +156,16 @@ class LocationMenuItem(ManagedModel):
                 fields=["location", "menu_item"], name="unique_location_menu_item"
             )
         ]
+
+class LocationModifierAvailability(ManagedModel):
+    location = models.ForeignKey("locations.Location", on_delete=models.PROTECT)
+    label = models.CharField(max_length=120)
+    available = models.BooleanField(default=True)
+
+    class Meta(ManagedModel.Meta):
+        constraints = [
+            models.UniqueConstraint(fields=["location", "label"], name="unique_location_modifier_label"),
+        ]
+
+    def __str__(self):
+        return f"{self.location} · {self.label}"

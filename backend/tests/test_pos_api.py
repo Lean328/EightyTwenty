@@ -1247,3 +1247,149 @@ def test_payment_rejects_inconsistent_cash_details(till, cafe, menu, details):
     response = post(till, f"/orders/{quote(created['id'])}/payments", body)
     assert response.status_code == 422, response.data
     assert not Order.objects.get(number=created["id"]).payments.exists()
+
+def test_manager_can_save_category_order_for_one_cafe(till, cashier, cafe, menu, elsewhere):
+    cashier.role = "manager"
+    cashier.save(update_fields=["role"])
+
+    response = post(till, "/locations/braddon/categories/order", {"ids": ["allday", "coffee"]}, method="put")
+    assert response.status_code == 200, response.data
+
+    snapshot = till.get(f"{BASE}/snapshot?cafe=braddon")
+    assert snapshot.status_code == 200, snapshot.data
+    assert snapshot.json()["settings"]["categoryOrder"] == ["allday", "coffee"]
+
+    from apps.pos.models import TillSettings
+    assert not TillSettings.objects.filter(location=elsewhere).exists()
+
+
+def test_cashier_cannot_change_category_order(till, cafe, menu):
+    response = post(till, "/locations/braddon/categories/order", {"ids": ["coffee"]}, method="put")
+    assert response.status_code == 403, response.data
+
+
+@pytest.mark.parametrize("ids", [["coffee", "coffee"], ["unknown-category"]])
+def test_category_order_rejects_invalid_ids(till, cashier, cafe, menu, ids):
+    cashier.role = "manager"
+    cashier.save(update_fields=["role"])
+
+    response = post(till, "/locations/braddon/categories/order", {"ids": ids}, method="put")
+    assert response.status_code == 422, response.data
+
+def test_owner_can_change_branch_price_without_changing_base_price(till, cafe, menu):
+    owner = UserFactory(role="owner", is_staff=True)
+    till.force_authenticate(owner)
+    item = menu["coffee"]
+    original = item.base_price_cents
+
+    response = post(till, f"/locations/braddon/items/{item.slug}/price", {"price": "6.25"}, method="put")
+    assert response.status_code == 200, response.data
+
+    override = LocationMenuItem.objects.get(location=cafe, menu_item=item)
+    assert override.price_override_cents == 625
+
+    item.refresh_from_db()
+    assert item.base_price_cents == original
+
+    snapshot = till.get(f"{BASE}/snapshot?cafe=braddon").json()
+    product = next(row for row in snapshot["menu"] if row["id"] == item.slug)
+    assert product["price"] == 6.25
+
+
+@pytest.mark.parametrize("role", ["staff", "manager"])
+def test_branch_price_requires_owner_or_admin(till, cashier, cafe, menu, role):
+    cashier.role = role
+    cashier.save(update_fields=["role"])
+
+    response = post(till, "/locations/braddon/items/hotcoffee/price", {"price": "6.25"}, method="put")
+    assert response.status_code == 403, response.data
+    assert not LocationMenuItem.objects.filter(location=cafe, menu_item=menu["coffee"]).exists()
+
+
+@pytest.mark.parametrize("price", ["-1", "6.251", "NaN"])
+def test_branch_price_rejects_invalid_amounts(till, cafe, menu, price):
+    till.force_authenticate(UserFactory(role="owner", is_staff=True))
+
+    response = post(till, "/locations/braddon/items/hotcoffee/price", {"price": price}, method="put")
+    assert response.status_code == 422, response.data
+    assert not LocationMenuItem.objects.filter(location=cafe, menu_item=menu["coffee"]).exists()
+
+def test_modifier_availability_is_scoped_and_can_be_restored(till, cashier, cafe, menu, elsewhere):
+    from apps.menu.catalog import menu_items
+
+    cashier.role = "manager"
+    cashier.save(update_fields=["role"])
+    path = "/locations/braddon/modifiers/availability"
+
+    disabled = post(till, path, {"label": "OAT ADC", "available": False}, method="put")
+    assert disabled.status_code == 200, disabled.data
+
+    def labels(location):
+        return {name for entry in menu_items(location) for group in entry.groups for name, price in group.options}
+
+    assert "OAT ADC" not in labels(cafe)
+    assert "OAT ADC" in labels(elsewhere)
+
+    snapshot = till.get(f"{BASE}/snapshot?cafe=braddon").json()
+    assert "OAT ADC" in snapshot["availability"]["unavailableMods"]
+    product = next(row for row in snapshot["menu"] if row["id"] == "hotcoffee")
+    assert any(option[0] == "OAT ADC" for group in product["mods"] for option in group["options"])
+
+    restored = post(till, path, {"label": "OAT ADC", "available": True}, method="put")
+    assert restored.status_code == 200, restored.data
+    assert "OAT ADC" in labels(cafe)
+
+
+def test_cashier_cannot_change_modifier_availability(till, cafe, menu):
+    response = post(till, "/locations/braddon/modifiers/availability", {"label": "OAT ADC", "available": False}, method="put")
+    assert response.status_code == 403, response.data
+
+
+def test_modifier_must_exist_on_cafe_menu(till, cashier, cafe, menu):
+    cashier.role = "manager"
+    cashier.save(update_fields=["role"])
+
+    response = post(till, "/locations/braddon/modifiers/availability", {"label": "Unknown modifier", "available": False}, method="put")
+    assert response.status_code == 404, response.data
+
+def test_owner_can_save_and_merge_till_toggles(till, cafe, elsewhere):
+    from apps.pos.models import TillSettings
+
+    till.force_authenticate(UserFactory(role="owner", is_staff=True))
+    path = "/locations/braddon/settings/toggles"
+
+    first = post(till, path, {"toggles": {"receipt": True}}, method="put")
+    assert first.status_code == 200, first.data
+
+    second = post(till, path, {"toggles": {"openDrawer": False}}, method="put")
+    assert second.status_code == 200, second.data
+
+    saved = TillSettings.objects.get(location=cafe)
+    assert saved.toggles == {"receipt": True, "openDrawer": False}
+    assert not TillSettings.objects.filter(location=elsewhere).exists()
+
+    snapshot = till.get(f"{BASE}/snapshot?cafe=braddon").json()
+    assert snapshot["settings"]["toggles"]["receipt"] is True
+    assert snapshot["settings"]["toggles"]["openDrawer"] is False
+
+
+@pytest.mark.parametrize("role", ["staff", "manager"])
+def test_till_settings_require_owner_or_admin(till, cashier, cafe, role):
+    cashier.role = role
+    cashier.save(update_fields=["role"])
+
+    response = post(till, "/locations/braddon/settings/toggles", {"toggles": {"receipt": True}}, method="put")
+    assert response.status_code == 403, response.data
+
+
+@pytest.mark.parametrize("body", [
+    {"toggles": {"unknown": True}},
+    {"toggles": {}},
+    {"toggles": {"receipt": "invalid"}},
+    {"toggles": {"receipt": True}, "rules": {"gst": "0"}},
+])
+def test_till_toggles_reject_invalid_or_unsupported_fields(till, cafe, body):
+    till.force_authenticate(UserFactory(role="owner", is_staff=True))
+
+    response = post(till, "/locations/braddon/settings/toggles", body, method="put")
+    assert response.status_code == 422, response.data

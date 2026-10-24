@@ -33,4 +33,8 @@ urlpatterns = [
     ),
     path("reservations/<str:reservation_id>", v.ReservationView.as_view()),
     path("catering/<str:enquiry_id>", v.CateringView.as_view()),
+    path("locations/<slug:slug>/categories/order", v.CategoryOrderView.as_view()),
+    path("locations/<slug:slug>/items/<slug:item_id>/price", v.ItemPriceView.as_view()),
+    path("locations/<slug:slug>/modifiers/availability", v.ModifierAvailabilityView.as_view()),
+    path("locations/<slug:slug>/settings/toggles", v.TillTogglesView.as_view()),
 ]

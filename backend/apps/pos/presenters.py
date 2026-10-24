@@ -19,12 +19,12 @@ from apps.enquiries.models import CateringPackage
 from apps.loyalty import services as loyalty
 from apps.loyalty.models import STAMPS_PER_REWARD, LoyaltyActivity, LoyaltyCard
 from apps.menu.catalog import menu_items
-from apps.menu.models import LocationMenuItem
+from apps.menu.models import LocationMenuItem, LocationModifierAvailability
 from apps.orders import services as order_services
 from apps.orders.models import Order, OrderLine, OrderPayment
 
 from . import pins
-from .models import CashShift, Promotion, TillTable
+from .models import CashShift, Promotion, TillTable, TillSettings
 from .services import (
     AUDIT_TYPE,
     LIVE,
@@ -78,7 +78,7 @@ def photo(asset):
 
 def menu(location):
     """This café's menu (chain-wide items plus its own, at its prices) and its sold-out ids."""
-    entries = menu_items(location)
+    entries = menu_items(location, include_unavailable_modifiers=True)
     return [
         {
             "id": entry.item.slug,
@@ -316,7 +316,9 @@ def availability(user, location, unavailable_here):
     return {
         "soldOut": [slug for slug in unavailable_here if slug in everywhere],
         "branchOff": {location.slug: [slug for slug in unavailable_here if slug not in everywhere]},
-        "unavailableMods": [],
+        "unavailableMods": list(
+            LocationModifierAvailability.objects.filter(location=location, available=False).order_by("label").values_list("label", flat=True)
+        ),
         "prices": {},
         "lastPushedAt": local(SiteSettings.load().updated_at).isoformat(),
     }
@@ -702,7 +704,8 @@ def percent(rate):
     return f"{float(rate) * 100:g}"
 
 
-def settings_data():
+def settings_data(location=None):
+    saved = TillSettings.objects.filter(location=location).first() if location is not None else None
     rules = SiteSettings.load().order_rules or {}
     return {
         "loyalty": {"per": STAMPS_PER_REWARD, "wallet": True, "online": True},
@@ -712,9 +715,9 @@ def settings_data():
             "surcharge": percent(rules.get("cardSurcharge", 0.0295)),
             "delivery": percent(rules.get("deliveryRate", 0.1)),
         },
-        "toggles": dict(TOGGLES),
+        "toggles": {**TOGGLES, **(saved.toggles if saved else {})},
         "cafeFields": {},
-        "categoryOrder": [],
+        "categoryOrder": saved.category_order if saved else [],
     }
 
 
@@ -774,7 +777,7 @@ def snapshot(user, location, terminal):
         "catering": [catering_enquiry(row) for row in enquiries],
         "staff": team(location),
         "roles": pins.ROLES,
-        "settings": settings_data(),
+        "settings": settings_data(location),
         "currentShift": shift(current) if current else None,
         "closedShifts": [shift(row) for row in shifts.filter(status="closed")[:20]],
         "audit": [audit_entry(row) for row in audit_rows],

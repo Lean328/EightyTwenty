@@ -4,6 +4,7 @@ src/domain/types.ts). Serializers only check shapes; rules live in services.py.
 """
 
 from rest_framework import serializers
+from decimal import Decimal
 
 TILL_STATUSES = ["new", "preparing", "ready", "completed", "refunded", "cancelled", "failed"]
 ORDER_TYPES = ["dinein", "pickup", "takeaway", "delivery"]
@@ -614,3 +615,33 @@ class PosSnapshotOut(serializers.Serializer):
     closedShifts = PosShiftOut(many=True)
     audit = serializers.ListField(child=serializers.DictField())
     reports = serializers.DictField()
+
+
+class PosCategoryOrderIn(serializers.Serializer):
+    ids = serializers.ListField(child=serializers.SlugField(), allow_empty=True, max_length=200)
+
+    def validate_ids(self, value):
+        if len(value) != len(set(value)):
+            raise serializers.ValidationError("Category IDs must not be repeated.")
+        return value
+
+class PosItemPriceIn(serializers.Serializer):
+    price = serializers.DecimalField(max_digits=8, decimal_places=2, min_value=Decimal("0.00"))
+
+class PosModifierAvailabilityIn(serializers.Serializer):
+    label = serializers.CharField(max_length=120)
+    available = serializers.BooleanField()
+
+class PosTogglesIn(serializers.Serializer):
+    toggles = serializers.DictField(child=serializers.BooleanField(), allow_empty=False)
+
+    def validate_toggles(self, value):
+        allowed = {"kitchen", "receipt", "tips", "openDrawer", "autoStamp"}
+        if set(value) - allowed:
+            raise serializers.ValidationError("One or more toggle names are unsupported.")
+        return value
+
+    def validate(self, data):
+        if set(self.initial_data) - {"toggles"}:
+            raise serializers.ValidationError("This endpoint only accepts operational toggles.")
+        return data

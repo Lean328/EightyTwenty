@@ -161,3 +161,11 @@ class Promotion(ManagedModel):
     def save(self, *args, **kwargs):
         self.code = (self.code or "").strip().upper()
         super().save(*args, **kwargs)
+
+class TillSettings(ManagedModel):
+    location = models.OneToOneField("locations.Location", on_delete=models.PROTECT, related_name="till_settings")
+    category_order = models.JSONField(default=list, blank=True)
+    toggles = models.JSONField(default=dict, blank=True)
+
+    def __str__(self):
+        return f"Till settings · {self.location}"

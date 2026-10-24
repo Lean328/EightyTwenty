@@ -641,3 +641,35 @@ class CateringView(PosView):
         data = self.valid(s.PosCateringIn)
         enquiry = services.upsert_catering(request, enquiry_id, data)
         return Response(s.PosCateringOut(p.catering_enquiry(enquiry)).data)
+
+class CategoryOrderView(PosView):
+    @doc(GUESTS, "Set category order for one cafe", s.PosCategoryOrderIn, {200: s.PosOkOut}, (403, 404, 422), True)
+    @idempotent
+    def put(self, request, slug):
+        data = self.valid(s.PosCategoryOrderIn)
+        services.set_category_order(request, slug, data["ids"])
+        return Response({"ok": True})
+
+class ItemPriceView(PosView):
+    @doc(GUESTS, "Set an item price for one cafe", s.PosItemPriceIn, {200: s.PosOkOut}, (403, 404, 422), True)
+    @idempotent
+    def put(self, request, slug, item_id):
+        data = self.valid(s.PosItemPriceIn)
+        services.set_item_price(request, slug, item_id, data["price"])
+        return Response({"ok": True})
+
+class ModifierAvailabilityView(PosView):
+    @doc(GUESTS, "Set modifier availability at one cafe", s.PosModifierAvailabilityIn, {200: s.PosOkOut}, (403, 404, 422), True)
+    @idempotent
+    def put(self, request, slug):
+        data = self.valid(s.PosModifierAvailabilityIn)
+        services.set_modifier_availability(request, slug, data["label"], data["available"])
+        return Response({"ok": True})
+
+class TillTogglesView(PosView):
+    @doc(START, "Update cafe operational toggles", s.PosTogglesIn, {200: s.PosOkOut}, (403, 404, 422), True)
+    @idempotent
+    def put(self, request, slug):
+        data = self.valid(s.PosTogglesIn)
+        services.update_till_toggles(request, slug, data["toggles"])
+        return Response({"ok": True})
