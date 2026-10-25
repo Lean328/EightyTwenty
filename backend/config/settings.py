@@ -18,6 +18,7 @@ CORS_ALLOW_HEADERS = [
     *default_headers,
     "x-terminal-id",
     "idempotency-key",
+    "x-pos-staff",
 ]
 
 BASE_DIR = Path(__file__).resolve().parent.parent

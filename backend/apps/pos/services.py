@@ -36,6 +36,7 @@ from apps.orders import services as order_services
 from apps.orders.models import Order, OrderAdjustment, OrderLine, OrderPayment
 
 from .models import CashShift, Promotion, TillTransaction, TillSettings
+from .staff_sessions import require_staff_permission
 
 # POS OrderStatus ↔ stored status. "new" is confirmed (accepted) for till orders; an app order
 # waiting for the café is "received" and shows on the till as new + accepted: false.
@@ -337,6 +338,9 @@ def resolve_cash_shift(request, location, reference):
 
 def record_payment(request, order, data, save=True):
     """Records a tender already taken (cash counted, card approved on the terminal)."""
+    staff = require_staff_permission(request, "pos", order.location)
+    actor = staff.get_full_name().strip() or staff.email
+    data = {**data, "by": actor}
     existing = order.payments.filter(reference=data["ref"]).first()
 
     if existing is not None:
@@ -534,7 +538,9 @@ def validate_refund_allocations(order, change):
 
 
 def adjust(request, order, data):
-    change = data["adjustment"]
+    staff = require_staff_permission(request, "orders.refund", order.location)
+    actor = staff.get_full_name().strip() or staff.email
+    change = {**data["adjustment"], "by": actor, "approver": actor}
     existing = order.adjustments.filter(key=change["key"]).first()
 
     if existing is not None:
@@ -657,6 +663,8 @@ def parse_since(value):
 
 def open_shift(request, data):
     location = location_for(request.user, data["cafe"])
+    staff = require_staff_permission(request, "pos", location)
+    actor = staff.get_full_name().strip() or staff.email
     existing = CashShift.objects.filter(reference=data["id"]).first()
     if existing:
         raise AppError("CONFLICT", f"Shift {data['id']} already exists.", 409)
@@ -672,12 +680,12 @@ def open_shift(request, data):
         reference=data["id"],
         location=location,
         terminal_id=terminal,
-        staff_ref=data.get("staffId") or "",
-        staff_name=data.get("staffName") or "",
+        staff_ref=str(staff.pk),
+        staff_name=actor,
         opened_label=data.get("openedAt") or "",
         float_cents=data["float"],
-        created_by=request.user,
-        updated_by=request.user,
+        created_by=staff,
+        updated_by=staff,
     )
 
 
@@ -695,6 +703,9 @@ def require_shift_terminal(request, shift):
 
 def cash_move(request, shift, move):
     require_shift_terminal(request, shift)
+    staff = require_staff_permission(request, "cash.out", shift.location)
+    actor = staff.get_full_name().strip() or staff.email
+    move = {**move, "by": actor, "approver": actor}
     existing = next((row for row in shift.moves if row.get("id") == move["id"]), None)
 
     if existing is not None:
@@ -706,7 +717,7 @@ def cash_move(request, shift, move):
         raise AppError("CONFLICT", "This shift is already closed.", 409)
 
     shift.moves = [*shift.moves, move]
-    shift.updated_by = request.user
+    shift.updated_by = staff
     shift.save(update_fields=["moves", "updated_by", "updated_at"])
     return shift
 
@@ -731,6 +742,8 @@ def cash_shift_totals(shift):
 
 def close_shift(request, shift, data):
     require_shift_terminal(request, shift)
+    staff = require_staff_permission(request, "cash.out", shift.location)
+    actor = staff.get_full_name().strip() or staff.email
     if shift.status == "closed":
         if shift.counted_cents == data["counted"]:
             return shift
@@ -750,12 +763,12 @@ def close_shift(request, shift, data):
 
     for move in data.get("moves") or []:
         existing = known.get(move["id"])
-        if existing is not None:
-            if existing != move:
-                raise AppError("CONFLICT", "A cash movement reference has different details.", 409)
-        else:
-            moves.append(move)
-            known[move["id"]] = move
+        if existing is None:
+            raise AppError("CONFLICT", "Sync all cash movements before closing this shift.", 409)
+
+        fields = ("type", "amount", "reason", "at")
+        if any(existing.get(field) != move.get(field) for field in fields):
+            raise AppError("CONFLICT", "A cash movement reference has different details.", 409)
 
     expected = expected_cash(shift.float_cents, sales, refunds, moves)
     if data["expected"] != expected or data["variance"] != data["counted"] - expected:
@@ -767,13 +780,13 @@ def close_shift(request, shift, data):
     shift.status = "closed"
     shift.closed_at = timezone.now()
     shift.closed_label = data.get("closedAt") or ""
-    shift.closed_by = data.get("closedBy") or ""
+    shift.closed_by = actor
     shift.counted_cents = data["counted"]
     shift.expected_cents = expected
     shift.variance_cents = data["counted"] - expected
     shift.note = data.get("note") or ""
-    shift.approved_by = data.get("approvedBy") or ""
-    shift.updated_by = request.user
+    shift.approved_by = actor
+    shift.updated_by = staff
     shift.save()
     return shift
 

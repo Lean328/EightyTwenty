@@ -83,6 +83,21 @@ def cashier(cafe):
     user.save()
     return user
 
+@pytest.fixture
+def staff_session(till, cafe):
+    staff = UserFactory(role="staff", first_name="Finn", last_name="Test", is_staff=True)
+    StaffAssignment.objects.create(user=staff, location=cafe)
+    pins.set_pin(staff, "7531")
+    staff.save(update_fields=["pos_pin"])
+
+    response = post(till, "/staff/verify-pin", {"pin": "7531"})
+    assert response.status_code == 200, response.data
+    till.credentials(
+        HTTP_X_TERMINAL_ID=TERMINAL,
+        HTTP_X_POS_STAFF=response.data["staffToken"],
+    )
+    return staff
+
 
 @pytest.fixture
 def till(cashier):
@@ -323,14 +338,14 @@ def test_order_numbers_are_unique_and_retries_replay(till, cafe, menu):
     assert CommandReceipt.objects.filter(key="CMD-1", status_code=201).count() == 1
 
 
-def test_create_with_a_gift_card_payment(till, cafe, menu):
+def test_create_with_a_gift_card_payment(till, cafe, menu, staff_session):
     gift = {"method": "gift", "amount": 1000, "tip": 0, "surcharge": 0, "ref": "G1",
             "giftLast4": "4471"}  # fmt: skip
     data = create(till, payments=[gift])
     assert data["payments"][0]["giftLast4"] == "4471" and data["methods"] == ["gift"]
 
 
-def test_payments_are_idempotent_and_capped(till, cafe, menu):
+def test_payments_are_idempotent_and_capped(till, cafe, menu, staff_session):
     create(till)
     number = "BRADDON-TILL-1-0001"
     first = pay(till, number, 2000, method="card", surcharge=59)
@@ -365,7 +380,7 @@ def test_kitchen_progress_and_status(till, cafe, menu):
     assert post(till, f"{path}/status", {"status": "cancelled"}).status_code == 422
 
 
-def test_refund_void_and_cancel(till, cafe, menu):
+def test_refund_void_and_cancel(till, cafe, menu, refund_session):
     create(till)
     number = "BRADDON-TILL-1-0001"
     path = f"/orders/{quote(number)}/adjustments"
@@ -447,7 +462,7 @@ def test_app_orders_appear_in_the_feed_and_are_accepted(till, app_order):
     assert [o["id"] for o in later["orders"]] == ["#8020-4471"]
 
 
-def test_cancelling_an_app_order_returns_stamps(till, app_order):
+def test_cancelling_an_app_order_returns_stamps(till, app_order, refund_session):
     cancel = {"adjustment": {"key": "R1", "mode": "cancel", "amount": 0, "reason": "Café too busy"},
               "lines": [], "total": 0, "status": "cancelled"}  # fmt: skip
     response = post(till, f"/orders/{quote('#8020-4471')}/adjustments", cancel)
@@ -461,7 +476,7 @@ def test_cancelling_an_app_order_returns_stamps(till, app_order):
     assert mine[0]["status"] == "declined"
 
 
-def test_cancel_and_refund_app_orders_as_the_till_sends_them(till, app_order):
+def test_cancel_and_refund_app_orders_as_the_till_sends_them(till, app_order, refund_session):
     # What the till really sends: its view of the order (gift card share counted) and the
     # whole paid amount back (ledger.refundableC), lines unchanged.
     app_order.gift_card_cents, app_order.total_cents = 300, 830
@@ -536,7 +551,7 @@ def shift_body(**overrides):
     return body
 
 
-def test_cash_shift_open_move_close(till, cafe):
+def test_cash_shift_open_move_close(till, cafe, refund_session):
     assert post(till, "/shifts", shift_body()).status_code == 201
     assert post(till, "/shifts", shift_body(id="SH2")).status_code == 409
 
@@ -560,7 +575,12 @@ def test_cash_shift_open_move_close(till, cafe):
     closed = response.json()
     assert closed["status"] == "closed"
     assert closed["variance"] == -20
-    assert CashShift.objects.get().expected_cents == 15500
+    shift = CashShift.objects.get()
+    actor = refund_session.get_full_name().strip() or refund_session.email
+    assert shift.expected_cents == 15500
+    assert shift.closed_by == actor
+    assert shift.approved_by == actor
+    assert shift.updated_by_id == refund_session.pk
 
     snapshot = till.get(f"{BASE}/snapshot?cafe=braddon").json()
     assert snapshot["currentShift"] is None
@@ -594,11 +614,12 @@ def test_pos_docs_page_is_published(client):
     assert "/api/v1/app/" not in schema
 
 
-def test_bos_pages_show_till_orders_shifts_and_transactions(till, cafe, menu):
+def test_bos_pages_show_till_orders_shifts_and_transactions(till, cafe, menu, staff_session):
     from django.test import Client
 
     create(till, lines=[line(price=5.8)], total=5.8)
-    post(till, "/shifts", shift_body())
+    opened = post(till, "/shifts", shift_body())
+    assert opened.status_code == 201, opened.data
     record = {"kind": "payment", "cafeId": "braddon", "amountC": 580, "gstC": 53,
               "at": timezone.now().isoformat(), "reference": "P1"}  # fmt: skip
     post(till, "/transactions", record)
@@ -754,8 +775,7 @@ def test_catering_from_the_till(till, cafe):
 
 # ---------------------------------------------------------------- BOS sales report
 
-
-def test_bos_reports_show_sales_from_app_and_till_orders(till, cafe, menu, app_order):
+def test_bos_reports_show_sales_from_app_and_till_orders(till, cafe, menu, app_order, refund_session):
     from django.test import Client
 
     create(till)  # $35.60 till order
@@ -764,12 +784,16 @@ def test_bos_reports_show_sales_from_app_and_till_orders(till, cafe, menu, app_o
     refund = {"adjustment": {"key": "R1", "mode": "refund", "amount": 630, "reason": "Wrong item"},
               "lines": [{"key": "L1", "qty": 2}, {"key": "L2", "qty": 1}], "total": 35.6,
               "status": "new"}  # fmt: skip
-    post(till, f"/orders/{quote(number)}/adjustments", refund)
-    post(till, f"/orders/{quote('#8020-4471')}/accept", {})  # app order: $11.30 Apple Pay
+    response = post(till, f"/orders/{quote(number)}/adjustments", refund)
+    assert response.status_code == 200, response.data
+
+    response = post(till, f"/orders/{quote('#8020-4471')}/accept", {})
+    assert response.status_code == 200, response.data
     create(till, id="CANCELLED-1", status="new")
     cancel = {"adjustment": {"key": "R2", "mode": "cancel", "amount": 0, "reason": "x"},
               "lines": [], "total": 0, "status": "cancelled"}  # fmt: skip
-    post(till, "/orders/CANCELLED-1/adjustments", cancel)
+    response = post(till, "/orders/CANCELLED-1/adjustments", cancel)
+    assert response.status_code == 200, response.data
     owner = UserFactory(role="owner", is_superuser=True, is_staff=True)
     browser = Client()
     browser.force_login(owner)
@@ -894,9 +918,7 @@ def test_dashboard_figures_come_from_real_records(till, cafe, menu, regular, app
         {"tip": 100},
     ],
 )
-def test_payment_reference_checks_retry_details(
-    till, cafe, menu, changed
-):
+def test_payment_reference_checks_retry_details(till, cafe, menu, changed, staff_session):
     created = create(till)
     number = created["id"]
 
@@ -937,7 +959,7 @@ def test_payment_reference_checks_retry_details(
     {"type": "in"},
     {"reason": "Changed reason"},
 ])
-def test_cash_move_reference_rejects_changed_details(till, cafe, changed):
+def test_cash_move_reference_rejects_changed_details(till, cafe, changed, refund_session):
     opened = post(till, "/shifts", shift_body())
     assert opened.status_code == 201, opened.data
 
@@ -960,9 +982,11 @@ def test_cash_move_reference_rejects_changed_details(till, cafe, changed):
 
     shift = CashShift.objects.get(reference="SH1")
     assert len(shift.moves) == 1
-    assert shift.moves[0] == {**move, "approver": "", "at": ""}
+    actor = refund_session.get_full_name().strip() or refund_session.email
+    assert shift.moves[0] == {**move, "by": actor, "approver": actor, "at": ""}
+    assert shift.updated_by_id == refund_session.pk
 
-def test_payment_is_linked_to_requested_shift(till, cafe, menu):
+def test_payment_is_linked_to_requested_shift(till, cafe, menu, staff_session):
     opened = post(till, "/shifts", shift_body())
     assert opened.status_code == 201, opened.data
     created = create(till)
@@ -982,7 +1006,7 @@ def test_payment_is_linked_to_requested_shift(till, cafe, menu):
     assert changed.status_code == 409, changed.data
 
 
-def test_payment_rejects_unknown_shift(till, cafe, menu):
+def test_payment_rejects_unknown_shift(till, cafe, menu, staff_session):
     created = create(till)
 
     response = pay(till, created["id"], 3560, ref="SHIFT-PAY-002", shiftId="MISSING")
@@ -990,18 +1014,26 @@ def test_payment_rejects_unknown_shift(till, cafe, menu):
     assert not Order.objects.get(number=created["id"]).payments.exists()
 
 
-def test_payment_rejects_shift_from_another_terminal(till, cafe, menu):
+def test_payment_rejects_shift_from_another_terminal(till, cafe, menu, staff_session):
     opened = post(till, "/shifts", shift_body())
     assert opened.status_code == 201, opened.data
     created = create(till)
 
     till.credentials(HTTP_X_TERMINAL_ID="OTHER-TILL")
+    login = post(till, "/staff/verify-pin", {"pin": "7531"})
+    assert login.status_code == 200, login.data
+
+    till.credentials(
+        HTTP_X_TERMINAL_ID="OTHER-TILL",
+        HTTP_X_POS_STAFF=login.data["staffToken"],
+    )
     response = pay(till, created["id"], 3560, ref="SHIFT-PAY-003", shiftId="SH1")
-
     assert response.status_code == 409, response.data
-    assert not Order.objects.get(number=created["id"]).payments.exists()
 
-def test_refund_is_linked_to_shift_and_rejects_changed_amount(till, cafe, menu):
+    order = Order.objects.get(number=created["id"])
+    assert not order.payments.exists()
+
+def test_refund_is_linked_to_shift_and_rejects_changed_amount(till, cafe, menu, refund_session):
     opened = post(till, "/shifts", shift_body())
     assert opened.status_code == 201, opened.data
     created = create(till)
@@ -1055,7 +1087,7 @@ def test_refund_is_linked_to_shift_and_rejects_changed_amount(till, cafe, menu):
         {"method": "cash", "amount": 1780, "ref": "PAY-ALLOC-001"},
     ],
 ])
-def test_refund_rejects_invalid_allocations(till, cafe, menu, allocations):
+def test_refund_rejects_invalid_allocations(till, cafe, menu, allocations, refund_session):
     created = create(till)
     number = created["id"]
     paid = pay(till, number, 3560, ref="PAY-ALLOC-001")
@@ -1085,7 +1117,7 @@ def test_refund_rejects_invalid_allocations(till, cafe, menu, allocations):
         {"method": "card", "amount": 2559, "ref": "CARD-ORIGINAL"},
     ],
 ])
-def test_refund_allocations_must_match_original_payments(till, cafe, menu, allocations):
+def test_refund_allocations_must_match_original_payments(till, cafe, menu, allocations, refund_session):
     created = create(till)
     number = created["id"]
 
@@ -1114,7 +1146,7 @@ def test_refund_allocations_must_match_original_payments(till, cafe, menu, alloc
     assert order.status == "confirmed"
 
 @pytest.mark.parametrize("second_amount, expected_status", [(400, 200), (401, 422)])
-def test_refund_uses_remaining_balance_per_payment(till, cafe, menu, second_amount, expected_status):
+def test_refund_uses_remaining_balance_per_payment(till, cafe, menu, second_amount, expected_status, refund_session):
     created = create(till)
     number = created["id"]
 
@@ -1150,7 +1182,7 @@ def test_refund_uses_remaining_balance_per_payment(till, cafe, menu, second_amou
     assert len(refunds) == (2 if expected_status == 200 else 1)
     assert sum(refund.amount_cents for refund in refunds) == (1000 if expected_status == 200 else 600)
 
-def test_close_shift_checks_sales_against_recorded_payments(till, cafe, menu):
+def test_close_shift_checks_sales_against_recorded_payments(till, cafe, menu, refund_session):
     opened = post(till, "/shifts", shift_body())
     assert opened.status_code == 201, opened.data
     created = create(till)
@@ -1178,11 +1210,13 @@ def test_close_shift_checks_sales_against_recorded_payments(till, cafe, menu):
     assert shift.variance_cents == 0
 
 @pytest.mark.parametrize("terminal", ["OTHER-TILL", ""])
-def test_cash_shift_rejects_other_or_missing_terminal(till, cafe, terminal):
+def test_cash_shift_rejects_other_or_missing_terminal(till, cafe, terminal, refund_session):
     opened = post(till, "/shifts", shift_body())
     assert opened.status_code == 201, opened.data
 
-    till.credentials(HTTP_X_TERMINAL_ID=terminal)
+    headers = dict(till._credentials)
+    headers["HTTP_X_TERMINAL_ID"] = terminal
+    till.credentials(**headers)
     move = {"id": "WRONG-TILL-MOVE", "type": "out", "amount": 1000, "reason": "Cash out", "by": "Mia"}
 
     moved = post(till, "/shifts/SH1/moves", move)
@@ -1200,7 +1234,7 @@ def test_cash_shift_rejects_other_or_missing_terminal(till, cafe, terminal):
     assert shift.moves == []
 
 
-def test_closed_shift_retry_still_checks_terminal(till, cafe):
+def test_closed_shift_retry_still_checks_terminal(till, cafe, refund_session):
     opened = post(till, "/shifts", shift_body())
     assert opened.status_code == 201, opened.data
 
@@ -1211,13 +1245,15 @@ def test_closed_shift_retry_still_checks_terminal(till, cafe):
     first = post(till, "/shifts/SH1", close, method="put")
     assert first.status_code == 200, first.data
 
-    till.credentials(HTTP_X_TERMINAL_ID="OTHER-TILL")
+    headers = dict(till._credentials)
+    headers["HTTP_X_TERMINAL_ID"] = "OTHER-TILL"
+    till.credentials(**headers)
     retry = post(till, "/shifts/SH1", close, method="put")
     assert retry.status_code == 409, retry.data
 
 
 @pytest.mark.parametrize("last_digit", range(10))
-def test_cash_payment_accepts_correct_rounding(till, cafe, menu, last_digit):
+def test_cash_payment_accepts_correct_rounding(till, cafe, menu, last_digit, staff_session):
     created = create(till)
     amount = 1000 + last_digit
     rounded = ((amount + 2) // 5) * 5
@@ -1240,7 +1276,7 @@ def test_cash_payment_accepts_correct_rounding(till, cafe, menu, last_digit):
     {"amount": 1003, "cashPaid": 1005, "rounding": -2},
     {"method": "card", "amount": 1000, "cashPaid": 1000},
 ])
-def test_payment_rejects_inconsistent_cash_details(till, cafe, menu, details):
+def test_payment_rejects_inconsistent_cash_details(till, cafe, menu, details, staff_session):
     created = create(till)
     body = {"method": "cash", "ref": "INVALID-CASH-001", **details}
 
@@ -1393,3 +1429,319 @@ def test_till_toggles_reject_invalid_or_unsupported_fields(till, cafe, body):
 
     response = post(till, "/locations/braddon/settings/toggles", body, method="put")
     assert response.status_code == 422, response.data
+
+def test_pin_login_issues_a_verifiable_staff_session(till, cashier, cafe):
+    from types import SimpleNamespace
+    from apps.pos.staff_sessions import read_staff_session
+
+    response = post(till, "/staff/verify-pin", {"pin": "4821"})
+    assert response.status_code == 200, response.data
+    assert response.data["staffTokenExpiresIn"] > 0
+
+    request = SimpleNamespace(user=cashier, headers={"X-Terminal-Id": TERMINAL})
+    staff = read_staff_session(request, response.data["staffToken"], cafe)
+    assert staff.pk == cashier.pk
+
+
+@pytest.mark.parametrize("mismatch", ["account", "terminal", "pin"])
+def test_staff_session_rejects_changed_identity(till, cashier, cafe, mismatch):
+    from types import SimpleNamespace
+    from apps.mobile.errors import AppError
+    from apps.pos.staff_sessions import read_staff_session
+
+    response = post(till, "/staff/verify-pin", {"pin": "4821"})
+    assert response.status_code == 200, response.data
+    request = SimpleNamespace(user=cashier, headers={"X-Terminal-Id": TERMINAL})
+
+    if mismatch == "account":
+        request.user = UserFactory(role="owner", is_staff=True)
+    elif mismatch == "terminal":
+        request.headers["X-Terminal-Id"] = "OTHER-TILL"
+    else:
+        pins.set_pin(cashier, "1357")
+        cashier.save(update_fields=["pos_pin"])
+
+    with pytest.raises(AppError):
+        read_staff_session(request, response.data["staffToken"], cafe)
+
+
+def test_cashier_session_does_not_grant_refund_permission(till, cashier, cafe):
+    from types import SimpleNamespace
+    from apps.mobile.errors import AppError
+    from apps.pos.staff_sessions import require_staff_permission
+
+    response = post(till, "/staff/verify-pin", {"pin": "4821"})
+    assert response.status_code == 200, response.data
+    request = SimpleNamespace(
+        user=cashier,
+        headers={"X-Terminal-Id": TERMINAL, "X-Pos-Staff": response.data["staffToken"]},
+    )
+
+    assert require_staff_permission(request, "pos", cafe).pk == cashier.pk
+    with pytest.raises(AppError):
+        require_staff_permission(request, "orders.refund", cafe)
+
+@pytest.fixture
+def refund_session(till, cafe):
+    manager = UserFactory(role="manager", first_name="Refund", last_name="Manager", is_staff=True)
+    StaffAssignment.objects.create(user=manager, location=cafe)
+    pins.set_pin(manager, "8642")
+    manager.save(update_fields=["pos_pin"])
+
+    response = post(till, "/staff/verify-pin", {"pin": "8642"})
+    assert response.status_code == 200, response.data
+    till.credentials(
+        HTTP_X_TERMINAL_ID=TERMINAL,
+        HTTP_X_POS_STAFF=response.data["staffToken"],
+    )
+    return manager
+
+@pytest.mark.parametrize("staff_role, expected_status", [
+    ("missing", 403),
+    ("staff", 403),
+    ("manager", 200),
+])
+def test_order_adjustment_uses_pin_staff_permissions(till, cafe, menu, cashier, staff_role, expected_status):
+    # Even an owner device account must respect the PIN staff's permissions.
+    owner = UserFactory(role="owner", is_staff=True)
+    till.force_authenticate(owner)
+    created = create(till)
+
+    if staff_role != "missing":
+        if staff_role == "manager":
+            staff = UserFactory(role="manager", is_staff=True)
+            StaffAssignment.objects.create(user=staff, location=cafe)
+            pins.set_pin(staff, "8642")
+            staff.save(update_fields=["pos_pin"])
+            pin = "8642"
+        else:
+            pin = "4821"
+
+        login = post(till, "/staff/verify-pin", {"pin": pin})
+        assert login.status_code == 200, login.data
+        till.credentials(
+            HTTP_X_TERMINAL_ID=TERMINAL,
+            HTTP_X_POS_STAFF=login.data["staffToken"],
+        )
+
+    body = {
+        "adjustment": {"key": "PERMISSION-CHECK", "mode": "cancel", "amount": 0, "reason": "Permission test"},
+        "lines": [],
+        "total": 0,
+        "status": "cancelled",
+    }
+    response = post(till, f"/orders/{quote(created['id'])}/adjustments", body)
+    assert response.status_code == expected_status, response.data
+
+    order = Order.objects.get(number=created["id"])
+    if expected_status == 403:
+        assert order.status == "confirmed"
+        assert not order.adjustments.exists()
+    else:
+        assert order.status == "cancelled"
+
+def test_adjustment_uses_verified_staff_name(till, cafe, menu, refund_session):
+    created = create(till)
+    number = created["id"]
+    body = {
+        "adjustment": {
+            "key": "VERIFIED-ACTOR-001",
+            "mode": "cancel",
+            "amount": 0,
+            "reason": "Customer cancelled",
+            "by": "Fake cashier",
+            "approver": "Fake manager",
+        },
+        "lines": [],
+        "total": 0,
+        "status": "cancelled",
+    }
+
+    response = post(till, f"/orders/{quote(number)}/adjustments", body)
+    assert response.status_code == 200, response.data
+
+    order = Order.objects.get(number=number)
+    adjustment = order.adjustments.get()
+    expected = refund_session.get_full_name().strip() or refund_session.email
+    assert adjustment.staff_name == expected
+    assert adjustment.approver_name == expected
+    assert adjustment.reason == "Customer cancelled"
+
+@pytest.mark.parametrize("revoke", ["change_pin", "disable_staff"])
+def test_adjustment_retry_rechecks_staff_session(till, cafe, menu, refund_session, revoke):
+    from apps.pos import pins
+
+    created = create(till)
+    number = created["id"]
+    path = f"/api/v1/pos/orders/{quote(number)}/adjustments"
+    body = {
+        "adjustment": {
+            "key": "REVOKED-SESSION-001",
+            "mode": "cancel",
+            "amount": 0,
+            "reason": "Customer cancelled",
+        },
+        "lines": [],
+        "total": 0,
+        "status": "cancelled",
+    }
+    headers = {"HTTP_IDEMPOTENCY_KEY": "revoked-session-request-001"}
+
+    first = till.post(path, body, format="json", **headers)
+    assert first.status_code == 200, first.data
+
+    retry = till.post(path, body, format="json", **headers)
+    assert retry.status_code == 200, retry.data
+    assert retry.data == first.data
+
+    if revoke == "change_pin":
+        pins.set_pin(refund_session, "9753")
+        refund_session.save(update_fields=["pos_pin"])
+    else:
+        refund_session.is_active = False
+        refund_session.save(update_fields=["is_active"])
+
+    rejected = till.post(path, body, format="json", **headers)
+    assert rejected.status_code == 403, rejected.data
+    assert rejected.data["error"]["code"] == "STAFF_SESSION_REQUIRED"
+
+    order = Order.objects.get(number=number)
+    assert order.adjustments.count() == 1
+
+@pytest.mark.parametrize("staff_role", ["missing", "staff", "manager"])
+@pytest.mark.parametrize("operation", ["move", "close"])
+def test_cash_operations_require_manager_permission(till, cafe, staff_role, operation, staff_session):
+    from apps.pos import pins
+
+    opened = post(till, "/shifts", shift_body())
+    assert opened.status_code == 201, opened.data
+
+    till.credentials(HTTP_X_TERMINAL_ID=TERMINAL)
+
+    staff = None
+    if staff_role != "missing":
+        staff = UserFactory(role=staff_role, is_staff=True)
+        StaffAssignment.objects.create(user=staff, location=cafe)
+        pins.set_pin(staff, "8526")
+        staff.save(update_fields=["pos_pin"])
+
+        login = post(till, "/staff/verify-pin", {"pin": "8526"})
+        assert login.status_code == 200, login.data
+        till.credentials(
+            HTTP_X_TERMINAL_ID=TERMINAL,
+            HTTP_X_POS_STAFF=login.data["staffToken"],
+        )
+
+    if operation == "move":
+        body = {
+            "id": "PERMISSION-MOVE-001",
+            "type": "out",
+            "amount": 1000,
+            "reason": "Banking drop",
+            "by": "Untrusted name",
+        }
+        response = post(till, "/shifts/SH1/moves", body)
+    else:
+        body = shift_body(
+            status="closed", cashSales=0, cashRefunds=0, counted=20000,
+            expected=20000, variance=0, closedAt="3:00 pm",
+            closedBy="Untrusted name",
+        )
+        response = post(till, "/shifts/SH1", body, method="put")
+
+    shift = CashShift.objects.get(reference="SH1")
+    if staff_role != "manager":
+        assert response.status_code == 403, response.data
+        assert shift.status == "open"
+        assert shift.moves == []
+        assert shift.closed_at is None
+    else:
+        assert response.status_code == 200, response.data
+        actor = staff.get_full_name().strip() or staff.email
+        assert shift.updated_by_id == staff.pk
+        if operation == "move":
+            assert len(shift.moves) == 1
+            assert shift.moves[0]["by"] == actor
+            assert shift.moves[0]["approver"] == actor
+        else:
+            assert shift.status == "closed"
+            assert shift.closed_by == actor
+            assert shift.approved_by == actor
+
+
+def test_open_shift_requires_staff_session(till, cafe):
+    response = post(till, "/shifts", shift_body())
+    assert response.status_code == 403, response.data
+    assert not CashShift.objects.exists()
+
+
+def test_open_shift_uses_verified_staff(till, cafe, staff_session):
+    body = shift_body(staffId="fake-id", staffName="Fake name")
+    response = post(till, "/shifts", body)
+    assert response.status_code == 201, response.data
+
+    shift = CashShift.objects.get(reference="SH1")
+    assert shift.staff_ref == str(staff_session.pk)
+    assert shift.staff_name == "Finn Test"
+    assert shift.created_by_id == staff_session.pk
+    assert shift.updated_by_id == staff_session.pk
+
+def test_payment_requires_staff_session(till, cafe, menu):
+    created = create(till)
+    response = pay(till, created["id"], 3560, ref="NO-STAFF-PAYMENT")
+    assert response.status_code == 403, response.data
+
+    order = Order.objects.get(number=created["id"])
+    assert not order.payments.exists()
+
+
+def test_payment_uses_verified_staff_and_retries(till, cafe, menu, staff_session):
+    created = create(till)
+    number = created["id"]
+    body = {
+        "ref": "VERIFIED-PAYMENT-001",
+        "method": "cash",
+        "amount": 3560,
+        "cashPaid": 3560,
+        "change": 0,
+        "by": "Fake cashier",
+    }
+    path = f"/orders/{quote(number)}/payments"
+
+    first = post(till, path, body)
+    assert first.status_code == 200, first.data
+
+    retry = post(till, path, body)
+    assert retry.status_code == 200, retry.data
+
+    order = Order.objects.get(number=number)
+    payment = order.payments.get()
+    assert payment.staff_name == "Finn Test"
+    assert payment.amount_cents == 3560
+
+@pytest.mark.parametrize("signed_in", [False, True])
+def test_embedded_payment_requires_verified_staff(till, cafe, menu, request, signed_in):
+    staff = request.getfixturevalue("staff_session") if signed_in else None
+    payment = {
+        "method": "cash",
+        "amount": 1000,
+        "tip": 0,
+        "surcharge": 0,
+        "ref": "EMBEDDED-PAYMENT-001",
+        "by": "Fake cashier",
+    }
+    body = order_body(payments=[payment])
+    before = Order.objects.count()
+
+    response = post(till, "/orders", body, key="embedded-payment-command-001")
+
+    if not signed_in:
+        assert response.status_code == 403, response.data
+        assert Order.objects.count() == before
+        return
+
+    assert response.status_code == 201, response.data
+    order = Order.objects.get(number=response.data["id"])
+    saved = order.payments.get()
+    assert saved.amount_cents == 1000
+    assert saved.staff_name == (staff.get_full_name().strip() or staff.email)

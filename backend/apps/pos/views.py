@@ -27,6 +27,16 @@ from . import presenters as p
 from . import serializers as s
 from .models import CommandReceipt
 
+from .staff_sessions import (
+    issue_staff_session,
+    session_max_age,
+    require_order_staff,
+    require_shift_staff,
+    require_open_shift_staff,
+    require_embedded_payment_staff,
+)
+
+
 DEVICE, START, ORDERS, MONEY, CASH, GUESTS = (
     "POS · Device & staff",
     "POS · Start-up & catalogue",
@@ -194,6 +204,8 @@ class VerifyPinView(PosView):
                 {
                     "staff": p.staff_member(user, location.slug if location else ""),
                     "permissions": pins.permissions(user),
+                    "staffToken": issue_staff_session(request, user),
+                    "staffTokenExpiresIn": session_max_age(),
                 }
             ).data
         )
@@ -310,6 +322,7 @@ class OrdersView(PosView):
         write=True,
         examples=X.CREATE_ORDER,
     )
+    @require_embedded_payment_staff
     @idempotent
     def post(self, request):
         """
@@ -390,6 +403,8 @@ class AdjustmentsView(PosView):
         True,
         examples=X.ADJUSTMENT,
     )
+
+    @require_order_staff("orders.refund")
     @idempotent
     def post(self, request, order_id):
         """
@@ -432,6 +447,7 @@ class PaymentsView(PosView):
         True,
         examples=X.PAYMENT,
     )
+    @require_order_staff("pos")
     @idempotent
     def post(self, request, order_id):
         """
@@ -450,6 +466,7 @@ class PaymentsView(PosView):
 
 class ShiftsView(PosView):
     @doc(CASH, "Open a cash shift", s.PosShiftIn, {201: s.PosShiftOut}, (404, 409, 422), True)
+    @require_open_shift_staff
     @idempotent
     def post(self, request):
         """
@@ -470,6 +487,8 @@ class ShiftView(PosView):
         True,
         examples=X.CLOSE_SHIFT,
     )
+
+    @require_shift_staff("cash.out")
     @idempotent
     def put(self, request, shift_id):
         """
@@ -485,6 +504,7 @@ class ShiftView(PosView):
 
 class ShiftMovesView(PosView):
     @doc(CASH, "Cash in / cash out", s.PosCashMoveIn, {200: s.PosShiftOut}, (404, 409, 422), True)
+    @require_shift_staff("cash.out")
     @idempotent
     def post(self, request, shift_id):
         """`TransactionRecordsService.recordCashMove`. Idempotent on the move `id`."""

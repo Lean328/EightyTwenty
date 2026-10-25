@@ -361,6 +361,8 @@ class PosStaffOut(serializers.Serializer):
 class PosPinOut(serializers.Serializer):
     staff = PosStaffOut()
     permissions = serializers.ListField(child=serializers.CharField())
+    staffToken = serializers.CharField()
+    staffTokenExpiresIn = serializers.IntegerField()
 
 
 class PosLocationRefOut(serializers.Serializer):
