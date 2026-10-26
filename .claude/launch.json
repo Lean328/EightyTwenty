@@ -42,6 +42,22 @@
       "autoPort": false
     },
     {
+      "name": "backend-lan-push",
+      "runtimeExecutable": ".venv/Scripts/python.exe",
+      "runtimeArgs": [
+        "backend/manage.py",
+        "runserver",
+        "0.0.0.0:8010",
+        "--noreload"
+      ],
+      "env": {
+        "PAYMENT_PROVIDER": "demo",
+        "PUSH_ENABLED": "True"
+      },
+      "port": 8010,
+      "autoPort": false
+    },
+    {
       "name": "mobile-web",
       "runtimeExecutable": "node",
       "runtimeArgs": [
