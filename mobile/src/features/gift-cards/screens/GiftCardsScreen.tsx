@@ -22,7 +22,7 @@ import { formatMoney } from '@/utils/format';
 import { isEmail } from '@/utils/validation';
 import { useGiftCard, useGiftCardActivity, useSendGiftCard } from '../hooks';
 
-const WORDMARK = require('../../../../assets/branding/wordmark-white.png');
+const WORDMARK = require('../../../../assets/branding/wordmark-white.webp');
 
 function amountLabel(a: GiftCardActivity): string {
   if (a.kind === 'added') return '+' + formatMoney(a.amount);

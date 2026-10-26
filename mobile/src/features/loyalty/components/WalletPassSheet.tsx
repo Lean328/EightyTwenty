@@ -12,7 +12,7 @@ import { showToast, useUiStore } from '@/store/ui';
 import { colors, creamA, eyebrow, fontFamilies, serif, shadows, sans } from '@/theme';
 import { useAddWalletPass, useLoyaltyCard } from '../hooks';
 
-const WORDMARK = require('../../../../assets/branding/wordmark-white.png');
+const WORDMARK = require('../../../../assets/branding/wordmark-white.webp');
 
 /**
  * Apple Wallet "Add pass" sheet styled like the iOS add-pass card.

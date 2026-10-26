@@ -3,6 +3,13 @@
 How the design export's files were brought into the app. **The original export folder was not
 modified or deleted**; all clean-up happened inside `EightyTwentyMobile/`.
 
+> **Update 2026-10-26 (moved into the BOS repo as `mobile/`):** every in-app PNG (logos,
+> wordmark, catering icons, grain texture, `branding/source/logo-circle-brown`) is now WebP, and
+> photos with a long edge over 1200 px (cafés, catering, lifestyle, promo) were resized to 1200 px
+> at quality 80. Only the four files Expo/the stores require as PNG stay PNG: `app-icon`,
+> `adaptive-icon`, `splash-icon`, `favicon`. `assets/` went from 8.9 MB to 7.7 MB. The tables
+> below still show the original `.png` names.
+
 ## Summary
 
 | | Files | Size |

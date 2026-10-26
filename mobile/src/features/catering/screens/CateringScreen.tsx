@@ -31,10 +31,10 @@ import { firstNameOf, formatTimeOfDay, lastNameOf } from '@/utils/format';
 import { useCateringPackages, useCreateCateringEnquiry } from '../hooks';
 
 const HIGHLIGHTS = [
-  { icon: require('../../../../assets/icons/catering-tailored.png'), title: 'Tailored to you', sub: 'Made to suit your event' },
-  { icon: require('../../../../assets/icons/catering-dietary.png'), title: 'Dietary flexibility', sub: 'Vegan & gluten free available' },
-  { icon: require('../../../../assets/icons/catering-bestfor.png'), title: 'Best for', sub: 'Functions, meetings, celebrations' },
-  { icon: require('../../../../assets/icons/catering-enquiry.png'), title: 'Easy enquiry', sub: 'Send details, we confirm by email' },
+  { icon: require('../../../../assets/icons/catering-tailored.webp'), title: 'Tailored to you', sub: 'Made to suit your event' },
+  { icon: require('../../../../assets/icons/catering-dietary.webp'), title: 'Dietary flexibility', sub: 'Vegan & gluten free available' },
+  { icon: require('../../../../assets/icons/catering-bestfor.webp'), title: 'Best for', sub: 'Functions, meetings, celebrations' },
+  { icon: require('../../../../assets/icons/catering-enquiry.webp'), title: 'Easy enquiry', sub: 'Send details, we confirm by email' },
 ];
 const SPREAD = require('../../../../assets/images/lifestyle/table-spread.webp');
 

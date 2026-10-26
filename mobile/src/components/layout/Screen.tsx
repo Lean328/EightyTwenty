@@ -5,7 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { colors } from '@/theme';
 
 // Replaces the prototype's CSS feTurbulence grain (rgb(64,43,31) at ≤5.5% alpha) with a tiling PNG.
-const GRAIN = require('../../../assets/images/textures/grain.png');
+const GRAIN = require('../../../assets/images/textures/grain.webp');
 
 interface ScreenProps {
   children: ReactNode;

@@ -23,8 +23,8 @@ import { formatActivityTime } from '@/utils/datetime';
 import { StampGrid } from '../components/StampGrid';
 import { useLoyaltyActivity, useLoyaltyCard } from '../hooks';
 
-const LOGO_BROWN = require('../../../../assets/branding/logo-stacked-brown.png');
-const LOGO_WHITE = require('../../../../assets/branding/logo-stacked-white.png');
+const LOGO_BROWN = require('../../../../assets/branding/logo-stacked-brown.webp');
+const LOGO_WHITE = require('../../../../assets/branding/logo-stacked-white.webp');
 
 /** Coffee card: 9 stamps, Apple Wallet / Show card, free-coffee reward, recent activity. */
 export function LoyaltyScreen() {
