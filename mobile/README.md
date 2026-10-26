@@ -42,9 +42,14 @@ The app registers the phone after sign-in (`POST /me/push-tokens`), removes it o
 opens the matching screen when a push is tapped (an order update opens that order). The server
 pushes every feed item, following Profile → Notifications.
 
-1. Once, with the Expo account that will own the app: `npx eas-cli@latest init` in `mobile/`.
-   It writes `extra.eas.projectId` into `app.json` — commit that change.
-2. **iPhone, Expo Go:** works after step 1 (allow notifications when asked).
+1. Done (2026-10-26): the project is `@my-an-lien/eightytwenty` (`owner` and
+   `extra.eas.projectId` in `app.json`).
+2. **iPhone, Expo Go:** works — verified 2026-10-26 on a real iPhone: the token registers after
+   sign-in, a counter stamp and an order status change arrive as banners, and tapping the order
+   push opens that order's status screen. To test against a backend on this computer, run the
+   `backend-lan-push` launch config (runserver on `0.0.0.0:8010` with push on), point
+   `EXPO_PUBLIC_API_BASE_URL` at `http://<computer-LAN-IP>:8010/api/v1/app` and restart with
+   `npx expo start --clear`.
 3. **Android:** Expo Go has no remote push since SDK 53 — use a development build
    (`npx eas-cli@latest build --profile development --platform android`) with Firebase (FCM)
    credentials added through `eas credentials`.
