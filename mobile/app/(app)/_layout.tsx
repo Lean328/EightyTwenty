@@ -8,7 +8,7 @@ import { colors } from '@/theme';
  * The four tab roots live in app/(app)/(tabs)/; tapping a tab resets history to that root.
  * Route behaviour (tab highlight, tab bar, mini-cart) is declared in src/navigation/routeMeta.ts.
  */
-export const unstable_settings = { initialRouteName: '(tabs)/index' };
+export const unstable_settings = { anchor: '(tabs)/index' };
 
 const TAB_ROOT = { animation: 'fade', animationDuration: 200 } as const;
 
@@ -17,7 +17,7 @@ export default function AppLayout() {
     <Stack
       screenOptions={{ headerShown: false, animation: 'slide_from_right', contentStyle: { backgroundColor: colors.cream } }}
       layout={({ children, state, navigation }) => (
-        <AppChrome routeNames={state.routes.map((r) => r.name)} navigation={navigation}>
+        <AppChrome state={state} navigation={navigation}>
           {children}
         </AppChrome>
       )}

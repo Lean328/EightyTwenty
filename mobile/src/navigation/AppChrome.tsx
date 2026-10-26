@@ -18,8 +18,9 @@ import { activeTab, metaFor, TAB_ROUTES } from './routeMeta';
 import { TabNavigationContext } from './tabNavigation';
 
 interface AppChromeProps {
-  routeNames: string[];
-  navigation: { reset: (state: { index: number; routes: { name: string }[] }) => void };
+  /** The stack's own state: SDK 58 only accepts RESET with a complete state (key, routeNames, routeKeySeq). */
+  state: { routes: { name: string }[] };
+  navigation: { reset(state: object): void };
   children: ReactNode;
 }
 
@@ -27,7 +28,8 @@ interface AppChromeProps {
  * Everything drawn over the app stack: tab bar, mini-cart, global sheets, toasts and the
  * payment overlay. Rendered through the Stack `layout` prop so it can reset history.
  */
-export function AppChrome({ routeNames, navigation, children }: AppChromeProps) {
+export function AppChrome({ state, navigation, children }: AppChromeProps) {
+  const routeNames = state.routes.map((r) => r.name);
   const top = routeNames[routeNames.length - 1];
   const meta = metaFor(top);
   const tab = activeTab(routeNames);
@@ -41,9 +43,10 @@ export function AppChrome({ routeNames, navigation, children }: AppChromeProps) 
   const goToTab = useCallback(
     (key: TabKey) => {
       useUiStore.setState({ item: null, cafePicker: null, orderSettingsOpen: false, walletOpen: false, memberCardOpen: false, avatarOpen: false });
-      navigation.reset({ index: 0, routes: [{ name: TAB_ROUTES[key] }] });
+      // Routes without a key get one minted by the router.
+      navigation.reset({ ...state, index: 0, routes: [{ name: TAB_ROUTES[key] }], stale: false });
     },
-    [navigation],
+    [navigation, state],
   );
 
   const onTabPress = useCallback(

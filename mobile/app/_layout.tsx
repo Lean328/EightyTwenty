@@ -74,10 +74,11 @@ export default function RootLayout() {
       <QueryClientProvider client={queryClient}>
         <RepositoryProvider>
           <Stack screenOptions={{ headerShown: false, animation: 'fade', contentStyle: { backgroundColor: colors.cream } }}>
-            <Stack.Protected guard={status !== 'signedIn'}>
+            {/* SDK 58: without redirectTo the guard lands on the bare "/(auth)" group (no index) → not found. */}
+            <Stack.Protected guard={status !== 'signedIn'} redirectTo="/">
               <Stack.Screen name="(auth)" />
             </Stack.Protected>
-            <Stack.Protected guard={status === 'signedIn'}>
+            <Stack.Protected guard={status === 'signedIn'} redirectTo="/welcome">
               <Stack.Screen name="(app)" />
             </Stack.Protected>
           </Stack>
