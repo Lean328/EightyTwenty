@@ -27,7 +27,7 @@ export function MemberCardSheet() {
           {card?.stamps ?? 0} of {card?.stampsPerReward ?? 9} stamps
         </Text>
         <View style={styles.box} accessible accessibilityLabel={`Member number ${card?.memberNumber ?? ''}`}>
-          <Barcode height={76} />
+          <Barcode value={card?.memberNumber} height={76} />
           <Text style={[styles.number, { fontFamily: fontFamilies.mono }]}>{card?.memberNumber}</Text>
         </View>
         <Text style={[sans(13, 400, 1.45), styles.note]}>The barista scans this to add a stamp or redeem your free coffee.</Text>

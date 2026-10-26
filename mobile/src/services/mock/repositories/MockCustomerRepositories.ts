@@ -34,6 +34,10 @@ export class MockCustomerRepository extends MockRepository implements CustomerRe
   async requestAccountClosure(): Promise<void> {
     throw new AppError('NOT_IMPLEMENTED', 'Contact us to close your account');
   }
+
+  async deleteAccount(): Promise<void> {
+    throw new AppError('NOT_IMPLEMENTED', 'Contact us to close your account');
+  }
 }
 
 export class MockPreferencesRepository extends MockRepository implements PreferencesRepository {

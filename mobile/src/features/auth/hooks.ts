@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRepositories, type SignInRequest, type SignUpRequest } from '@/repositories';
+import { pushToken } from '@/services/integrations/push';
 import { useCartStore } from '@/store/cart';
 import { useSessionStore } from '@/store/session';
 import { useUiStore } from '@/store/ui';
@@ -35,6 +36,10 @@ export function useSignOut() {
   const qc = useQueryClient();
   return async () => {
     const session = useSessionStore.getState().session;
+    // Stop pushes to this phone first, while the access token still works.
+    const token = pushToken.get();
+    if (token) await repos.notifications.removePushToken(token).catch(() => undefined);
+    pushToken.set(null);
     if (session) await repos.auth.signOut(session).catch(() => undefined);
     await useSessionStore.getState().signOut();
     qc.clear();

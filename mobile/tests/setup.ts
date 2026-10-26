@@ -13,6 +13,12 @@ jest.mock('react-native-reanimated/src/css/native/proxy', () => ({
   setCSSEventHandler: () => {},
 }));
 jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'));
+// Push needs a device; tests only need the module to load.
+jest.mock('expo-notifications', () => ({
+  setNotificationHandler: jest.fn(),
+  AndroidImportance: { HIGH: 4 },
+  DEFAULT_ACTION_IDENTIFIER: 'expo.modules.notifications.actions.DEFAULT',
+}));
 jest.mock('expo-secure-store', () => {
   const store = new Map<string, string>();
   return {

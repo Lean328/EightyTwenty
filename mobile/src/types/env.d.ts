@@ -6,6 +6,7 @@ declare namespace NodeJS {
     EXPO_PUBLIC_DATA_SOURCE?: 'mock' | 'api';
     EXPO_PUBLIC_API_BASE_URL?: string;
     EXPO_PUBLIC_API_TIMEOUT_MS?: string;
+    EXPO_PUBLIC_WEBSITE_URL?: string;
     EXPO_PUBLIC_MOCK_LATENCY_MS?: string;
     EXPO_PUBLIC_MOCK_PERSIST?: string;
     EXPO_PUBLIC_MOCK_ORDER_OUTCOME?: 'normal' | 'declined';

@@ -1,14 +1,20 @@
+import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Screen } from '@/components/layout/Screen';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
 import { Text } from '@/components/ui/Text';
 import { Touchable } from '@/components/ui/Touchable';
+import { config } from '@/constants/config';
+import { useSignOut } from '@/features/auth/hooks';
 import { useBottomSpace } from '@/hooks/useBottomSpace';
 import { useRepositories } from '@/repositories';
 import { errorMessage } from '@/services/errors';
+import { openUrl } from '@/services/integrations/links';
 import { showToast } from '@/store/ui';
 import { colors, sans } from '@/theme';
 import type { SecuritySettings } from '@/types';
+import { confirmAction } from '@/utils/dialog';
+import { ChangePasswordSheet } from '../components/ChangePasswordSheet';
 import { ToggleGroup, ToggleRow } from '../components/ToggleRow';
 import { usePreferences, useUpdatePreferences } from '../hooks';
 
@@ -19,19 +25,28 @@ const ROWS: { key: keyof SecuritySettings; title: string; description: string }[
 ];
 
 /**
- * Privacy & security. Toggles are stored preferences; biometric sign-in, location-based
- * sorting, password change and legal pages are pending integrations (see BACKEND_HANDOFF).
+ * Privacy & security. Toggles are stored preferences (biometric sign-in and location-based
+ * sorting are not wired to the device yet); password change, account deletion and the
+ * legal pages use the live API / website.
  */
 export function PrivacyScreen() {
   const bottom = useBottomSpace(132);
   const repos = useRepositories();
   const { data: prefs } = usePreferences();
   const update = useUpdatePreferences();
+  const signOut = useSignOut();
+  const [passwordOpen, setPasswordOpen] = useState(false);
 
   const closeAccount = async () => {
+    const sure = await confirmAction(
+      'Close your account?',
+      'Your account is deleted straight away: your coffee card stamps, gift card balance, favourites and saved addresses go with it. This can’t be undone.',
+      'Close account',
+    );
+    if (!sure) return;
     try {
-      await repos.customer.requestAccountClosure();
-      showToast('Account closure requested');
+      await repos.customer.deleteAccount();
+      await signOut();
     } catch (e) {
       showToast(errorMessage(e));
     }
@@ -49,12 +64,13 @@ export function PrivacyScreen() {
           </ToggleGroup>
         ) : null}
         <View style={styles.links}>
-          <LinkRow label="Change password" onPress={() => showToast('Password changes connect with live accounts')} />
-          <LinkRow label="Privacy policy" onPress={() => showToast('Opens on eightytwentyfood.com.au')} />
-          <LinkRow label="Terms of use" onPress={() => showToast('Opens on eightytwentyfood.com.au')} />
+          <LinkRow label="Change password" onPress={() => setPasswordOpen(true)} />
+          <LinkRow label="Privacy policy" onPress={() => void openUrl(`${config.websiteUrl}/privacy`)} />
+          <LinkRow label="Terms of use" onPress={() => void openUrl(`${config.websiteUrl}/terms`)} />
           <LinkRow label="Close my account" danger onPress={closeAccount} />
         </View>
       </ScrollView>
+      <ChangePasswordSheet visible={passwordOpen} onClose={() => setPasswordOpen(false)} />
     </Screen>
   );
 }

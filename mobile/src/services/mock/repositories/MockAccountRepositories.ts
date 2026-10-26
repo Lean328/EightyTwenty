@@ -176,4 +176,9 @@ export class MockNotificationRepository extends MockRepository implements Notifi
     me.notifications = [];
     this.commit();
   }
+
+  /** The mock has no push server: tokens are accepted and dropped. */
+  async registerPushToken(): Promise<void> {}
+
+  async removePushToken(): Promise<void> {}
 }

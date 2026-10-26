@@ -23,10 +23,34 @@ a configuration change plus the server work described in
 > The app labels each demo surface on screen ("Preview only", "Demo mode — no payment is taken").
 
 > **In the BOS repo (`mobile/`, since 2026-10-26):** the app talks to the real backend in
-> `../backend` (`/api/v1/app`) by default — accounts, menu, orders, bookings, catering, coffee
-> card and the notification feed are live. Card / Apple Pay payment is still not connected on
-> the server (orders with money to pay answer 501 in production). The table above describes the
-> `mock` data source.
+> `../backend` (`/api/v1/app`) by default. The table above describes the `mock` data source;
+> with `api` it is:
+>
+> | Area | Status (`api`) |
+> |---|---|
+> | Sign up / in / out, profile, change password, delete account ("Close my account") | Live |
+> | Cafés, menu (per café, sold-out items hidden), catering packages, offers, FAQs | Live, edited in BOS |
+> | Orders (server pricing, status updates from the café), coffee card, gift card balance | Live — but **card / Apple Pay is not connected**: orders with money to pay answer 501 in production |
+> | Table bookings, catering enquiries | Live — saved in BOS, the café is emailed (no email draft in the app) |
+> | Notification feed + **push notifications** | Live once the EAS project id is set (see below) |
+> | Member barcode | Real Code 128 of the member number (scannable into BOS/POS search) |
+> | Saved cards, sending eGift cards, Apple Wallet pass | Need a payment provider / Apple pass signing — not connected |
+
+## Push notifications
+
+The app registers the phone after sign-in (`POST /me/push-tokens`), removes it on sign-out, and
+opens the matching screen when a push is tapped (an order update opens that order). The server
+pushes every feed item, following Profile → Notifications.
+
+1. Once, with the Expo account that will own the app: `npx eas-cli@latest init` in `mobile/`.
+   It writes `extra.eas.projectId` into `app.json` — commit that change.
+2. **iPhone, Expo Go:** works after step 1 (allow notifications when asked).
+3. **Android:** Expo Go has no remote push since SDK 53 — use a development build
+   (`npx eas-cli@latest build --profile development --platform android`) with Firebase (FCM)
+   credentials added through `eas credentials`.
+4. **Store builds:** EAS creates the Apple push key when you build for iOS; Android needs the
+   FCM credentials from step 3. Optional `EXPO_ACCESS_TOKEN` on the server if "enhanced push
+   security" is turned on in the Expo account.
 
 ---
 
@@ -80,6 +104,7 @@ Copy [`.env.example`](.env.example) to `.env` and restart the dev server.
 | `EXPO_PUBLIC_DATA_SOURCE` | `mock` | `mock` = local simulated backend · `api` = HTTP repositories |
 | `EXPO_PUBLIC_API_BASE_URL` | — | Customer API base URL (required for `api`) |
 | `EXPO_PUBLIC_API_TIMEOUT_MS` | `15000` | HTTP timeout |
+| `EXPO_PUBLIC_WEBSITE_URL` | `https://eightytwenty.pages.dev` | Privacy policy (`/privacy`) and Terms of use (`/terms`) links |
 | `EXPO_PUBLIC_MOCK_LATENCY_MS` | `350` | Simulated latency per mock call |
 | `EXPO_PUBLIC_MOCK_PERSIST` | `true` | Keep mock data across restarts (AsyncStorage) |
 | `EXPO_PUBLIC_MOCK_ORDER_OUTCOME` | `normal` | `declined` demonstrates the declined-order screen |

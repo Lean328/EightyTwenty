@@ -57,4 +57,8 @@ export class MockAuthRepository extends MockRepository implements AuthRepository
   async requestPasswordReset(): Promise<void> {
     throw new AppError('NOT_IMPLEMENTED', 'Password reset isn’t connected in this preview');
   }
+
+  async changePassword(): Promise<Session> {
+    throw new AppError('NOT_IMPLEMENTED', 'Password changes connect with live accounts');
+  }
 }

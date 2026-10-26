@@ -124,7 +124,7 @@ export function LoyaltyScreen() {
               <Text style={[serif(28, 400, 1, -0.015), styles.rewardTitle]}>Free coffee</Text>
               <Text style={[sans(13, 400, 1.3), styles.rewardSub]}>Any coffee, any size.</Text>
               <View style={styles.rewardCode}>
-                <Barcode height={56} />
+                <Barcode value={card?.memberNumber} height={56} />
                 <Text style={[styles.number, { fontFamily: fontFamilies.mono }]}>{card?.memberNumber}</Text>
               </View>
               <View style={styles.rewardActions}>

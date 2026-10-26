@@ -82,6 +82,9 @@ export class HttpAuthRepository implements AuthRepository {
   async requestPasswordReset(email: string): Promise<void> {
     await this.http.post(endpoints.auth.passwordReset, { email }, { auth: false });
   }
+  async changePassword(currentPassword: string, newPassword: string): Promise<Session> {
+    return M.sessionFromDto(await this.http.post<D.SessionDTO>(endpoints.me.password, { currentPassword, newPassword }));
+  }
 }
 
 export class HttpCustomerRepository implements CustomerRepository {
@@ -94,6 +97,9 @@ export class HttpCustomerRepository implements CustomerRepository {
   }
   async requestAccountClosure(): Promise<void> {
     await this.http.post(endpoints.me.closureRequest);
+  }
+  async deleteAccount(): Promise<void> {
+    await this.http.delete(endpoints.me.profile);
   }
 }
 
@@ -267,6 +273,12 @@ export class HttpNotificationRepository implements NotificationRepository {
   }
   async clearAll(): Promise<void> {
     await this.http.delete(endpoints.me.notifications);
+  }
+  async registerPushToken(token: string, platform: 'ios' | 'android'): Promise<void> {
+    await this.http.post(endpoints.me.pushTokens, { token, platform });
+  }
+  async removePushToken(token: string): Promise<void> {
+    await this.http.delete(endpoints.me.pushToken(token));
   }
 }
 

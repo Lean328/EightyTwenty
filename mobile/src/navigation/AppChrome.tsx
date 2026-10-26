@@ -8,6 +8,7 @@ import { OrderSettingsSheet } from '@/features/cart/components/OrderSettingsShee
 import { CafePickerSheet } from '@/features/locations/components/CafePickerSheet';
 import { useLocations, useSelectedLocation } from '@/features/locations/hooks';
 import { MemberCardSheet } from '@/features/loyalty/components/MemberCardSheet';
+import { usePushNotifications } from '@/features/notifications/usePushNotifications';
 import { WalletPassSheet } from '@/features/loyalty/components/WalletPassSheet';
 import { ItemSheet } from '@/features/menu/components/ItemSheet';
 import { AvatarSheet } from '@/features/profile/components/AvatarSheet';
@@ -38,6 +39,7 @@ export function AppChrome({ state, navigation, children }: AppChromeProps) {
   const itemOpen = useUiStore((s) => !!s.item);
   const location = useSelectedLocation();
   useSyncHomeCafe();
+  usePushNotifications();
 
   /** Jump to a tab root, clearing history (prototype `tabGo`). */
   const goToTab = useCallback(

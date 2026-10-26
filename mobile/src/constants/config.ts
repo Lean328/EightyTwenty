@@ -24,6 +24,8 @@ export const config = {
     baseUrl: (process.env.EXPO_PUBLIC_API_BASE_URL ?? '').replace(/\/+$/, ''),
     timeoutMs: readNumber(process.env.EXPO_PUBLIC_API_TIMEOUT_MS, 15000),
   },
+  /** Customer website (privacy policy, terms). */
+  websiteUrl: (process.env.EXPO_PUBLIC_WEBSITE_URL || 'https://eightytwenty.pages.dev').replace(/\/+$/, ''),
   mock: {
     latencyMs: readNumber(process.env.EXPO_PUBLIC_MOCK_LATENCY_MS, 350),
     /** Persist simulated data across app restarts (AsyncStorage). */

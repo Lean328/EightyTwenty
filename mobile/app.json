@@ -40,6 +40,14 @@
       "expo-font",
       "expo-image",
       "expo-secure-store",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/branding/notification-icon.png",
+          "color": "#4B2E26",
+          "defaultChannel": "default"
+        }
+      ],
       "@react-native-community/datetimepicker"
     ],
     "experiments": {

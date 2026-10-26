@@ -15,6 +15,7 @@ export const endpoints = {
   me: {
     profile: '/me',
     closureRequest: '/me/closure-request',
+    password: '/me/password',
     preferences: '/me/preferences',
     favourites: '/me/favourites',
     favourite: (itemId: string) => `/me/favourites/${e(itemId)}`,
@@ -34,6 +35,8 @@ export const endpoints = {
     notifications: '/me/notifications',
     notificationsSeen: '/me/notifications/seen',
     notificationsReadAll: '/me/notifications/read-all',
+    pushTokens: '/me/push-tokens',
+    pushToken: (token: string) => `/me/push-tokens/${e(token)}`,
   },
   locations: '/locations',
   location: (id: string) => `/locations/${e(id)}`,

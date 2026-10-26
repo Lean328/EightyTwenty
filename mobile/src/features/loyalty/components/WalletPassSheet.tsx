@@ -70,7 +70,7 @@ export function WalletPassSheet() {
             ))}
           </View>
           <View style={styles.barcode}>
-            <Barcode height={44} color={colors.walletInk} />
+            <Barcode value={card?.memberNumber} height={44} color={colors.walletInk} />
           </View>
         </View>
         <Text style={[styles.sys, styles.foot]}>

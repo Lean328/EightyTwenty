@@ -69,6 +69,8 @@ export interface AuthRepository {
   /** Exchanges a refresh token for a new session. Rejects with SESSION_EXPIRED when invalid. */
   refresh(refreshToken: string): Promise<Session>;
   requestPasswordReset(email: string): Promise<void>;
+  /** Changes the password; the server signs out every other session and returns a new one. */
+  changePassword(currentPassword: string, newPassword: string): Promise<Session>;
 }
 
 export interface CustomerRepository {
@@ -76,6 +78,8 @@ export interface CustomerRepository {
   updateProfile(update: CustomerUpdate): Promise<Customer>;
   /** Account closure is handled by the team (prototype: "Contact us to close your account"). */
   requestAccountClosure(): Promise<void>;
+  /** Deletes the account and its personal data straight away; every session is signed out. */
+  deleteAccount(): Promise<void>;
 }
 
 export interface PreferencesRepository {
@@ -153,6 +157,10 @@ export interface NotificationRepository {
   markSeen(): Promise<void>;
   markAllRead(): Promise<void>;
   clearAll(): Promise<void>;
+  /** Sends this phone's Expo push token so feed items are also pushed (customer toggles apply). */
+  registerPushToken(token: string, platform: 'ios' | 'android'): Promise<void>;
+  /** Stops pushes to this phone (called before signing out). */
+  removePushToken(token: string): Promise<void>;
 }
 
 export interface ContentRepository {
