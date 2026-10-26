@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { forwardRef, useRef, useState } from 'react';
-import { StyleSheet, TextInput, View } from 'react-native';
+import { StyleSheet, View, type TextInputInstance } from 'react-native';
 import { BottomSheet } from '@/components/layout/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { SegmentedControl } from '@/components/ui/SegmentedControl';
@@ -28,9 +28,9 @@ export function AuthSheet({ mode, onModeChange, onClose }: { mode: AuthMode | nu
   const qc = useQueryClient();
   const busy = signIn.isPending || signUp.isPending;
   const signup = mode === 'signup';
-  const phoneRef = useRef<TextInput>(null);
-  const emailRef = useRef<TextInput>(null);
-  const passwordRef = useRef<TextInput>(null);
+  const phoneRef = useRef<TextInputInstance>(null);
+  const emailRef = useRef<TextInputInstance>(null);
+  const passwordRef = useRef<TextInputInstance>(null);
   const switchMode = (m: AuthMode) => {
     setError('');
     onModeChange(m);
@@ -146,7 +146,7 @@ export function AuthSheet({ mode, onModeChange, onClose }: { mode: AuthMode | nu
 }
 
 /** Auth fields: 48pt, warm white fill (#FFF8EE) on the cream sheet. */
-const AuthInput = forwardRef<TextInput, TextFieldProps>(function AuthInput(props, ref) {
+const AuthInput = forwardRef<TextInputInstance, TextFieldProps>(function AuthInput(props, ref) {
   return <TextField ref={ref} height={48} radius={10} background="#FFF8EE" {...props} />;
 });
 

@@ -1,7 +1,7 @@
 import { router } from 'expo-router';
 import { Image } from 'expo-image';
 import { useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View, type ScrollViewInstance } from 'react-native';
 import Animated, { useAnimatedStyle, useDerivedValue, withTiming } from 'react-native-reanimated';
 import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
 import { fadeKeyframe, Reveal, Rise } from '@/components/layout/Rise';
@@ -42,7 +42,7 @@ type Form = Omit<CateringEnquiryRequest, 'packageId' | 'guests' | 'date' | 'time
 
 /** Catering: packages (from $X pp), highlights and the website's enquiry form (email draft to info@). */
 export function CateringScreen() {
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
   const formY = useRef(0);
   const { data: packages = [] } = useCateringPackages();
   const { data: profile } = useProfile();

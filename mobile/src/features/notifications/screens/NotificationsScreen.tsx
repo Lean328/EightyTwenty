@@ -65,7 +65,7 @@ export function NotificationsScreen() {
                 <TextAction label="Notification settings" onPress={() => router.push('/notifications/settings')} />
                 <TextAction label="Clear all" weight={500} color={colors.textSecondary} onPress={() => clearAll.mutate()} />
               </View>
-            ) : null
+            ) : undefined
           }
           ListEmptyComponent={
             <EmptyState icon="bell" title="You're all caught up" body="Order updates, stamps and booking news will land here." actionLabel="Notification settings" onAction={() => router.push('/notifications/settings')} />

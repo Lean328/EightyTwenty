@@ -6,6 +6,12 @@ process.env.EXPO_PUBLIC_MOCK_PERSIST = 'false';
 jest.mock('@react-native-async-storage/async-storage', () => require('@react-native-async-storage/async-storage/jest/async-storage-mock'));
 // Reanimated 4 runs on react-native-worklets; both ship Jest mocks.
 jest.mock('react-native-worklets', () => require('react-native-worklets/src/mock'));
+// Reanimated 4.7 (SDK 58): its native initializer calls setCSSEventHandler, which JSReanimated
+// (used under Jest) throws on. Make that one call a no-op so the mock can load.
+jest.mock('react-native-reanimated/src/css/native/proxy', () => ({
+  ...jest.requireActual('react-native-reanimated/src/css/native/proxy'),
+  setCSSEventHandler: () => {},
+}));
 jest.mock('react-native-reanimated', () => require('react-native-reanimated/mock'));
 jest.mock('expo-secure-store', () => {
   const store = new Map<string, string>();

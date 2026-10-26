@@ -1,5 +1,5 @@
 import { forwardRef, type ReactNode } from 'react';
-import { Pressable, type PressableProps, type StyleProp, type View, type ViewStyle } from 'react-native';
+import { Pressable, type PressableProps, type StyleProp, type ViewStyle, type ViewInstance } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 
 const AnimatedPressable = Animated.createAnimatedComponent(Pressable);
@@ -17,7 +17,7 @@ export interface TouchableProps extends Omit<PressableProps, 'style' | 'children
  * Button press feedback from the prototype (`style-active="transform:scale(.97);opacity:.8"`),
  * animated on the UI thread over 150ms.
  */
-export const Touchable = forwardRef<View, TouchableProps>(function Touchable(
+export const Touchable = forwardRef<ViewInstance, TouchableProps>(function Touchable(
   { style, children, pressedOpacity = 0.8, pressedScale = 0.97, onPressIn, onPressOut, accessibilityRole = 'button', disabled, ...rest },
   ref,
 ) {

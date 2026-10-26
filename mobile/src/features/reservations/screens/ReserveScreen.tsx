@@ -1,7 +1,7 @@
 import { useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import { useMemo, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View, type ScrollViewInstance } from 'react-native';
 import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
 import { Rise } from '@/components/layout/Rise';
 import { Screen } from '@/components/layout/Screen';
@@ -42,7 +42,7 @@ type ContactEdits = Partial<Pick<ReservationRequest, 'name' | 'phone' | 'email'>
  */
 export function ReserveScreen() {
   const params = useLocalSearchParams<{ locationId?: string }>();
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
   const now = useNow(30_000);
   const goToTab = useGoToTab();
   const selected = useSelectedLocation();

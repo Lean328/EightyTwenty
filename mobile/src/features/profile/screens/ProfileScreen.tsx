@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useRef } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View, type ScrollViewInstance } from 'react-native';
 import { Rise } from '@/components/layout/Rise';
 import { Screen } from '@/components/layout/Screen';
 import { Icon } from '@/components/ui/Icon';
@@ -26,7 +26,7 @@ import { useAddresses, useFavourites, usePaymentMethods, usePreferences, useProf
 
 /** Account hub: name + avatar, then General · Payment & wallet · Preferences · Support. */
 export function ProfileScreen() {
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
   const signOut = useSignOut();
   const { openCafePicker, setWalletOpen, setAvatarOpen } = useUiStore.getState();
   const location = useSelectedLocation();

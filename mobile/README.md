@@ -26,7 +26,7 @@ a configuration change plus the server work described in
 
 ## Quick start
 
-Requirements: Node 20+ and npm. Expo SDK 57 (React Native 0.86, React 19.2).
+Requirements: Node 20+ and npm. Expo SDK 58 (React Native 0.88, React 19.3).
 
 ```bash
 npm install
@@ -38,7 +38,7 @@ npx expo start
 
 Then press `i` (iOS simulator), `a` (Android emulator) or `w` (web), or scan the QR code with a
 development build. The project uses only Expo-supported modules, so it also runs in **Expo Go**
-for SDK 57, but Expo Go was not tested here (see *Verification status*).
+for SDK 58 (see *Verification status*).
 
 **Demo sign-in (mock data only):** use the demo account email defined as `DEMO_EMAIL` in
 [`src/services/mock/fixtures/demoCustomer.ts`](src/services/mock/fixtures/demoCustomer.ts) with

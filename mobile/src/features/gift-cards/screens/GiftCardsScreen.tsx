@@ -1,6 +1,6 @@
 import { Image } from 'expo-image';
 import { useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { StyleSheet, View, type ScrollViewInstance } from 'react-native';
 import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
 import { Rise } from '@/components/layout/Rise';
 import { Screen } from '@/components/layout/Screen';
@@ -35,7 +35,7 @@ function amountLabel(a: GiftCardActivity): string {
  * no payment is taken and no eGift is issued).
  */
 export function GiftCardsScreen() {
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
   const now = useNow();
   const bottom = useBottomSpace(132);
   const { data: card } = useGiftCard();

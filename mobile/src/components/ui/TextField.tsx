@@ -1,5 +1,5 @@
 import { forwardRef, useState } from 'react';
-import { Platform, StyleSheet, TextInput, View, type StyleProp, type TextInputProps, type TextStyle, type ViewStyle } from 'react-native';
+import { Platform, StyleSheet, TextInput, View, type StyleProp, type TextInputProps, type TextStyle, type ViewStyle, type TextInputInstance } from 'react-native';
 import { colors, espressoA, inkA, MAX_FONT_SCALE, sans } from '@/theme';
 import { Text } from './Text';
 
@@ -16,7 +16,7 @@ export interface TextFieldProps extends TextInputProps {
   error?: boolean;
 }
 
-export const TextField = forwardRef<TextInput, TextFieldProps>(function TextField(
+export const TextField = forwardRef<TextInputInstance, TextFieldProps>(function TextField(
   { height = 48, radius = 10, background = colors.ivory, tone = 'ink', error, style, multiline, onFocus, onBlur, ...rest },
   ref,
 ) {

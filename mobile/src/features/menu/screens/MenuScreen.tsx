@@ -115,9 +115,9 @@ export function MenuScreen() {
           renderItem={renderItem}
           extraData={quantities}
           ListHeaderComponent={header}
-          ListEmptyComponent={menu.isLoading ? <MenuSkeleton /> : null}
+          ListEmptyComponent={menu.isLoading ? <MenuSkeleton /> : undefined}
           ListFooterComponent={
-            menu.isLoading ? null : (
+            menu.isLoading ? undefined : (
               <Rise key={categoryId} distance={4} duration={220} style={styles.gutter}>
                 <Text style={[sans(11, 400, 1.55), styles.legend]}>GF gluten free · DF dairy free · VG vegan · V vegetarian · opt on request.</Text>
               </Rise>

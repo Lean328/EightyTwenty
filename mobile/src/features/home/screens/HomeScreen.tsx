@@ -1,6 +1,6 @@
 import { router } from 'expo-router';
 import { useMemo, useRef } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View, type ScrollViewInstance } from 'react-native';
 import { Rise } from '@/components/layout/Rise';
 import { Screen } from '@/components/layout/Screen';
 import { Icon } from '@/components/ui/Icon';
@@ -30,7 +30,7 @@ import { buildWhatsOn, greeting, LATEST_SHORT, leadSubline } from '../whatsOn';
 
 /** Home — the approved editorial layout, section order preserved. */
 export function HomeScreen() {
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
   const now = useNow();
   const goToTab = useGoToTab();
   const location = useSelectedLocation();

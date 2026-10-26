@@ -1,7 +1,7 @@
 import { useFocusEffect } from 'expo-router';
 import { Image } from 'expo-image';
 import { useCallback, useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View } from 'react-native';
+import { ScrollView, StyleSheet, View, type ScrollViewInstance } from 'react-native';
 import { Rise } from '@/components/layout/Rise';
 import { Screen } from '@/components/layout/Screen';
 import { Barcode } from '@/components/ui/Barcode';
@@ -28,7 +28,7 @@ const LOGO_WHITE = require('../../../../assets/branding/logo-stacked-white.webp'
 
 /** Coffee card: 9 stamps, Apple Wallet / Show card, free-coffee reward, recent activity. */
 export function LoyaltyScreen() {
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<ScrollViewInstance>(null);
   const now = useNow();
   const goToTab = useGoToTab();
   const setCategory = useMenuStore((s) => s.setCategory);
