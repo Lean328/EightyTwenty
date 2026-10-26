@@ -22,11 +22,22 @@ a configuration change plus the server work described in
 >
 > The app labels each demo surface on screen ("Preview only", "Demo mode — no payment is taken").
 
+> **In the BOS repo (`mobile/`, since 2026-10-26):** the app talks to the real backend in
+> `../backend` (`/api/v1/app`) by default — accounts, menu, orders, bookings, catering, coffee
+> card and the notification feed are live. Card / Apple Pay payment is still not connected on
+> the server (orders with money to pay answer 501 in production). The table above describes the
+> `mock` data source.
+
 ---
 
 ## Quick start
 
-Requirements: Node 20+ and npm. Expo SDK 58 (React Native 0.88, React 19.3).
+Requirements: Node 20+ and npm. Expo SDK 58 (React Native 0.88, React 19.3). Expo Go from the
+App Store / Google Play supports only SDK 58.
+
+```bash
+cp .env.example .env
+```
 
 ```bash
 npm install
@@ -36,19 +47,16 @@ npm install
 npx expo start
 ```
 
-Then press `i` (iOS simulator), `a` (Android emulator) or `w` (web), or scan the QR code with a
-development build. The project uses only Expo-supported modules, so it also runs in **Expo Go**
-for SDK 58 (see *Verification status*).
+Scan the QR code with **Expo Go** (phone and computer on the same Wi-Fi; add `--tunnel` if
+they are not), or press `i` / `a` / `w` for a simulator, emulator or the web build.
+`.env` points at the production API on Render; to use a backend on this computer set
+`EXPO_PUBLIC_API_BASE_URL=http://<computer-LAN-IP>:8000/api/v1/app`, run
+`manage.py runserver 0.0.0.0:8000`, and restart with `npx expo start --clear`.
 
-**Demo sign-in (mock data only):** use the demo account email defined as `DEMO_EMAIL` in
-[`src/services/mock/fixtures/demoCustomer.ts`](src/services/mock/fixtures/demoCustomer.ts) with
-**any password of 6+ characters**. Any other well-formed email also opens the demo account;
-*Sign up* creates a fresh, empty account on the device.
-
-> **Path note:** this folder sits under a path containing spaces
-> (`Brand assets and app screens`). Metro and the web build handle it. If native tooling
-> (CocoaPods / Gradle) fails during `expo run:ios|android` or a prebuild, move the project to a
-> path without spaces.
+**Mock data instead:** set `EXPO_PUBLIC_DATA_SOURCE=mock`, then sign in with the demo account
+email defined as `DEMO_EMAIL` in
+[`src/services/mock/fixtures/demoCustomer.ts`](src/services/mock/fixtures/demoCustomer.ts) and
+**any password of 6+ characters**. With the real API, sign up needs a password of 10+ characters.
 
 ## Scripts
 

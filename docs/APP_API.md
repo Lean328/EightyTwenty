@@ -15,6 +15,9 @@ tokens, errors, idempotency, paging, rate limits), differences from the app's ow
 `API_CONTRACTS.md`, what the café team sees in BOS and a testing checklist — followed by every
 endpoint with its description, request/response schema, examples and errors.
 
+The app itself lives in this repo at [`mobile/`](../mobile/README.md) (Expo SDK 58); its
+`.env.example` already holds the values below.
+
 Quick start for the app's build profile:
 
 ```bash
