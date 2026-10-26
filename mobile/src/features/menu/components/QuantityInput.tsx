@@ -5,6 +5,11 @@ import { Icon } from '@/components/ui/Icon';
 import { Touchable } from '@/components/ui/Touchable';
 import { colors, inkA, MAX_FONT_SCALE, sans } from '@/theme';
 
+// Worklet colours must be plain values: calling a JS helper (inkA) inside useAnimatedStyle
+// runs on the UI thread on a phone and is a fatal error there (the web build hides it).
+const IDLE_BG = 'rgba(0,0,0,0)';
+const IDLE_BORDER = inkA(0.2);
+
 interface QuantityInputProps {
   name: string;
   quantity: number;
@@ -21,8 +26,8 @@ export const QuantityInput = memo(function QuantityInput({ name, quantity, onSte
   const inCart = quantity > 0;
   const active = useDerivedValue(() => withTiming(inCart ? 1 : 0, { duration: 200 }), [inCart]);
   const pill = useAnimatedStyle(() => ({
-    backgroundColor: interpolateColor(active.value, [0, 1], ['rgba(0,0,0,0)', colors.ink]),
-    borderColor: interpolateColor(active.value, [0, 1], [inkA(0.2), colors.ink]),
+    backgroundColor: interpolateColor(active.value, [0, 1], [IDLE_BG, colors.ink]),
+    borderColor: interpolateColor(active.value, [0, 1], [IDLE_BORDER, colors.ink]),
   }));
   const fg = inCart ? colors.ivory : colors.ink;
   const minusDisabled = quantity === 0 && draft === null;

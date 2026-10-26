@@ -13,6 +13,21 @@
       "port": 8000
     },
     {
+      "name": "backend-phone",
+      "runtimeExecutable": ".venv/Scripts/python.exe",
+      "runtimeArgs": [
+        "backend/manage.py",
+        "runserver",
+        "0.0.0.0:8000"
+      ],
+      "env": {
+        "PAYMENT_PROVIDER": "demo",
+        "PUSH_ENABLED": "True"
+      },
+      "port": 8000,
+      "autoPort": false
+    },
+    {
       "name": "website",
       "runtimeExecutable": ".venv/Scripts/python.exe",
       "runtimeArgs": [
@@ -37,22 +52,6 @@
       ],
       "env": {
         "PAYMENT_PROVIDER": "demo"
-      },
-      "port": 8010,
-      "autoPort": false
-    },
-    {
-      "name": "backend-lan-push",
-      "runtimeExecutable": ".venv/Scripts/python.exe",
-      "runtimeArgs": [
-        "backend/manage.py",
-        "runserver",
-        "0.0.0.0:8010",
-        "--noreload"
-      ],
-      "env": {
-        "PAYMENT_PROVIDER": "demo",
-        "PUSH_ENABLED": "True"
       },
       "port": 8010,
       "autoPort": false

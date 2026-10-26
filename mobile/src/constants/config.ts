@@ -4,7 +4,22 @@
  * EXPO_PUBLIC_ values are inlined into the JavaScript bundle at build time and are
  * readable by anyone with the app — never put secrets here.
  */
+import Constants from 'expo-constants';
+import { Platform } from 'react-native';
+
 export type DataSource = 'mock' | 'api';
+
+/**
+ * Dev convenience: `http://127.0.0.1:8000/...` in .env means "the backend on this computer".
+ * On a phone (Expo Go) 127.0.0.1 is the phone itself, so swap in the computer's LAN IP that
+ * Metro is served from (hostUri, e.g. "192.168.1.18:8081"). Web and real URLs are untouched.
+ */
+export function resolveDevApiUrl(url: string, platform: string, hostUri: string | null | undefined): string {
+  const match = /^(https?:\/\/)(localhost|127\.0\.0\.1|0\.0\.0\.0)(?=[:/]|$)/.exec(url);
+  const lanHost = hostUri?.split(':')[0];
+  if (!match || platform === 'web' || !lanHost || !/^\d{1,3}(\.\d{1,3}){3}$/.test(lanHost)) return url;
+  return match[1] + lanHost + url.slice(match[0].length);
+}
 
 function readNumber(value: string | undefined, fallback: number): number {
   const n = Number(value);
@@ -21,7 +36,7 @@ const dataSource: DataSource = process.env.EXPO_PUBLIC_DATA_SOURCE === 'api' ? '
 export const config = {
   dataSource,
   api: {
-    baseUrl: (process.env.EXPO_PUBLIC_API_BASE_URL ?? '').replace(/\/+$/, ''),
+    baseUrl: resolveDevApiUrl((process.env.EXPO_PUBLIC_API_BASE_URL ?? '').replace(/\/+$/, ''), Platform.OS, __DEV__ ? Constants.expoConfig?.hostUri : null),
     timeoutMs: readNumber(process.env.EXPO_PUBLIC_API_TIMEOUT_MS, 15000),
   },
   /** Customer website (privacy policy, terms). */

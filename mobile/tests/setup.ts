@@ -18,6 +18,14 @@ jest.mock('expo-notifications', () => ({
   setNotificationHandler: jest.fn(),
   AndroidImportance: { HIGH: 4 },
   DEFAULT_ACTION_IDENTIFIER: 'expo.modules.notifications.actions.DEFAULT',
+  addNotificationReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+  addNotificationResponseReceivedListener: jest.fn(() => ({ remove: jest.fn() })),
+  getLastNotificationResponse: jest.fn(() => null),
+  clearLastNotificationResponse: jest.fn(),
+  getPermissionsAsync: jest.fn(async () => ({ status: 'denied' })),
+  requestPermissionsAsync: jest.fn(async () => ({ status: 'denied' })),
+  setNotificationChannelAsync: jest.fn(async () => null),
+  getExpoPushTokenAsync: jest.fn(async () => ({ data: 'ExponentPushToken[test]' })),
 }));
 jest.mock('expo-secure-store', () => {
   const store = new Map<string, string>();
