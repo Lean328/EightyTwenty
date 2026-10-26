@@ -417,9 +417,6 @@
       <sc-if value="{{ loc.limited }}" hint-placeholder-val="{{ false }}">
         <div style="background:#ECE4D6;border-bottom:1px solid rgba(75,46,38,.12)"><p style="max-width:1400px;margin:0 auto;padding:10px clamp(16px,3vw,40px);font:500 13px/1.4 Figtree;color:#4B2E26">Civic is our express café, with limited menu options. Weekdays only.</p></div>
       </sc-if>
-      <sc-if value="{{ loc.tbc }}" hint-placeholder-val="{{ false }}">
-        <div data-public-order style="background:#ECE4D6;border-bottom:1px solid rgba(75,46,38,.12)"><p style="max-width:1400px;margin:0 auto;padding:10px clamp(16px,3vw,40px);font:500 13px/1.4 Figtree;color:#4B2E26">Akuna St details are being confirmed, so online ordering for this café isn't available yet. Choose another café to order.</p></div>
-      </sc-if>
 
       <!-- menu header -->
       <div data-reveal style="max-width:1400px;margin:0 auto;padding:clamp(28px,4vw,56px) clamp(16px,3vw,40px) 0">
@@ -463,7 +460,7 @@
                     <sc-if value="{{ it.inCart }}" hint-placeholder-val="{{ false }}"><span data-public-order style="position:absolute;top:10px;right:10px;display:grid;place-items:center;min-width:26px;height:26px;padding:0 8px;border-radius:999px;background:#B67A4B;color:#3A2B24;font:500 12px/1 Figtree;white-space:nowrap">{{ it.cartQty }} in cart</span></sc-if>
                   </span>
                   <span style="display:flex;flex-direction:column;gap:6px;padding:12px 2px 6px;flex:1;opacity:{{ it.opacity }}">
-                    <span style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><span style="font:400 18px/1.2 'Newsreader',serif;color:#3A2B24">{{ it.name }}</span><span style="font:500 14px/1 Figtree;color:#3A2B24;flex:none">{{ it.priceLabel }}</span></span>
+                    <span style="display:flex;justify-content:space-between;gap:10px;align-items:baseline"><span style="font:400 18px/1.2 'Newsreader',serif;color:#3A2B24">{{ it.name }}</span><sc-if value="{{ showMenuPrices }}" hint-placeholder-val="{{ false }}"><span style="font:500 14px/1 Figtree;color:#3A2B24;flex:none">{{ it.priceLabel }}</span></sc-if></span>
                     <span style="font:400 13px/1.45 Figtree;color:#7A6259;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">{{ it.desc }}</span>
                     <sc-if value="{{ it.dietLabel }}" hint-placeholder-val="{{ false }}"><span style="font:500 11px/1 Figtree;letter-spacing:.06em;color:#7A6259;margin-top:2px">{{ it.dietLabel }}</span></sc-if>
                   </span>
@@ -472,7 +469,7 @@
             </div>
           </section>
         </sc-for></sc-if>
-          <p style="margin:24px 0 0;font:400 11px/1.4 Figtree;color:#7A6259">Prices and dietary labels as printed on the EightyTwenty menu.</p>
+          <p style="margin:24px 0 0;font:400 11px/1.4 Figtree;color:#7A6259">Dietary labels as printed on the EightyTwenty menu.</p>
         </div>
       </div>
     </main>
@@ -1363,14 +1360,14 @@
       </div>
       <div data-item-content>
         <div data-item-details>
-          <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:18px;align-items:start"><h2 style="min-width:0;margin:0;font:300 clamp(28px,3vw,38px)/1.05 'Newsreader',serif;letter-spacing:0;overflow-wrap:break-word">{{ item.name }}</h2><span style="padding-top:5px;white-space:nowrap;font:500 16px/1.2 Figtree;color:#7A6259">{{ itemBaseLabel }}</span></div>
+          <div style="display:grid;grid-template-columns:{{ itemTitleColumns }};gap:18px;align-items:start"><h2 style="min-width:0;margin:0;font:300 clamp(28px,3vw,38px)/1.05 'Newsreader',serif;letter-spacing:0;overflow-wrap:break-word">{{ item.name }}</h2><sc-if value="{{ showMenuPrices }}" hint-placeholder-val="{{ false }}"><span style="padding-top:5px;white-space:nowrap;font:500 16px/1.2 Figtree;color:#7A6259">{{ itemBaseLabel }}</span></sc-if></div>
           <p style="margin:10px 0 0;font:400 15px/1.5 Figtree;color:#4B2E26">{{ item.desc }}</p>
           <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:12px"><sc-for list="{{ item.diet }}" as="dl" hint-placeholder-count="0"><span style="padding:5px 9px;border-radius:999px;background:#EEF1E4;color:#4E6538;font:500 11px/1 Figtree;letter-spacing:.06em;text-transform:uppercase">{{ dl }}</span></sc-for></div>
           <sc-for list="{{ itemGroups }}" as="g" hint-placeholder-count="0">
             <fieldset data-public-order style="margin:22px 0 0;padding:0;border:0">
               <legend style="display:flex;justify-content:space-between;align-items:baseline;width:100%;padding:0;margin:0 0 10px;font:500 14px/1 Figtree"><span>{{ g.name }}</span><span style="font:500 11px/1 Figtree;letter-spacing:.06em;text-transform:uppercase;color:{{ g.ruleColor }}">{{ g.rule }}</span></legend>
               <div style="display:flex;flex-wrap:wrap;gap:8px">
-                <sc-for list="{{ g.opts }}" as="o" hint-placeholder-count="0"><button type="button" onClick="{{ o.toggle }}" aria-pressed="{{ o.on }}" style="white-space:normal;min-height:40px;padding:8px 14px;border-radius:999px;border:1.5px solid {{ o.border }};background:{{ o.bg }};color:#3A2B24;font:500 13px/1.2 Figtree;cursor:pointer;text-align:left">{{ o.label }}<span style="color:#7A6259;margin-left:6px">{{ o.priceLabel }}</span></button></sc-for>
+                <sc-for list="{{ g.opts }}" as="o" hint-placeholder-count="0"><button type="button" onClick="{{ o.toggle }}" aria-pressed="{{ o.on }}" style="white-space:normal;min-height:40px;padding:8px 14px;border-radius:999px;border:1.5px solid {{ o.border }};background:{{ o.bg }};color:#3A2B24;font:500 13px/1.2 Figtree;cursor:pointer;text-align:left">{{ o.label }}<sc-if value="{{ showMenuPrices }}" hint-placeholder-val="{{ false }}"><span style="color:#7A6259;margin-left:6px">{{ o.priceLabel }}</span></sc-if></button></sc-for>
               </div>
             </fieldset>
           </sc-for>
@@ -1435,7 +1432,7 @@
 
 </div>
 </x-dc>
-<script type="text/x-dc" data-dc-script data-props="{&quot;startView&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;home&quot;,&quot;menu&quot;,&quot;locations&quot;,&quot;location&quot;,&quot;reserve&quot;,&quot;catering&quot;,&quot;about&quot;,&quot;checkout&quot;],&quot;default&quot;:&quot;home&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype&quot;},&quot;defaultLocation&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;braddon&quot;,&quot;civic&quot;,&quot;coombs&quot;,&quot;greenway&quot;,&quot;gungahlin&quot;,&quot;dickson&quot;,&quot;belconnen&quot;,&quot;phillip&quot;,&quot;kingston&quot;,&quot;akuna&quot;],&quot;default&quot;:&quot;phillip&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype&quot;},&quot;forceMobile&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Prototype&quot;},&quot;signedIn&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Prototype&quot;}}">
+<script type="text/x-dc" data-dc-script data-props="{&quot;startView&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;home&quot;,&quot;menu&quot;,&quot;locations&quot;,&quot;location&quot;,&quot;reserve&quot;,&quot;catering&quot;,&quot;about&quot;,&quot;checkout&quot;],&quot;default&quot;:&quot;home&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype&quot;},&quot;defaultLocation&quot;:{&quot;editor&quot;:&quot;enum&quot;,&quot;options&quot;:[&quot;braddon&quot;,&quot;civic&quot;,&quot;coombs&quot;,&quot;greenway&quot;,&quot;gungahlin&quot;,&quot;dickson&quot;,&quot;belconnen&quot;,&quot;phillip&quot;,&quot;kingston&quot;],&quot;default&quot;:&quot;phillip&quot;,&quot;tsType&quot;:&quot;string&quot;,&quot;section&quot;:&quot;Prototype&quot;},&quot;forceMobile&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Prototype&quot;},&quot;signedIn&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Prototype&quot;}}">
 class Component extends DCLogic {
   state = {
     ready:false, view:'home', locId:'phillip', locationId:'phillip', method:'Pickup', timing:'ASAP', schedDay:'', schedTime:'',
@@ -1459,7 +1456,7 @@ class Component extends DCLogic {
       if (r && r.view === 'page') this.setState({ view:'page', pageSlug:r.slug }); else if (r && r.view && r.view !== 'home') this.setState({ view:r.view });
       this.syncCms();
     }).catch(() => {});
-    import(new URL('eightytwenty-data.js?v=cms-20261022', location.href).href).then(m => {
+    import(new URL('eightytwenty-data.js?v=public-20261026', location.href).href).then(m => {
       this.D = m;
       const preferred = this._chosenLocation || m.preferredLocation(m.LOCATIONS, p.defaultLocation);
       if (this._chosenLocation) m.rememberLocation(preferred);
@@ -1714,7 +1711,7 @@ class Component extends DCLogic {
     const sel = this.decorate(this.locById(s.locationId));
     const featuredPhillip = this.decorate(this.locById('phillip'));
     const otherLocationId = s.locationId === 'phillip' ? 'braddon' : s.locationId;
-    const SUBS = { braddon:'Lonsdale St', civic:'Mort St · Quick Service', coombs:'Molonglo Valley', greenway:'Tuggeranong', gungahlin:'Gungahlin Town Centre', dickson:'Inner North', belconnen:'Gluten Free Cafe', phillip:'100% Gluten Free', kingston:'Rosemary by EightyTwenty', akuna:'Canberra City' };
+    const SUBS = { braddon:'Lonsdale St', civic:'Mort St · Quick Service', coombs:'Molonglo Valley', greenway:'Tuggeranong', gungahlin:'Gungahlin Town Centre', dickson:'Inner North', belconnen:'Gluten Free Cafe', phillip:'100% Gluten Free', kingston:'Rosemary by EightyTwenty' };
     const locations = (D.phillipFirst ? D.phillipFirst(D.LOCATIONS) : D.LOCATIONS).map(l => { const on = l.id === otherLocationId; return Object.assign(this.decorate(l), { on, border: on ? '#B67A4B' : 'rgba(75,46,38,.12)', bg: on ? '#ECE4D6' : 'transparent', accent: on ? '#B67A4B' : 'transparent', arrow: on ? '#8B5827' : '#B79A82', subShort: SUBS[l.id] || l.sub, hoursTiny: l.tbc ? 'Hours to be confirmed' : (l.hoursShort || '').replace(', 7 days', '').replace(', weekdays', ' weekdays'), select: () => this.setState({ locationId:l.id }) }); });
     const otherLocations = locations.filter(l => l.id !== 'phillip');
     const mobileOtherLocs = otherLocations;
@@ -1724,18 +1721,19 @@ class Component extends DCLogic {
     const hasCart = cartCount > 0;
     const inCartQty = {}; s.cart.forEach(l => { inCartQty[l.itemId] = (inCartQty[l.itemId] || 0) + l.qty; });
     const catName = id => (D.CATEGORIES.find(c => c.id === id) || {}).name || '';
-    const decItem = it => Object.assign({}, it, { dietLabel: (it.diet || []).join(' · '), imgSrc: it.img || '', priceLabel:this.$(it.price), hasImg: !!it.img, catName: catName(it.cat), opacity: it.soldOut ? .55 : 1, inCart: !!inCartQty[it.id], cartQty: inCartQty[it.id] || 0, open: () => this.openItem(it) });
+    const showMenuPrices = D.SHOW_MENU_PRICES === true;
+    const decItem = it => Object.assign({}, it, { dietLabel: (it.diet || []).join(' · '), imgSrc: it.img || '', priceLabel:showMenuPrices ? this.$(it.price) : '', hasImg: !!it.img, catName: catName(it.cat), opacity: it.soldOut ? .55 : 1, inCart: !!inCartQty[it.id], cartQty: inCartQty[it.id] || 0, open: () => this.openItem(it) });
     const featured = D.MENU.filter(m => m.featured).slice(0, 6).map((m, i) => Object.assign(decItem(m), { span: i === 0 ? 'span 2' : 'auto', minH: i === 0 ? '380px' : '240px' }));
     const sortFn = { best: (a, b) => (b.featured ? 1 : 0) - (a.featured ? 1 : 0), menu: () => 0, asc: (a, b) => a.price - b.price, desc: (a, b) => b.price - a.price }[s.sort || 'best'];
     const sections = D.CATEGORIES.filter(c => c.id === s.cat).map(c => ({ domId:'cat-' + c.id, name:c.name, note:c.note, items: D.MENU.filter(m => m.cat === c.id).slice().sort(sortFn).map(decItem) }));
-    const sortOpts = [['best','Best Seller'],['menu','Menu order'],['asc','Price: Low to High'],['desc','Price: High to Low']].map(([id, name]) => { const on = (s.sort || 'best') === id; return { name, on, pick: () => this.setState({ sort:id }), border: on ? '#4B2E26' : 'rgba(75,46,38,.2)', bg: on ? '#4B2E26' : 'transparent', color: on ? '#F3EEE5' : '#4B2E26' }; });
+    const sortOpts = [['best','Best Seller'],['menu','Menu order'],['asc','Price: Low to High'],['desc','Price: High to Low']].filter(([id]) => showMenuPrices || !['asc', 'desc'].includes(id)).map(([id, name]) => { const on = (s.sort || 'best') === id; return { name, on, pick: () => this.setState({ sort:id }), border: on ? '#4B2E26' : 'rgba(75,46,38,.2)', bg: on ? '#4B2E26' : 'transparent', color: on ? '#F3EEE5' : '#4B2E26' }; });
     const visibleCount = D.MENU.filter(m => m.cat === s.cat).length;
     const SHORT = { allday:'All Day', acai:'Açai', salads:'Salads', burgers:'Burgers', bites:'Bites', kids:'Kids', coffee:'Coffee', cold:'Drinks', smoothies:'Smoothies', juices:'Juices' };
     const cats = D.CATEGORIES.map(c => { const on = s.cat === c.id; return { name: SHORT[c.id] || c.name, on, count: D.MENU.filter(m => m.cat === c.id).length, bg: on ? '#4B2E26' : 'transparent', color: on ? '#F3EEE5' : '#4B2E26', jump: () => this.setState({ cat:c.id }) }; });
     const mkMethod = m => ({ name:m, pick: () => this.setState({ method:m }), bg: s.method === m ? '#4B2E26' : 'transparent', fg: s.method === m ? '#F3EEE5' : '#4B2E26', border: s.method === m ? '#B67A4B' : 'rgba(75,46,38,.2)', bg2: s.method === m ? '#ECE4D6' : 'transparent' });
     const methods = (loc.methods || ['Pickup']).map(mkMethod);
     const item = s.item || { name:'', desc:'', diet:[], img:'', mods:[] };
-    const itemGroups = (item.mods || []).map(g => { const cur = s.sel[g.id] || []; return { name:g.name, rule: g.required ? (cur.length ? 'Required · chosen' : 'Required · choose 1') : (g.max === 1 ? 'Optional · choose 1' : 'Optional'), ruleColor: g.required && !cur.length ? '#8A2E1C' : '#7A6259', opts: g.options.map(o => ({ label:o[0], priceLabel: o[1] ? '+' + this.$(o[1]) : '', on: cur.includes(o[0]), border: cur.includes(o[0]) ? '#4B2E26' : 'rgba(75,46,38,.2)', bg: cur.includes(o[0]) ? '#ECE4D6' : 'transparent', toggle: () => this.toggleOpt(g, o[0]) })) }; });
+    const itemGroups = (item.mods || []).map(g => { const cur = s.sel[g.id] || []; return { name:g.name, rule: g.required ? (cur.length ? 'Required · chosen' : 'Required · choose 1') : (g.max === 1 ? 'Optional · choose 1' : 'Optional'), ruleColor: g.required && !cur.length ? '#8A2E1C' : '#7A6259', opts: g.options.map(o => ({ label:o[0], priceLabel: showMenuPrices && o[1] ? '+' + this.$(o[1]) : '', on: cur.includes(o[0]), border: cur.includes(o[0]) ? '#4B2E26' : 'rgba(75,46,38,.2)', bg: cur.includes(o[0]) ? '#ECE4D6' : 'transparent', toggle: () => this.toggleOpt(g, o[0]) })) }; });
     const missing = s.item ? this.missingRequired(s.item, s.sel) : true;
     const unit = s.item ? this.unitPrice(s.item, s.sel) : 0;
     const cartLines = s.cart.map(l => Object.assign({}, l, { imgSrc: l.img || '', hasImg: !!l.img, lineLabel:this.$(l.unit*l.qty), inc: () => this.changeQty(l.key, 1), dec: () => this.changeQty(l.key, -1), remove: () => this.removeLine(l.key), edit: () => { const it = D.MENU.find(m => m.id === l.itemId); if (it) this.openItem(it, l); } }));
@@ -1765,9 +1763,9 @@ class Component extends DCLogic {
     ].map(w => Object.assign(w, { hasImg: !!w.img, imgSrc: w.img || '' }));
     const line = v => view === v ? '#B67A4B' : 'transparent';
     return {
-      sortOpts, visibleCount, menuCols: narrow ? '1fr' : '200px minmax(0,1fr)', catDir: narrow ? 'row' : 'column', catPad: narrow ? '8px' : '12px 10px 12px', catPos: narrow ? 'static' : 'sticky', catTop: narrow ? 'auto' : '88px',
+      showMenuPrices, itemTitleColumns: showMenuPrices ? 'minmax(0,1fr) auto' : 'minmax(0,1fr)', sortOpts, visibleCount, menuCols: narrow ? '1fr' : '200px minmax(0,1fr)', catDir: narrow ? 'row' : 'column', catPad: narrow ? '8px' : '12px 10px 12px', catPos: narrow ? 'static' : 'sticky', catTop: narrow ? 'auto' : '88px',
       wide, narrow, xwide: s.xwide && wide, midWide: wide && !s.xwide, ready:s.ready, selHasImg: s.ready && !!sel.img, pkgHasImg: s.ready && !!pkg.img, itemHasImg: s.ready && !!item.img, selImgSrc: sel.img || '', pkgImgSrc: pkg.img || '', itemImgSrc: item.img || '', locImgSrc: loc.img || '', loc, sel:Object.assign({}, sel, { subShort:selSubShort }), locations, otherLocations, featuredPhillip, mobileOtherLocs, phillipReserve:this.go('reserve', { bk:Object.assign({}, s.bk, { loc:'phillip' }) }), featured, sections, cats, methods, methodsCo:methods,
-      pickerLocs: locations.map(l => { const on = l.id === s.locId; const AREA = { braddon:'Lonsdale St', civic:'City', coombs:'Molonglo', greenway:'Tuggeranong', gungahlin:'North', dickson:'Inner North', belconnen:'North', phillip:'Woden', kingston:'Inner South', akuna:'City' }; return Object.assign({}, l, { on, area: AREA[l.id] || l.sub, accent: on ? '#B67A4B' : 'transparent', nameColor: on ? '#3A2B24' : '#4B2E26', choose: () => { this.rememberLocation(l.id); this.setState({ locId:l.id, picker:false, method: l.methods.includes(s.method) ? s.method : 'Pickup', bk: Object.assign({}, s.bk, { loc:l.id }) }); }, opacity: l.tbc ? .5 : 1 }); }),
+      pickerLocs: locations.map(l => { const on = l.id === s.locId; const AREA = { braddon:'Lonsdale St', civic:'City', coombs:'Molonglo', greenway:'Tuggeranong', gungahlin:'North', dickson:'Inner North', belconnen:'North', phillip:'Woden', kingston:'Inner South' }; return Object.assign({}, l, { on, area: AREA[l.id] || l.sub, accent: on ? '#B67A4B' : 'transparent', nameColor: on ? '#3A2B24' : '#4B2E26', choose: () => { this.rememberLocation(l.id); this.setState({ locId:l.id, picker:false, method: l.methods.includes(s.method) ? s.method : 'Pickup', bk: Object.assign({}, s.bk, { loc:l.id }) }); }, opacity: l.tbc ? .5 : 1 }); }),
       footerLocs: locations.filter(l => !l.tbc),
       isHome: view === 'home', isMenu, isLocations: view === 'locations', isLocation: view === 'location', isReserve: view === 'reserve', isCatering: view === 'catering', isAbout: view === 'about', isWholesale: view === 'wholesale', isGift: view === 'giftcards', isCheckout: view === 'checkout', isConfirm: view === 'confirm',
       showFooter: view !== 'checkout', ...this.cmsVals(view),
@@ -1826,7 +1824,7 @@ class Component extends DCLogic {
       drawerTop: narrow ? 'auto' : '0', drawerLeft: narrow ? '0' : 'auto', drawerWidth: narrow ? '100%' : 'min(460px,100vw)', drawerRadius: narrow ? '20px 20px 0 0' : '0', drawerAnim: narrow ? 'sheetUp' : 'slideIn',
       cartLines,
       itemOpen: !!s.item, itemClosing:!!s.itemClosing, item, itemGroups, closeItem: () => this.closeItem(), qty: s.qty, qtyUp: () => this.setState({ qty:s.qty + 1 }), qtyDown: () => this.setState({ qty:Math.max(1, s.qty - 1) }), note: s.note, setNote: e => this.setState({ note:e.target.value }),
-      itemBaseLabel: s.item ? this.$(s.item.price) : '', addToCart: () => this.addToCart(), addDisabled: missing, addBg: missing ? '#E4D8C4' : '#B67A4B', addFg: missing ? '#7A6259' : '#3A2B24', addLabel: missing ? 'Choose required options' : (s.editKey ? 'Update · ' : 'Add to cart · ') + this.$(unit * s.qty),
+      itemBaseLabel: showMenuPrices && s.item ? this.$(s.item.price) : '', addToCart: () => this.addToCart(), addDisabled: missing, addBg: missing ? '#E4D8C4' : '#B67A4B', addFg: missing ? '#7A6259' : '#3A2B24', addLabel: missing ? 'Choose required options' : (s.editKey ? 'Update · ' : 'Add to cart · ') + this.$(unit * s.qty),
       isSched: s.timing === 'Scheduled', isDelivery: s.method === 'Delivery', isDineIn: s.method === 'Dine In', isPickup: s.method === 'Pickup', hasTiming: s.method !== 'Dine In', methodLabel: s.method, timeSummary: s.method === 'Dine In' ? 'Now' : this.timeSummary(), timeSummaryLong: s.timing === 'ASAP' ? ('ASAP' + (loc.wait ? ' · approx. ' + loc.wait : '')) : this.timeSummary(),
       address: s.address || '', setAddress: e => this.setState({ address:e.target.value }), table: s.table || '', setTable: e => this.setState({ table:e.target.value }), waitLabel: loc.wait ? ' · ' + loc.wait : '',
       pickAsap: () => this.setState({ timing:'ASAP' }), pickSched: () => { const f = this.firstSched(); const keep = s.schedDay && this.slots(s.schedDay).includes(s.schedTime); this.setState({ timing:'Scheduled', schedDay: keep ? s.schedDay : f.schedDay, schedTime: keep ? s.schedTime : f.schedTime }); },

@@ -3,6 +3,8 @@
 // then to the bundled mock-data.js snapshot, so the site never renders empty.
 import * as MOCK from './mock-data.js';
 import { API_BASE } from './config.js';
+export { SHOW_MENU_PRICES } from './config.js';
+import { publicLocations } from './public-presentation.js';
 export { preferredLocation, rememberLocation, phillipFirst } from './location-preference.js';
 
 const CACHE_KEY = 'e82-bootstrap-v1';
@@ -40,7 +42,7 @@ const live = await Promise.race([fetchBootstrap(), new Promise(r => setTimeout((
 const data = live || readCache() || MOCK;
 
 export const SOURCE = live ? 'api' : data === MOCK ? 'mock' : 'cache';
-export const LOCATIONS = data.LOCATIONS;
+export const LOCATIONS = publicLocations(data.LOCATIONS);
 export const CATEGORIES = data.CATEGORIES;
 export const MENU = data.MENU;
 export const CATERING = data.CATERING;

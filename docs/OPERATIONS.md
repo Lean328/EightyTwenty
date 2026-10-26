@@ -88,3 +88,10 @@ Nhập snapshot website thật và so sánh output bootstrap; cấu hình chính
 - [Django 5.2 release notes](https://docs.djangoproject.com/en/5.2/releases/5.2/).
 - [Simple JWT settings](https://django-rest-framework-simplejwt.readthedocs.io/en/latest/settings.html).
 - [Supabase signed upload API](https://supabase.com/docs/reference/javascript/file-buckets-createsigneduploadurl) và [Storage API](https://supabase.github.io/storage/).
+
+
+## Public website policy (26 October 2026)
+
+- Akuna St (`akuna`) is permanently excluded by `apps.locations.services.public_locations()` from public location lists/details, bootstrap/menu location lookups, booking availability and new website reservations. This is a source-controlled public unpublish rule: BOS records, permissions, prices and history remain intact, even if a CMS update sets `is_published=True` again. The website also filters API/cache/bundled locations in `website/public-presentation.js` so older saved data cannot restore the closed location.
+- Food/drinks prices are hidden by `SHOW_MENU_PRICES=false` in `website/config.js`. Set it to `true` and redeploy the existing Cloudflare project to restore card/detail/modifier prices and price sorting. All menu content and underlying API/database/POS/BOS prices are retained; Catering prices and enquiries are unaffected. Public ordering stays hidden.
+- Deploy the backend through the existing Render service and upload `website/` to the existing Cloudflare Pages project as described above. A GitHub push alone does not deploy this direct-upload Pages project. Verify both deployments; do not seed production or delete the closed location record.

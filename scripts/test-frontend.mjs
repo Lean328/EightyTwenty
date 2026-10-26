@@ -528,3 +528,63 @@ test('saving the profile sends name and phone to the API, never the email', asyn
   assert.deepEqual({ ...sent }, { first_name: 'Test', last_name: 'Guest Smith', phone: '0411 111 111' });
   assert.equal(app.state.profileMsg, 'Changes saved.');
 });
+
+
+import * as bundled from '../website/mock-data.js';
+import { publicLocations } from '../website/public-presentation.js';
+
+for (const mode of ['api', 'cache', 'mock']) {
+  test(`closed location stays hidden with ${mode} data and stale preferences`, async () => {
+    const snapshot = { ...bundled };
+    const adapter = readFileSync(new URL('../website/eightytwenty-data.js', import.meta.url), 'utf8')
+      .replace(/^(?:import |export \{).*$/gm, '')
+      .replace(/^export /gm, '');
+    const context = vm.createContext({
+      MOCK: snapshot, API_BASE: mode === 'mock' ? '' : 'https://api.example', publicLocations,
+      localStorage: { getItem: () => mode === 'cache' ? JSON.stringify(snapshot) : null, setItem() {} },
+      fetch: async () => ({ ok: mode === 'api', json: async () => snapshot }),
+      setTimeout: () => 0,
+    });
+    const result = await new vm.Script('(async () => {' + adapter + '\nreturn {LOCATIONS, MENU, CATERING, SOURCE}; })()').runInContext(context);
+    assert.equal(result.SOURCE, mode);
+    assert.deepEqual(Array.from(result.LOCATIONS, l => l.id), bundled.LOCATIONS.filter(l => l.id !== 'akuna').map(l => l.id));
+    assert.deepEqual(JSON.parse(JSON.stringify(result.MENU)), bundled.MENU);
+    assert.deepEqual(JSON.parse(JSON.stringify(result.CATERING)), bundled.CATERING);
+    storage('akuna');
+    assert.equal(preferredLocation(result.LOCATIONS), 'phillip');
+    assert.ok(bundled.LOCATIONS.some(l => l.id === 'akuna')); // historical snapshot isn't mutated
+  });
+}
+
+for (const showPrices of [false, true]) {
+  for (const width of [1440, 390]) {
+    test(`menu price policy ${showPrices} at viewport ${width} preserves content and Catering`, () => {
+      const { app, context } = mountWithCms({}, null);
+      context.window.innerWidth = width;
+      context.setInterval = () => 0;
+      app.D = { ...bundled, LOCATIONS: publicLocations(bundled.LOCATIONS), SHOW_MENU_PRICES: showPrices,
+        ORDER_RULES: { cardSurcharge: .0295, deliveryRate: .1 } };
+      app.state.narrow = width < 900;
+      app.state.view = 'menu';
+      app.state.item = bundled.MENU.find(item => item.mods?.some(g => g.options.some(o => o[1])));
+      const values = app.renderVals();
+      assert.equal(values.showMenuPrices, showPrices);
+      assert.equal(Boolean(values.itemBaseLabel), showPrices);
+      assert.equal(values.itemTitleColumns, showPrices ? 'minmax(0,1fr) auto' : 'minmax(0,1fr)');
+      assert.equal(values.sortOpts.some(option => option.name.startsWith('Price:')), showPrices);
+      for (const item of values.sections.flatMap(section => section.items)) {
+        const original = bundled.MENU.find(row => row.id === item.id);
+        assert.equal(Boolean(item.priceLabel), showPrices);
+        for (const field of ['name', 'desc', 'img', 'price']) assert.equal(item[field], original[field]);
+        assert.deepEqual(item.diet, original.diet);
+      }
+      for (const option of values.itemGroups.flatMap(group => group.opts)) {
+        if (!showPrices) assert.equal(option.priceLabel, '');
+      }
+      assert.equal(values.pkg.price, bundled.CATERING[0].price);
+      assert.equal(values.locations.length, bundled.LOCATIONS.length - 1);
+      assert.equal(values.bkLocs.length, bundled.LOCATIONS.length - 1);
+      assert.equal(values.showCartBar, false);
+    });
+  }
+}

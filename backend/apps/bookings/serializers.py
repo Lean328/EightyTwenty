@@ -2,7 +2,7 @@ from rest_framework import serializers
 
 from apps.core.antispam import AntiSpamMixin
 from apps.core.serializers import InputSerializer, ManagedSerializer
-from apps.locations.models import Location
+from apps.locations.services import public_locations
 
 from .models import Booking, BookingRule
 
@@ -24,9 +24,7 @@ class BookingRuleSerializer(ManagedSerializer):
 
 
 class PublicBookingSerializer(AntiSpamMixin, InputSerializer):
-    location = serializers.SlugRelatedField(
-        slug_field="slug", queryset=Location.objects.filter(is_published=True)
-    )
+    location = serializers.SlugRelatedField(slug_field="slug", queryset=public_locations())
     date = serializers.DateField()
     time = serializers.TimeField()
     party_size = serializers.IntegerField(min_value=1, max_value=1000)
@@ -75,9 +73,7 @@ class MyBookingSerializer(serializers.ModelSerializer):
 
 
 class AvailabilityQuerySerializer(InputSerializer):
-    location = serializers.SlugRelatedField(
-        slug_field="slug", queryset=Location.objects.filter(is_published=True)
-    )
+    location = serializers.SlugRelatedField(slug_field="slug", queryset=public_locations())
     date = serializers.DateField()
 
 
