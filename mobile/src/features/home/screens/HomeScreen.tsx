@@ -6,6 +6,7 @@ import { Screen } from '@/components/layout/Screen';
 import { Icon } from '@/components/ui/Icon';
 import { Text } from '@/components/ui/Text';
 import { Touchable } from '@/components/ui/Touchable';
+import { config } from '@/constants/config';
 import { isComingSoon } from '@/domain/hours';
 import { useCateringPackages } from '@/features/catering/hooks';
 import { useLocations, useSelectedLocation } from '@/features/locations/hooks';
@@ -64,7 +65,8 @@ export function HomeScreen() {
                 <Icon name="bell" size={13} strokeWidth={2} color={colors.creamText} />
               </View>
               <Text numberOfLines={1} style={[sans(13, 500, 1.2), styles.latestText]}>
-                {LATEST_SHORT[latest.kind] ?? latest.text}
+                {/* Real feed lines say what happened (confirmed, declined…); the short labels fit the mock's fixed events. */}
+                {config.dataSource === 'api' ? latest.text : (LATEST_SHORT[latest.kind] ?? latest.text)}
               </Text>
               <Text style={[sans(12, 500), { color: colors.caramelDeep }]}>{formatRelativeShort(latest.createdAt, now)}</Text>
             </Touchable>

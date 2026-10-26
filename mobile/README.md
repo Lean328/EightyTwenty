@@ -78,14 +78,36 @@ npx expo start
 
 Scan the QR code with **Expo Go** (phone and computer on the same Wi-Fi; add `--tunnel` if
 they are not), or press `i` / `a` / `w` for a simulator, emulator or the web build.
-`.env` points at the production API on Render; to use a backend on this computer set
-`EXPO_PUBLIC_API_BASE_URL=http://<computer-LAN-IP>:8000/api/v1/app`, run
-`manage.py runserver 0.0.0.0:8000`, and restart with `npx expo start --clear`.
+`.env` points at the **dev backend on this computer** (`http://127.0.0.1:8000/api/v1/app`, the
+SQLite database with seed data). On a phone, Expo Go swaps `127.0.0.1` for the computer's LAN IP
+by itself (`resolveDevApiUrl` in `src/constants/config.ts`), so run the backend on the network:
+
+```bash
+python manage.py runserver 0.0.0.0:8000
+```
+
+(or the `backend-phone` launch config: same, plus demo payments and push). After changing `.env`,
+restart with `npx expo start --clear` — Metro only reads `.env` at start-up. Production:
+`EXPO_PUBLIC_API_BASE_URL=https://eightytwenty-api.onrender.com/api/v1/app`.
 
 **Mock data instead:** set `EXPO_PUBLIC_DATA_SOURCE=mock`, then sign in with the demo account
 email defined as `DEMO_EMAIL` in
 [`src/services/mock/fixtures/demoCustomer.ts`](src/services/mock/fixtures/demoCustomer.ts) and
 **any password of 6+ characters**. With the real API, sign up needs a password of 10+ characters.
+
+## Phone-only pitfalls (checked by tests)
+
+The web build hides two kinds of bug that crash or red-box the app on a phone:
+
+- **Worklets** (`useAnimatedStyle`, `useDerivedValue`, animation callbacks…) run on the UI thread.
+  Calling a normal JS function inside one (e.g. `inkA(0.2)`) is a fatal error on a phone — this
+  is what made the Menu tab quit Expo Go. Compute such values outside the worklet.
+  Guard: `tests/quality/worklets.test.ts`.
+- **Text outside `<Text>`**: a string or number directly inside a `View` (including `{count && …}`
+  rendering `0`). Guard: `tests/quality/textNodes.test.ts`.
+
+`tests/screens/smoke.test.tsx` renders every screen and global sheet on the native (iOS) code path
+and fails on any `console.error`.
 
 ## Scripts
 
@@ -97,6 +119,7 @@ email defined as `DEMO_EMAIL` in
 | `npm run lint` | ESLint (Expo flat config + `import/no-cycle`) |
 | `npm test` | Jest (`jest-expo` preset) |
 | `npm run check` | typecheck + lint + tests |
+| `npm run api:smoke` | Walks the whole app flow against the running backend (status codes, `dto.ts` shapes, enums); `-- --as <email>` also checks a seed customer read-only. Local/LAN servers only. |
 | `npm run doctor` | `expo-doctor` |
 | `npm run images:registry` | Regenerate `src/assets/imageRegistry.ts` after adding images under `assets/images` |
 
