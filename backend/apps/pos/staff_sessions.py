@@ -1,14 +1,14 @@
 import hashlib
 import hmac
+from functools import wraps
 
 from django.conf import settings
 from django.core import signing
 
 from apps.core.permissions import scoped_locations
 from apps.mobile.errors import AppError
-from . import pins
 
-from functools import wraps
+from . import pins
 
 SALT = "eightytwenty.pos.staff-session.v1"
 
@@ -39,14 +39,18 @@ def read_staff_session(request, token, location=None):
     try:
         payload = signing.loads(token, salt=SALT, max_age=session_max_age())
     except (signing.BadSignature, TypeError, ValueError):
-        raise AppError("STAFF_SESSION_REQUIRED", "Enter your staff PIN again.", 403)
+        raise AppError("STAFF_SESSION_REQUIRED", "Enter your staff PIN again.", 403) from None
 
     if not isinstance(payload, dict):
         raise AppError("STAFF_SESSION_REQUIRED", "Invalid staff session.", 403)
 
     terminal = request.headers.get("X-Terminal-Id", "").strip()
     if payload.get("account") != str(request.user.pk) or payload.get("terminal") != terminal:
-        raise AppError("STAFF_SESSION_MISMATCH", "The staff session belongs to another account or terminal.", 403)
+        raise AppError(
+            "STAFF_SESSION_MISMATCH",
+            "The staff session belongs to another account or terminal.",
+            403,
+        )
 
     staff = pins.team().filter(pk=payload.get("staff")).first()
     if staff is None or not staff.pos_pin:
@@ -73,9 +77,12 @@ def require_staff_permission(request, permission, location=None):
     permissions = pins.permissions(staff)
 
     if "*" not in permissions and permission not in permissions:
-        raise AppError("FORBIDDEN", "This staff member is not permitted to perform this action.", 403)
+        raise AppError(
+            "FORBIDDEN", "This staff member is not permitted to perform this action.", 403
+        )
 
     return staff
+
 
 def require_order_staff(permission):
     def decorate(handler):
@@ -88,7 +95,9 @@ def require_order_staff(permission):
             return handler(self, request, *args, **kwargs)
 
         return wrapped
+
     return decorate
+
 
 def require_shift_staff(permission):
     def decorate(handler):
@@ -100,8 +109,11 @@ def require_shift_staff(permission):
             services.require_shift_terminal(request, shift)
             request.pos_staff = require_staff_permission(request, permission, shift.location)
             return handler(self, request, *args, **kwargs)
+
         return wrapped
+
     return decorate
+
 
 def require_open_shift_staff(handler):
     @wraps(handler)
@@ -112,7 +124,9 @@ def require_open_shift_staff(handler):
         location = services.location_for(request.user, data["cafe"])
         request.pos_staff = require_staff_permission(request, "pos", location)
         return handler(self, request, *args, **kwargs)
+
     return wrapped
+
 
 def require_embedded_payment_staff(handler):
     @wraps(handler)
@@ -124,7 +138,9 @@ def require_embedded_payment_staff(handler):
             location = services.location_for(request.user, data["cafe"])
             request.pos_staff = require_staff_permission(request, "pos", location)
         return handler(self, request, *args, **kwargs)
+
     return wrapped
+
 
 def require_staff_access(permission):
     def decorate(handler):
@@ -132,5 +148,7 @@ def require_staff_access(permission):
         def wrapped(self, request, *args, **kwargs):
             request.pos_staff = require_staff_permission(request, permission)
             return handler(self, request, *args, **kwargs)
+
         return wrapped
+
     return decorate

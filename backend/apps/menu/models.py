@@ -157,6 +157,7 @@ class LocationMenuItem(ManagedModel):
             )
         ]
 
+
 class LocationModifierAvailability(ManagedModel):
     location = models.ForeignKey("locations.Location", on_delete=models.PROTECT)
     label = models.CharField(max_length=120)
@@ -164,7 +165,9 @@ class LocationModifierAvailability(ManagedModel):
 
     class Meta(ManagedModel.Meta):
         constraints = [
-            models.UniqueConstraint(fields=["location", "label"], name="unique_location_modifier_label"),
+            models.UniqueConstraint(
+                fields=["location", "label"], name="unique_location_modifier_label"
+            ),
         ]
 
     def __str__(self):

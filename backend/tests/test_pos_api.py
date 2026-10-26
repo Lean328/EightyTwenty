@@ -15,7 +15,6 @@ from apps.core.models import AuditLog
 from apps.core.throttles import PersistentThrottle
 from apps.locations.models import Location
 from apps.loyalty.models import GiftCard, LoyaltyCard
-from apps.mobile.errors import AppError
 from apps.menu.models import (
     Category,
     LocationMenuItem,
@@ -24,6 +23,7 @@ from apps.menu.models import (
     ModifierGroup,
     ModifierOption,
 )
+from apps.mobile.errors import AppError
 from apps.notifications.models import AppNotification
 from apps.orders.models import Order, OrderLine
 from apps.pos import pins
@@ -83,6 +83,7 @@ def cashier(cafe):
     pins.set_pin(user, "4821")
     user.save()
     return user
+
 
 @pytest.fixture
 def staff_session(till, cafe):
@@ -567,9 +568,15 @@ def test_cash_shift_open_move_close(till, cafe, refund_session):
     assert snapshot["currentShift"]["id"] == "SH1"
 
     close = shift_body(
-        status="closed", cashSales=0, cashRefunds=0, moves=[move],
-        closedAt="3:08 pm", closedBy="Mia", counted=15480,
-        expected=15500, variance=-20,
+        status="closed",
+        cashSales=0,
+        cashRefunds=0,
+        moves=[move],
+        closedAt="3:08 pm",
+        closedBy="Mia",
+        counted=15480,
+        expected=15500,
+        variance=-20,
     )
     wrong = {**close, "expected": 15000, "variance": 480}
     assert post(till, "/shifts/SH1", wrong, method="put").status_code == 422
@@ -676,12 +683,14 @@ def test_snapshot_lists_customers_with_their_coffee_card(till, cafe, menu, regul
 def test_customer_edit_and_coffee_card_from_the_till(till, regular, refund_session):
     path = f"/customers/{regular.pk}"
     response = post(
-        till, path,
+        till,
+        path,
         {"name": "Sophie N", "dietary": ["Vegan"], "notes": "Allergic to nuts"},
         method="put",
     )
     assert response.status_code == 200, response.data
     edited = response.json()
+    assert edited["name"] == "Sophie N" and edited["dietary"] == ["Vegan"]
     other = UserFactory(email="taken@example.com")
     assert post(till, path, {"email": other.email}, method="put").status_code == 409
     redeemed = post(till, f"{path}/loyalty", {"stamps": 0, "rewards": 0, "reason": "Free coffee"},
@@ -783,7 +792,10 @@ def test_catering_from_the_till(till, cafe):
 
 # ---------------------------------------------------------------- BOS sales report
 
-def test_bos_reports_show_sales_from_app_and_till_orders(till, cafe, menu, app_order, refund_session):
+
+def test_bos_reports_show_sales_from_app_and_till_orders(
+    till, cafe, menu, app_order, refund_session
+):
     from django.test import Client
 
     create(till)  # $35.60 till order
@@ -917,6 +929,7 @@ def test_dashboard_figures_come_from_real_records(till, cafe, menu, regular, app
     assert reports["days"][-1]["sales"] == 35.6  # till order; the app order is not accepted
     assert reports["salesTodayComparison"] == ""  # nothing sold a week ago to compare with
 
+
 @pytest.mark.parametrize(
     "changed",
     [
@@ -962,11 +975,15 @@ def test_payment_reference_checks_retry_details(till, cafe, menu, changed, staff
     assert payment.amount_cents == 3560
     assert payment.tip_cents == 0
 
-@pytest.mark.parametrize("changed", [
-    {"amount": 5000},
-    {"type": "in"},
-    {"reason": "Changed reason"},
-])
+
+@pytest.mark.parametrize(
+    "changed",
+    [
+        {"amount": 5000},
+        {"type": "in"},
+        {"reason": "Changed reason"},
+    ],
+)
 def test_cash_move_reference_rejects_changed_details(till, cafe, changed, refund_session):
     opened = post(till, "/shifts", shift_body())
     assert opened.status_code == 201, opened.data
@@ -993,6 +1010,7 @@ def test_cash_move_reference_rejects_changed_details(till, cafe, changed, refund
     actor = refund_session.get_full_name().strip() or refund_session.email
     assert shift.moves[0] == {**move, "by": actor, "approver": actor, "at": ""}
     assert shift.updated_by_id == refund_session.pk
+
 
 def test_payment_is_linked_to_requested_shift(till, cafe, menu, staff_session):
     opened = post(till, "/shifts", shift_body())
@@ -1041,6 +1059,7 @@ def test_payment_rejects_shift_from_another_terminal(till, cafe, menu, staff_ses
     order = Order.objects.get(number=created["id"])
     assert not order.payments.exists()
 
+
 def test_refund_is_linked_to_shift_and_rejects_changed_amount(till, cafe, menu, refund_session):
     opened = post(till, "/shifts", shift_body())
     assert opened.status_code == 201, opened.data
@@ -1086,15 +1105,19 @@ def test_refund_is_linked_to_shift_and_rejects_changed_amount(till, cafe, menu, 
     assert conflict.status_code == 409, conflict.data
     assert order.adjustments.get().amount_cents == 3560
 
-@pytest.mark.parametrize("allocations", [
-    [{"method": "cash", "amount": 3500, "ref": "PAY-ALLOC-001"}],
-    [{"method": "cash", "amount": -100, "ref": "PAY-ALLOC-001"}],
-    [{"method": "invalid", "amount": 3560, "ref": "PAY-ALLOC-001"}],
+
+@pytest.mark.parametrize(
+    "allocations",
     [
-        {"method": "cash", "amount": 1780, "ref": "PAY-ALLOC-001"},
-        {"method": "cash", "amount": 1780, "ref": "PAY-ALLOC-001"},
+        [{"method": "cash", "amount": 3500, "ref": "PAY-ALLOC-001"}],
+        [{"method": "cash", "amount": -100, "ref": "PAY-ALLOC-001"}],
+        [{"method": "invalid", "amount": 3560, "ref": "PAY-ALLOC-001"}],
+        [
+            {"method": "cash", "amount": 1780, "ref": "PAY-ALLOC-001"},
+            {"method": "cash", "amount": 1780, "ref": "PAY-ALLOC-001"},
+        ],
     ],
-])
+)
 def test_refund_rejects_invalid_allocations(till, cafe, menu, allocations, refund_session):
     created = create(till)
     number = created["id"]
@@ -1117,15 +1140,21 @@ def test_refund_rejects_invalid_allocations(till, cafe, menu, allocations, refun
     assert response.status_code == 422, response.data
     assert not Order.objects.get(number=number).adjustments.exists()
 
-@pytest.mark.parametrize("allocations", [
-    [{"method": "cash", "amount": 3560, "ref": "UNKNOWN"}],
-    [{"method": "card", "amount": 3560, "ref": "CASH-ORIGINAL"}],
+
+@pytest.mark.parametrize(
+    "allocations",
     [
-        {"method": "cash", "amount": 1001, "ref": "CASH-ORIGINAL"},
-        {"method": "card", "amount": 2559, "ref": "CARD-ORIGINAL"},
+        [{"method": "cash", "amount": 3560, "ref": "UNKNOWN"}],
+        [{"method": "card", "amount": 3560, "ref": "CASH-ORIGINAL"}],
+        [
+            {"method": "cash", "amount": 1001, "ref": "CASH-ORIGINAL"},
+            {"method": "card", "amount": 2559, "ref": "CARD-ORIGINAL"},
+        ],
     ],
-])
-def test_refund_allocations_must_match_original_payments(till, cafe, menu, allocations, refund_session):
+)
+def test_refund_allocations_must_match_original_payments(
+    till, cafe, menu, allocations, refund_session
+):
     created = create(till)
     number = created["id"]
 
@@ -1153,8 +1182,11 @@ def test_refund_allocations_must_match_original_payments(till, cafe, menu, alloc
     assert not order.adjustments.exists()
     assert order.status == "confirmed"
 
+
 @pytest.mark.parametrize("second_amount, expected_status", [(400, 200), (401, 422)])
-def test_refund_uses_remaining_balance_per_payment(till, cafe, menu, second_amount, expected_status, refund_session):
+def test_refund_uses_remaining_balance_per_payment(
+    till, cafe, menu, second_amount, expected_status, refund_session
+):
     created = create(till)
     number = created["id"]
 
@@ -1188,7 +1220,10 @@ def test_refund_uses_remaining_balance_per_payment(till, cafe, menu, second_amou
     order = Order.objects.get(number=number)
     refunds = list(order.adjustments.order_by("created_at"))
     assert len(refunds) == (2 if expected_status == 200 else 1)
-    assert sum(refund.amount_cents for refund in refunds) == (1000 if expected_status == 200 else 600)
+    assert sum(refund.amount_cents for refund in refunds) == (
+        1000 if expected_status == 200 else 600
+    )
+
 
 def test_close_shift_checks_sales_against_recorded_payments(till, cafe, menu, refund_session):
     opened = post(till, "/shifts", shift_body())
@@ -1199,9 +1234,14 @@ def test_close_shift_checks_sales_against_recorded_payments(till, cafe, menu, re
     assert paid.status_code == 200, paid.data
 
     close = shift_body(
-        status="closed", cashSales=3560, cashRefunds=0,
-        closedAt="3:00 pm", closedBy="Mia", counted=23560,
-        expected=23560, variance=0,
+        status="closed",
+        cashSales=3560,
+        cashRefunds=0,
+        closedAt="3:00 pm",
+        closedBy="Mia",
+        counted=23560,
+        expected=23560,
+        variance=0,
     )
     forged = {**close, "cashSales": 0, "expected": 20000, "variance": 3560}
 
@@ -1217,6 +1257,7 @@ def test_close_shift_checks_sales_against_recorded_payments(till, cafe, menu, re
     assert shift.expected_cents == 23560
     assert shift.variance_cents == 0
 
+
 @pytest.mark.parametrize("terminal", ["OTHER-TILL", ""])
 def test_cash_shift_rejects_other_or_missing_terminal(till, cafe, terminal, refund_session):
     opened = post(till, "/shifts", shift_body())
@@ -1225,14 +1266,26 @@ def test_cash_shift_rejects_other_or_missing_terminal(till, cafe, terminal, refu
     headers = dict(till._credentials)
     headers["HTTP_X_TERMINAL_ID"] = terminal
     till.credentials(**headers)
-    move = {"id": "WRONG-TILL-MOVE", "type": "out", "amount": 1000, "reason": "Cash out", "by": "Mia"}
+    move = {
+        "id": "WRONG-TILL-MOVE",
+        "type": "out",
+        "amount": 1000,
+        "reason": "Cash out",
+        "by": "Mia",
+    }
 
     moved = post(till, "/shifts/SH1/moves", move)
     assert moved.status_code == 409, moved.data
 
     close = shift_body(
-        status="closed", cashSales=0, cashRefunds=0, counted=20000,
-        expected=20000, variance=0, closedAt="3:00 pm", closedBy="Mia",
+        status="closed",
+        cashSales=0,
+        cashRefunds=0,
+        counted=20000,
+        expected=20000,
+        variance=0,
+        closedAt="3:00 pm",
+        closedBy="Mia",
     )
     closed = post(till, "/shifts/SH1", close, method="put")
     assert closed.status_code == 409, closed.data
@@ -1247,8 +1300,14 @@ def test_closed_shift_retry_still_checks_terminal(till, cafe, refund_session):
     assert opened.status_code == 201, opened.data
 
     close = shift_body(
-        status="closed", cashSales=0, cashRefunds=0, counted=20000,
-        expected=20000, variance=0, closedAt="3:00 pm", closedBy="Mia",
+        status="closed",
+        cashSales=0,
+        cashRefunds=0,
+        counted=20000,
+        expected=20000,
+        variance=0,
+        closedAt="3:00 pm",
+        closedBy="Mia",
     )
     first = post(till, "/shifts/SH1", close, method="put")
     assert first.status_code == 200, first.data
@@ -1267,8 +1326,13 @@ def test_cash_payment_accepts_correct_rounding(till, cafe, menu, last_digit, sta
     rounded = ((amount + 2) // 5) * 5
 
     response = pay(
-        till, created["id"], amount, ref="CASH-ROUND-001",
-        cashPaid=rounded, rounding=rounded - amount, change=2000 - rounded,
+        till,
+        created["id"],
+        amount,
+        ref="CASH-ROUND-001",
+        cashPaid=rounded,
+        rounding=rounded - amount,
+        change=2000 - rounded,
     )
     assert response.status_code == 200, response.data
 
@@ -1278,12 +1342,15 @@ def test_cash_payment_accepts_correct_rounding(till, cafe, menu, last_digit, sta
     assert payment.rounding_cents == rounded - amount
 
 
-@pytest.mark.parametrize("details", [
-    {"amount": 1003, "cashPaid": 1003, "rounding": 0},
-    {"amount": 1003, "cashPaid": 1000, "rounding": 2},
-    {"amount": 1003, "cashPaid": 1005, "rounding": -2},
-    {"method": "card", "amount": 1000, "cashPaid": 1000},
-])
+@pytest.mark.parametrize(
+    "details",
+    [
+        {"amount": 1003, "cashPaid": 1003, "rounding": 0},
+        {"amount": 1003, "cashPaid": 1000, "rounding": 2},
+        {"amount": 1003, "cashPaid": 1005, "rounding": -2},
+        {"method": "card", "amount": 1000, "cashPaid": 1000},
+    ],
+)
 def test_payment_rejects_inconsistent_cash_details(till, cafe, menu, details, staff_session):
     created = create(till)
     body = {"method": "cash", "ref": "INVALID-CASH-001", **details}
@@ -1292,11 +1359,14 @@ def test_payment_rejects_inconsistent_cash_details(till, cafe, menu, details, st
     assert response.status_code == 422, response.data
     assert not Order.objects.get(number=created["id"]).payments.exists()
 
+
 def test_manager_can_save_category_order_for_one_cafe(till, cashier, cafe, menu, elsewhere):
     cashier.role = "manager"
     cashier.save(update_fields=["role"])
 
-    response = post(till, "/locations/braddon/categories/order", {"ids": ["allday", "coffee"]}, method="put")
+    response = post(
+        till, "/locations/braddon/categories/order", {"ids": ["allday", "coffee"]}, method="put"
+    )
     assert response.status_code == 200, response.data
 
     snapshot = till.get(f"{BASE}/snapshot?cafe=braddon")
@@ -1304,6 +1374,7 @@ def test_manager_can_save_category_order_for_one_cafe(till, cashier, cafe, menu,
     assert snapshot.json()["settings"]["categoryOrder"] == ["allday", "coffee"]
 
     from apps.pos.models import TillSettings
+
     assert not TillSettings.objects.filter(location=elsewhere).exists()
 
 
@@ -1320,13 +1391,16 @@ def test_category_order_rejects_invalid_ids(till, cashier, cafe, menu, ids):
     response = post(till, "/locations/braddon/categories/order", {"ids": ids}, method="put")
     assert response.status_code == 422, response.data
 
+
 def test_owner_can_change_branch_price_without_changing_base_price(till, cafe, menu):
     owner = UserFactory(role="owner", is_staff=True)
     till.force_authenticate(owner)
     item = menu["coffee"]
     original = item.base_price_cents
 
-    response = post(till, f"/locations/braddon/items/{item.slug}/price", {"price": "6.25"}, method="put")
+    response = post(
+        till, f"/locations/braddon/items/{item.slug}/price", {"price": "6.25"}, method="put"
+    )
     assert response.status_code == 200, response.data
 
     override = LocationMenuItem.objects.get(location=cafe, menu_item=item)
@@ -1345,7 +1419,9 @@ def test_branch_price_requires_owner_or_admin(till, cashier, cafe, menu, role):
     cashier.role = role
     cashier.save(update_fields=["role"])
 
-    response = post(till, "/locations/braddon/items/hotcoffee/price", {"price": "6.25"}, method="put")
+    response = post(
+        till, "/locations/braddon/items/hotcoffee/price", {"price": "6.25"}, method="put"
+    )
     assert response.status_code == 403, response.data
     assert not LocationMenuItem.objects.filter(location=cafe, menu_item=menu["coffee"]).exists()
 
@@ -1354,9 +1430,12 @@ def test_branch_price_requires_owner_or_admin(till, cashier, cafe, menu, role):
 def test_branch_price_rejects_invalid_amounts(till, cafe, menu, price):
     till.force_authenticate(UserFactory(role="owner", is_staff=True))
 
-    response = post(till, "/locations/braddon/items/hotcoffee/price", {"price": price}, method="put")
+    response = post(
+        till, "/locations/braddon/items/hotcoffee/price", {"price": price}, method="put"
+    )
     assert response.status_code == 422, response.data
     assert not LocationMenuItem.objects.filter(location=cafe, menu_item=menu["coffee"]).exists()
+
 
 def test_modifier_availability_is_scoped_and_can_be_restored(till, cashier, cafe, menu, elsewhere):
     from apps.menu.catalog import menu_items
@@ -1369,7 +1448,12 @@ def test_modifier_availability_is_scoped_and_can_be_restored(till, cashier, cafe
     assert disabled.status_code == 200, disabled.data
 
     def labels(location):
-        return {name for entry in menu_items(location) for group in entry.groups for name, price in group.options}
+        return {
+            name
+            for entry in menu_items(location)
+            for group in entry.groups
+            for name, price in group.options
+        }
 
     assert "OAT ADC" not in labels(cafe)
     assert "OAT ADC" in labels(elsewhere)
@@ -1385,7 +1469,12 @@ def test_modifier_availability_is_scoped_and_can_be_restored(till, cashier, cafe
 
 
 def test_cashier_cannot_change_modifier_availability(till, cafe, menu):
-    response = post(till, "/locations/braddon/modifiers/availability", {"label": "OAT ADC", "available": False}, method="put")
+    response = post(
+        till,
+        "/locations/braddon/modifiers/availability",
+        {"label": "OAT ADC", "available": False},
+        method="put",
+    )
     assert response.status_code == 403, response.data
 
 
@@ -1393,8 +1482,14 @@ def test_modifier_must_exist_on_cafe_menu(till, cashier, cafe, menu):
     cashier.role = "manager"
     cashier.save(update_fields=["role"])
 
-    response = post(till, "/locations/braddon/modifiers/availability", {"label": "Unknown modifier", "available": False}, method="put")
+    response = post(
+        till,
+        "/locations/braddon/modifiers/availability",
+        {"label": "Unknown modifier", "available": False},
+        method="put",
+    )
     assert response.status_code == 404, response.data
+
 
 def test_owner_can_save_and_merge_till_toggles(till, cafe, elsewhere):
     from apps.pos.models import TillSettings
@@ -1422,24 +1517,31 @@ def test_till_settings_require_owner_or_admin(till, cashier, cafe, role):
     cashier.role = role
     cashier.save(update_fields=["role"])
 
-    response = post(till, "/locations/braddon/settings/toggles", {"toggles": {"receipt": True}}, method="put")
+    response = post(
+        till, "/locations/braddon/settings/toggles", {"toggles": {"receipt": True}}, method="put"
+    )
     assert response.status_code == 403, response.data
 
 
-@pytest.mark.parametrize("body", [
-    {"toggles": {"unknown": True}},
-    {"toggles": {}},
-    {"toggles": {"receipt": "invalid"}},
-    {"toggles": {"receipt": True}, "rules": {"gst": "0"}},
-])
+@pytest.mark.parametrize(
+    "body",
+    [
+        {"toggles": {"unknown": True}},
+        {"toggles": {}},
+        {"toggles": {"receipt": "invalid"}},
+        {"toggles": {"receipt": True}, "rules": {"gst": "0"}},
+    ],
+)
 def test_till_toggles_reject_invalid_or_unsupported_fields(till, cafe, body):
     till.force_authenticate(UserFactory(role="owner", is_staff=True))
 
     response = post(till, "/locations/braddon/settings/toggles", body, method="put")
     assert response.status_code == 422, response.data
 
+
 def test_pin_login_issues_a_verifiable_staff_session(till, cashier, cafe):
     from types import SimpleNamespace
+
     from apps.pos.staff_sessions import read_staff_session
 
     response = post(till, "/staff/verify-pin", {"pin": "4821"})
@@ -1454,6 +1556,7 @@ def test_pin_login_issues_a_verifiable_staff_session(till, cashier, cafe):
 @pytest.mark.parametrize("mismatch", ["account", "terminal", "pin"])
 def test_staff_session_rejects_changed_identity(till, cashier, cafe, mismatch):
     from types import SimpleNamespace
+
     from apps.mobile.errors import AppError
     from apps.pos.staff_sessions import read_staff_session
 
@@ -1475,6 +1578,7 @@ def test_staff_session_rejects_changed_identity(till, cashier, cafe, mismatch):
 
 def test_cashier_session_does_not_grant_refund_permission(till, cashier, cafe):
     from types import SimpleNamespace
+
     from apps.mobile.errors import AppError
     from apps.pos.staff_sessions import require_staff_permission
 
@@ -1488,6 +1592,7 @@ def test_cashier_session_does_not_grant_refund_permission(till, cashier, cafe):
     assert require_staff_permission(request, "pos", cafe).pk == cashier.pk
     with pytest.raises(AppError):
         require_staff_permission(request, "orders.refund", cafe)
+
 
 @pytest.fixture
 def refund_session(till, cafe):
@@ -1504,12 +1609,18 @@ def refund_session(till, cafe):
     )
     return manager
 
-@pytest.mark.parametrize("staff_role, expected_status", [
-    ("missing", 403),
-    ("staff", 403),
-    ("manager", 200),
-])
-def test_order_adjustment_uses_pin_staff_permissions(till, cafe, menu, cashier, staff_role, expected_status):
+
+@pytest.mark.parametrize(
+    "staff_role, expected_status",
+    [
+        ("missing", 403),
+        ("staff", 403),
+        ("manager", 200),
+    ],
+)
+def test_order_adjustment_uses_pin_staff_permissions(
+    till, cafe, menu, cashier, staff_role, expected_status
+):
     # Even an owner device account must respect the PIN staff's permissions.
     owner = UserFactory(role="owner", is_staff=True)
     till.force_authenticate(owner)
@@ -1533,7 +1644,12 @@ def test_order_adjustment_uses_pin_staff_permissions(till, cafe, menu, cashier, 
         )
 
     body = {
-        "adjustment": {"key": "PERMISSION-CHECK", "mode": "cancel", "amount": 0, "reason": "Permission test"},
+        "adjustment": {
+            "key": "PERMISSION-CHECK",
+            "mode": "cancel",
+            "amount": 0,
+            "reason": "Permission test",
+        },
         "lines": [],
         "total": 0,
         "status": "cancelled",
@@ -1547,6 +1663,7 @@ def test_order_adjustment_uses_pin_staff_permissions(till, cafe, menu, cashier, 
         assert not order.adjustments.exists()
     else:
         assert order.status == "cancelled"
+
 
 def test_adjustment_uses_verified_staff_name(till, cafe, menu, refund_session):
     created = create(till)
@@ -1574,6 +1691,7 @@ def test_adjustment_uses_verified_staff_name(till, cafe, menu, refund_session):
     assert adjustment.staff_name == expected
     assert adjustment.approver_name == expected
     assert adjustment.reason == "Customer cancelled"
+
 
 @pytest.mark.parametrize("revoke", ["change_pin", "disable_staff"])
 def test_adjustment_retry_rechecks_staff_session(till, cafe, menu, refund_session, revoke):
@@ -1616,9 +1734,12 @@ def test_adjustment_retry_rechecks_staff_session(till, cafe, menu, refund_sessio
     order = Order.objects.get(number=number)
     assert order.adjustments.count() == 1
 
+
 @pytest.mark.parametrize("staff_role", ["missing", "staff", "manager"])
 @pytest.mark.parametrize("operation", ["move", "close"])
-def test_cash_operations_require_manager_permission(till, cafe, staff_role, operation, staff_session):
+def test_cash_operations_require_manager_permission(
+    till, cafe, staff_role, operation, staff_session
+):
     from apps.pos import pins
 
     opened = post(till, "/shifts", shift_body())
@@ -1651,8 +1772,13 @@ def test_cash_operations_require_manager_permission(till, cafe, staff_role, oper
         response = post(till, "/shifts/SH1/moves", body)
     else:
         body = shift_body(
-            status="closed", cashSales=0, cashRefunds=0, counted=20000,
-            expected=20000, variance=0, closedAt="3:00 pm",
+            status="closed",
+            cashSales=0,
+            cashRefunds=0,
+            counted=20000,
+            expected=20000,
+            variance=0,
+            closedAt="3:00 pm",
             closedBy="Untrusted name",
         )
         response = post(till, "/shifts/SH1", body, method="put")
@@ -1694,6 +1820,7 @@ def test_open_shift_uses_verified_staff(till, cafe, staff_session):
     assert shift.created_by_id == staff_session.pk
     assert shift.updated_by_id == staff_session.pk
 
+
 def test_payment_requires_staff_session(till, cafe, menu):
     created = create(till)
     response = pay(till, created["id"], 3560, ref="NO-STAFF-PAYMENT")
@@ -1727,6 +1854,7 @@ def test_payment_uses_verified_staff_and_retries(till, cafe, menu, staff_session
     assert payment.staff_name == "Finn Test"
     assert payment.amount_cents == 3560
 
+
 @pytest.mark.parametrize("signed_in", [False, True])
 def test_embedded_payment_requires_verified_staff(till, cafe, menu, request, signed_in):
     staff = request.getfixturevalue("staff_session") if signed_in else None
@@ -1754,6 +1882,7 @@ def test_embedded_payment_requires_verified_staff(till, cafe, menu, request, sig
     assert saved.amount_cents == 1000
     assert saved.staff_name == (staff.get_full_name().strip() or staff.email)
 
+
 @pytest.mark.parametrize("session_fixture", [None, "staff_session", "refund_session"])
 def test_customer_update_requires_manager_permission(till, cafe, request, session_fixture):
     customer = UserFactory(role="customer", phone="0400000000")
@@ -1775,10 +1904,12 @@ def test_customer_update_requires_manager_permission(till, cafe, request, sessio
         assert response.status_code == 403, response.data
         assert customer.phone == "0400000000"
 
+
 def test_loyalty_action_requires_staff_session(till, cafe):
     customer = UserFactory(role="customer")
     response = post(
-        till, f"/customers/{customer.pk}/loyalty/actions",
+        till,
+        f"/customers/{customer.pk}/loyalty/actions",
         {"cafe": cafe.slug, "action": "stamp"},
         key="loyalty-no-session",
     )
@@ -1826,6 +1957,7 @@ def test_loyalty_actions_are_incremental_and_idempotent(till, cafe, staff_sessio
     card.refresh_from_db()
     assert card.stamps == 0
 
+
 def test_manager_can_add_loyalty_stamp(till, cafe, refund_session):
     from apps.loyalty import services as loyalty
 
@@ -1834,7 +1966,8 @@ def test_manager_can_add_loyalty_stamp(till, cafe, refund_session):
     before = card.stamps
 
     response = post(
-        till, f"/customers/{customer.pk}/loyalty/actions",
+        till,
+        f"/customers/{customer.pk}/loyalty/actions",
         {"cafe": cafe.slug, "action": "stamp"},
         key="manager-loyalty-stamp-001",
     )
@@ -1844,8 +1977,11 @@ def test_manager_can_add_loyalty_stamp(till, cafe, refund_session):
     assert card.updated_by_id == refund_session.pk
 
 
-def test_order_loyalty_requires_full_payment_and_runs_once(till, cafe, menu, cashier, staff_session):
+def test_order_loyalty_requires_full_payment_and_runs_once(
+    till, cafe, menu, cashier, staff_session
+):
     from types import SimpleNamespace
+
     from apps.loyalty import services as loyalty
     from apps.pos.services import award_pos_order_loyalty
 
@@ -1881,7 +2017,8 @@ def test_order_loyalty_requires_full_payment_and_runs_once(till, cafe, menu, cas
     assert paid.status_code == 200, paid.data
 
     coffee_count = sum(
-        line.qty for line in order.lines.select_related("menu_item__category")
+        line.qty
+        for line in order.lines.select_related("menu_item__category")
         if line.menu_item_id and line.menu_item.category.slug == "coffee"
     )
     assert coffee_count > 0
@@ -1902,21 +2039,34 @@ def test_order_loyalty_requires_full_payment_and_runs_once(till, cafe, menu, cas
     assert repeated.pos_loyalty_processed_at == processed_at
 
 
-@pytest.mark.parametrize("initial, auto_stamp, expected, earned", [
-    (8, True, 9, 1),
-    (9, True, 9, 0),
-    (2, False, 2, 0),
-])
+@pytest.mark.parametrize(
+    "initial, auto_stamp, expected, earned",
+    [
+        (8, True, 9, 1),
+        (9, True, 9, 0),
+        (2, False, 2, 0),
+    ],
+)
 def test_order_loyalty_respects_card_cap_and_settings(
-    till, cafe, menu, cashier, staff_session, initial, auto_stamp, expected, earned,
+    till,
+    cafe,
+    menu,
+    cashier,
+    staff_session,
+    initial,
+    auto_stamp,
+    expected,
+    earned,
 ):
     from types import SimpleNamespace
+
     from apps.loyalty import services as loyalty
     from apps.pos.models import TillSettings
     from apps.pos.services import award_pos_order_loyalty
 
     TillSettings.objects.update_or_create(
-        location=cafe, defaults={"toggles": {"autoStamp": auto_stamp}},
+        location=cafe,
+        defaults={"toggles": {"autoStamp": auto_stamp}},
     )
     customer = UserFactory(role="customer")
     card = loyalty.card_for(customer)
@@ -1959,8 +2109,10 @@ def test_order_loyalty_respects_card_cap_and_settings(
     assert repeated.pos_loyalty_processed_at == processed_at
     assert card.activity.count() == activity_before + (1 if earned else 0)
 
+
 def test_pos_reward_reservation_is_applied_once(till, cafe, menu, cashier, staff_session):
     from types import SimpleNamespace
+
     from apps.loyalty import services as loyalty
     from apps.pos.services import reserve_pos_order_reward
 
@@ -2003,8 +2155,10 @@ def test_pos_reward_reservation_is_applied_once(till, cafe, menu, cashier, staff
     assert repeated.pos_reward_reserved_at == reserved.pos_reward_reserved_at
     assert card.activity.count() == activity_count
 
+
 def test_pos_reward_cannot_be_used_by_two_orders(till, cafe, menu, cashier, staff_session):
     from types import SimpleNamespace
+
     from apps.loyalty import services as loyalty
     from apps.pos.services import reserve_pos_order_reward
 
@@ -2026,7 +2180,10 @@ def test_pos_reward_cannot_be_used_by_two_orders(till, cafe, menu, cashier, staf
 
     def make_order(number):
         created = create(
-            till, id=number, customerId=str(customer.pk), rewardUsed=True,
+            till,
+            id=number,
+            customerId=str(customer.pk),
+            rewardUsed=True,
             discounts=[{"label": "Free coffee", "amount": reward_value}],
             total=body["total"] - reward_value,
         )
@@ -2045,8 +2202,10 @@ def test_pos_reward_cannot_be_used_by_two_orders(till, cafe, menu, cashier, staf
     assert second.pos_reward_reserved_at is None
     assert card.stamps == 0
 
+
 def test_cancelled_unpaid_order_returns_reward_once(till, cafe, menu, cashier, refund_session):
     from types import SimpleNamespace
+
     from apps.loyalty import services as loyalty
     from apps.pos.services import reserve_pos_order_reward, return_unpaid_pos_order_reward
 
@@ -2059,7 +2218,9 @@ def test_cancelled_unpaid_order_returns_reward_once(till, cafe, menu, cashier, r
     coffee = next(row for row in body["lines"] if row["itemId"] == menu["coffee"].slug)
     reward_value = coffee["price"]
     created = create(
-        till, customerId=str(customer.pk), rewardUsed=True,
+        till,
+        customerId=str(customer.pk),
+        rewardUsed=True,
         discounts=[{"label": "Free coffee", "amount": reward_value}],
         total=body["total"] - reward_value,
     )
@@ -2092,8 +2253,10 @@ def test_cancelled_unpaid_order_returns_reward_once(till, cafe, menu, cashier, r
     assert repeated.pos_reward_returned_at == returned.pos_reward_returned_at
     assert card.activity.count() == activity_count
 
+
 def test_paid_reward_order_preserves_other_stamps(till, cafe, menu, cashier, refund_session):
     from types import SimpleNamespace
+
     from apps.loyalty import services as loyalty
     from apps.pos.services import (
         apply_loyalty_action,
@@ -2111,7 +2274,9 @@ def test_paid_reward_order_preserves_other_stamps(till, cafe, menu, cashier, ref
     coffee = next(row for row in body["lines"] if row["itemId"] == menu["coffee"].slug)
     reward_value = coffee["price"]
     created = create(
-        till, customerId=str(customer.pk), rewardUsed=True,
+        till,
+        customerId=str(customer.pk),
+        rewardUsed=True,
         discounts=[{"label": "Free coffee", "amount": reward_value}],
         total=body["total"] - reward_value,
     )
@@ -2133,7 +2298,8 @@ def test_paid_reward_order_preserves_other_stamps(till, cafe, menu, cashier, ref
     assert paid.status_code == 200, paid.data
 
     coffee_count = sum(
-        line.qty for line in order.lines.select_related("menu_item__category")
+        line.qty
+        for line in order.lines.select_related("menu_item__category")
         if line.menu_item_id and line.menu_item.category.slug == "coffee"
     )
     expected, earned = loyalty.stamps_after_order(1, max(0, coffee_count - 1), False)
@@ -2165,8 +2331,10 @@ def test_paid_reward_order_preserves_other_stamps(till, cafe, menu, cashier, ref
     assert order.pos_reward_returned_at is None
     assert card.stamps == expected
 
+
 def test_full_refund_reverses_pos_stamps_once(till, cafe, menu, cashier, refund_session):
     from types import SimpleNamespace
+
     from apps.loyalty import services as loyalty
     from apps.pos.services import award_pos_order_loyalty, reverse_fully_refunded_pos_loyalty
 
@@ -2197,11 +2365,13 @@ def test_full_refund_reverses_pos_stamps_once(till, cafe, menu, cashier, refund_
             "key": "FULL-REFUND-LOYALTY-001",
             "mode": "refund",
             "amount": order.total_cents,
-            "alloc": [{
-                "method": "cash",
-                "amount": order.total_cents,
-                "ref": "FULL-REFUND-LOYALTY-PAY",
-            }],
+            "alloc": [
+                {
+                    "method": "cash",
+                    "amount": order.total_cents,
+                    "ref": "FULL-REFUND-LOYALTY-PAY",
+                }
+            ],
             "reason": "Customer requested a full refund",
         },
         "lines": [{"key": line.key, "qty": line.qty} for line in order.lines.all()],
@@ -2223,8 +2393,10 @@ def test_full_refund_reverses_pos_stamps_once(till, cafe, menu, cashier, refund_
     assert repeated.pos_loyalty_reversed_at == reversed_order.pos_loyalty_reversed_at
     assert card.activity.count() == activity_count
 
+
 def test_full_refund_returns_used_reward_once(till, cafe, menu, cashier, refund_session):
     from types import SimpleNamespace
+
     from apps.loyalty import services as loyalty
     from apps.pos.services import (
         award_pos_order_loyalty,
@@ -2241,7 +2413,9 @@ def test_full_refund_returns_used_reward_once(till, cafe, menu, cashier, refund_
     coffee = next(row for row in body["lines"] if row["itemId"] == menu["coffee"].slug)
     reward_value = coffee["price"]
     created = create(
-        till, customerId=str(customer.pk), rewardUsed=True,
+        till,
+        customerId=str(customer.pk),
+        rewardUsed=True,
         discounts=[{"label": "Free coffee", "amount": reward_value}],
         total=body["total"] - reward_value,
     )
@@ -2264,11 +2438,13 @@ def test_full_refund_returns_used_reward_once(till, cafe, menu, cashier, refund_
             "key": "REWARD-FULL-REFUND-001",
             "mode": "refund",
             "amount": order.total_cents,
-            "alloc": [{
-                "method": "cash",
-                "amount": order.total_cents,
-                "ref": "REWARD-REFUND-PAY",
-            }],
+            "alloc": [
+                {
+                    "method": "cash",
+                    "amount": order.total_cents,
+                    "ref": "REWARD-REFUND-PAY",
+                }
+            ],
             "reason": "Customer requested a full refund",
         },
         "lines": [{"key": line.key, "qty": line.qty} for line in order.lines.all()],
@@ -2293,8 +2469,12 @@ def test_full_refund_returns_used_reward_once(till, cafe, menu, cashier, refund_
     assert repeated.pos_loyalty_reversed_at == returned.pos_loyalty_reversed_at
     assert card.activity.count() == activity_count
 
-def test_partial_loyalty_reversal_is_limited_and_idempotent(till, cafe, menu, cashier, refund_session):
+
+def test_partial_loyalty_reversal_is_limited_and_idempotent(
+    till, cafe, menu, cashier, refund_session
+):
     from types import SimpleNamespace
+
     from apps.loyalty import services as loyalty
     from apps.pos.services import award_pos_order_loyalty, reverse_partial_pos_loyalty
 
@@ -2321,8 +2501,10 @@ def test_partial_loyalty_reversal_is_limited_and_idempotent(till, cafe, menu, ca
     assert processed.pos_loyalty_lines[line.key]["awarded"] == 2
 
     first = order.adjustments.create(
-        key="PARTIAL-LOYALTY-001", mode="refund",
-        amount_cents=100, items={line.key: 1},
+        key="PARTIAL-LOYALTY-001",
+        mode="refund",
+        amount_cents=100,
+        items={line.key: 1},
     )
     reverse_partial_pos_loyalty(request, order, first)
     card.refresh_from_db()
@@ -2335,16 +2517,20 @@ def test_partial_loyalty_reversal_is_limited_and_idempotent(till, cafe, menu, ca
     assert card.activity.count() == activity_count
 
     second = order.adjustments.create(
-        key="PARTIAL-LOYALTY-002", mode="refund",
-        amount_cents=100, items={line.key: 1},
+        key="PARTIAL-LOYALTY-002",
+        mode="refund",
+        amount_cents=100,
+        items={line.key: 1},
     )
     reverse_partial_pos_loyalty(request, order, second)
     card.refresh_from_db()
     assert card.stamps == 2
 
     excessive = order.adjustments.create(
-        key="PARTIAL-LOYALTY-003", mode="refund",
-        amount_cents=100, items={line.key: 1},
+        key="PARTIAL-LOYALTY-003",
+        mode="refund",
+        amount_cents=100,
+        items={line.key: 1},
     )
     with pytest.raises(AppError) as error:
         reverse_partial_pos_loyalty(request, order, excessive)
@@ -2355,8 +2541,12 @@ def test_partial_loyalty_reversal_is_limited_and_idempotent(till, cafe, menu, ca
     assert excessive.pos_loyalty_processed_at is None
     assert card.stamps == 2
 
-def test_adjustment_rejects_excess_loyalty_items_without_changes(till, cafe, menu, cashier, refund_session):
+
+def test_adjustment_rejects_excess_loyalty_items_without_changes(
+    till, cafe, menu, cashier, refund_session
+):
     from types import SimpleNamespace
+
     from apps.loyalty import services as loyalty
     from apps.pos.services import award_pos_order_loyalty
 
@@ -2403,6 +2593,7 @@ def test_adjustment_rejects_excess_loyalty_items_without_changes(till, cafe, men
     assert order.status == before_status
     assert card.stamps == before_stamps
     assert line.qty == 2
+
 
 @pytest.mark.parametrize("managed", [False, True])
 def test_order_preserves_loyalty_processing_mode(till, cafe, menu, staff_session, managed):

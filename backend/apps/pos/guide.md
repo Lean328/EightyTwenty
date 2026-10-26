@@ -31,8 +31,8 @@ VITE_TERMINAL_ID=BRADDON-TILL-1
    `POST /api/v1/auth/login {email, password}` → `{access, refresh}`. Send `Authorization: Bearer <access>`
    on every call. The account decides **which cafés** the till can trade for (`GET /api/v1/pos/locations`).
 2. **The person at the till** signs in with a 4-digit PIN: `POST /api/v1/pos/staff/verify-pin {pin}` →
-   `{staff, permissions}`, or `204` when the PIN is not recognised. PINs are set in the BOS workspace
-   (People → Users → Till PIN), unique across the chain.
+   `{staff, permissions, staffToken, staffTokenExpiresIn}`, or `204` when the PIN is not recognised. PINs
+   are set in the BOS workspace (People → Users → Till PIN), unique across the chain.
 
 **Tokens:** `access` lives 15 minutes, `refresh` 30 days and is single use — every
 `POST /api/v1/auth/refresh {refresh}` returns a new pair. **Refresh before the access token expires, and on
@@ -40,9 +40,14 @@ any `401` refresh and resend the same command with the same Idempotency-Key.** T
 rejection, so without this a command queued over an expired token would be moved to `rejected`. Keep the
 refresh token in device storage so a reload does not ask for the password again.
 
-**Server-side permissions:** the server checks the device account (role and cafés) on every call. The
-per-person permissions returned by verify-pin are applied by the till's UI; commands do not carry a staff
-token, so the server records who did what from the names in the payload (`by`, `approver`, `staff`).
+**Server-side permissions:** the server checks the device account (role and cafés) on every call. Money and
+card commands also need the person: send `X-POS-Staff: <staffToken>` (valid 12 hours, for the same device
+account and `X-Terminal-Id`; a changed PIN ends it). Without a valid token they answer `403`
+`STAFF_SESSION_REQUIRED` / `STAFF_SESSION_MISMATCH`, or `FORBIDDEN` when the person lacks the permission:
+payments and orders created with payments (`pos`), refunds/voids (`orders.refund`), opening a shift (`pos`),
+cash moves and closing a shift (`cash.out`), editing a customer (`customers`), stamp/redeem
+(`loyalty.stamp`). Other commands record who did what from the names in the payload (`by`, `approver`,
+`staff`).
 
 ## 2. `PosBackend` → endpoints
 
@@ -70,10 +75,15 @@ token, so the server records who did what from the names in the payload (`by`, `
 | `catalog.setBranchAvailability(cafe, itemId, available)` | `PUT /api/v1/pos/locations/{cafe}/items/{itemId}/availability` | ✅ |
 | `reservations.upsert(r)` | `PUT /api/v1/pos/reservations/{id}` | ✅ same bookings as website/app/BOS |
 | `catering.upsert(e)` | `PUT /api/v1/pos/catering/{id}` | ✅ same enquiries as website/app/BOS |
-| `catalog.setPrice`, `setModifierAvailability`, `setCategoryOrder`, `adjustStock` | — | ⏳ `404`: prices, options and order are edited in BOS; no stock yet |
+| `catalog.setPrice(itemId, price)` | `PUT /api/v1/pos/locations/{cafe}/items/{itemId}/price` | ✅ chain owner/admin only; this café's price |
+| `catalog.setModifierAvailability(label, available)` | `PUT /api/v1/pos/locations/{cafe}/modifiers/availability` | ✅ manager+; hidden from the app's menu at this café |
+| `catalog.setCategoryOrder(ids)` | `PUT /api/v1/pos/locations/{cafe}/categories/order` | ✅ manager+; till only |
+| `settings.update(patch)` | `PUT /api/v1/pos/locations/{cafe}/settings/toggles` | ✅ chain owner/admin only |
+| `loyalty.applyAction(id, cafe, action)` | `POST /api/v1/pos/customers/{id}/loyalty/actions` | ✅ `{cafe, action: "stamp"\|"redeem"}` |
+| `adjustStock` | — | ⏳ `404`: no stock yet |
 | `loyalty.updateSettings` | — | ⏳ `404`: the card rule (9 stamps, 10th free) is fixed, shared with the app |
 | `giftCards.issue`, `giftCards.adjustBalance` | — | ⏳ needs the gift card provider (Square) — `404` |
-| `staffAuth.createStaff`, `setRole`, `setRoleMatrix`, `settings.update` | — | ⏳ `404`: people, PINs and settings are managed in BOS |
+| `staffAuth.createStaff`, `setRole`, `setRoleMatrix` | — | ⏳ `404`: people and PINs are managed in BOS |
 | `records.requestTaxInvoice` | — | ❌ no invoicing service yet (`404`) |
 
 A command without a route answers `404 NOT_FOUND`, which the outbox moves to `rejected`. The adapter should
@@ -155,9 +165,9 @@ staff and can be shown as is. The HTTP status drives the till's `ApiError.kind`:
 ## 6. Cash shifts and records
 
 - One open shift per till (`X-Terminal-Id`). The snapshot returns this till's open shift as `currentShift`,
-  so a till that reloads mid-shift carries on.
-- Closing checks `expected` = float + cashSales − cashRefunds + cash in − cash out and
-  `variance` = counted − expected.
+  so a till that reloads mid-shift carries on. A shift is closed and moved only from the till that opened it.
+- Cash payments and refunds are tied to the till's open shift. Closing checks `expected` = float + cash
+  payments − cash refunds of this shift + cash in − cash out and `variance` = counted − expected.
 - `POST /transactions` keeps the till's `TransactionRecord` (append-only); `POST /audit` keeps its
   `AuditEntry` in the BOS activity log. The snapshot returns the last 100 audit entries for the café.
 

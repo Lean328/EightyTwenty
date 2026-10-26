@@ -7,18 +7,18 @@ its prices no longer match the menu; the differences are noted on the order for 
 """
 
 import ipaddress
-import re
 import json
+import re
 from datetime import timedelta
 from decimal import ROUND_HALF_UP, Decimal
 
 from django.core.exceptions import ValidationError
+from django.db import transaction
 from django.db.models import Q, Sum
-from django.db import IntegrityError, transaction
+from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.dateformat import format as date_format
 from django.utils.dateparse import parse_date, parse_datetime
-from django.shortcuts import get_object_or_404
 from rest_framework.throttling import BaseThrottle
 
 from apps.accounts.models import CustomerProfile, User
@@ -32,14 +32,13 @@ from apps.locations.models import Location
 from apps.loyalty import services as loyalty
 from apps.loyalty.models import STAMPS_PER_REWARD
 from apps.menu.catalog import menu_items
-from apps.menu.models import Category, MenuItem, LocationModifierAvailability
+from apps.menu.models import Category, LocationModifierAvailability, MenuItem
 from apps.menu.services import set_availability
 from apps.mobile.errors import AppError, invalid, not_found
 from apps.orders import services as order_services
 from apps.orders.models import Order, OrderAdjustment, OrderLine, OrderPayment
-from apps.mobile.errors import AppError
 
-from .models import CashShift, Promotion, TillTransaction, TillSettings
+from .models import CashShift, Promotion, TillSettings, TillTransaction
 from .staff_sessions import require_staff_permission
 
 # POS OrderStatus ↔ stored status. "new" is confirmed (accepted) for till orders; an app order
@@ -235,6 +234,7 @@ def customer_of(customer_id):
     except (ValueError, TypeError, ValidationError):
         return None
 
+
 @transaction.atomic
 def create_order(request, data):
     user = request.user
@@ -328,18 +328,25 @@ def resolve_cash_shift(request, location, reference):
     if reference is None:
         return None
 
-    shift = CashShift.objects.select_for_update().filter(
-        reference=reference,
-        location=location,
-        terminal_id=terminal_of(request),
-    ).first()
+    shift = (
+        CashShift.objects.select_for_update()
+        .filter(
+            reference=reference,
+            location=location,
+            terminal_id=terminal_of(request),
+        )
+        .first()
+    )
 
     if shift is None:
-        raise AppError("CONFLICT", "This cash shift does not belong to the order location and terminal.", 409)
+        raise AppError(
+            "CONFLICT", "This cash shift does not belong to the order location and terminal.", 409
+        )
     if shift.status != "open":
         raise AppError("CONFLICT", "This cash shift is already closed.", 409)
 
     return shift
+
 
 @transaction.atomic
 def record_payment(request, order, data, save=True):
@@ -369,11 +376,12 @@ def record_payment(request, order, data, save=True):
         saved_shift = existing.shift.reference if existing.shift_id else None
         shift_changed = saved_shift != data.get("shiftId")
 
-        if shift_changed or any(getattr(existing, field) != value for field, value in expected.items()):
+        if shift_changed or any(
+            getattr(existing, field) != value for field, value in expected.items()
+        ):
             raise AppError(
                 "CONFLICT",
-                "This payment reference was already used "
-                "with different payment details.",
+                "This payment reference was already used with different payment details.",
                 409,
             )
 
@@ -394,7 +402,11 @@ def record_payment(request, order, data, save=True):
         shift = resolve_cash_shift(request, order.location, data.get("shiftId"))
 
         if shift is None:
-            raise AppError("CONFLICT", "This cash shift does not belong to the order location and terminal.", 409)
+            raise AppError(
+                "CONFLICT",
+                "This cash shift does not belong to the order location and terminal.",
+                409,
+            )
         if shift.status != "open":
             raise AppError("CONFLICT", "This cash shift is already closed.", 409)
     OrderPayment.objects.create(
@@ -516,13 +528,19 @@ def validate_refund_allocations(order, change):
     used = {}
     for previous in order.adjustments.all():
         if previous.amount_cents and not previous.allocation:
-            raise invalid("An earlier refund has no payment allocation. Reconcile it before issuing another allocated refund.", alloc="invalid")
+            raise invalid(
+                "An earlier refund has no payment allocation. Reconcile it before issuing another allocated refund.",
+                alloc="invalid",
+            )
 
         for row in previous.allocation:
             reference = row.get("ref")
             amount = row.get("amount")
             if reference not in payments or type(amount) is not int or amount < 0:
-                raise invalid("An earlier refund has an invalid allocation. Reconcile it before continuing.", alloc="invalid")
+                raise invalid(
+                    "An earlier refund has an invalid allocation. Reconcile it before continuing.",
+                    alloc="invalid",
+                )
             used[reference] = used.get(reference, 0) + amount
 
     requested = {}
@@ -540,7 +558,9 @@ def validate_refund_allocations(order, change):
         requested[reference] = requested.get(reference, 0) + row["amount"]
         remaining = payment["amount"] - used.get(reference, 0)
         if requested[reference] > remaining:
-            raise invalid("The refund exceeds the remaining amount of the original payment.", alloc="invalid")
+            raise invalid(
+                "The refund exceeds the remaining amount of the original payment.", alloc="invalid"
+            )
 
 
 @transaction.atomic
@@ -566,7 +586,11 @@ def adjust(request, order, data):
         changed = any(getattr(existing, field) != value for field, value in expected.items())
 
         if changed or saved_shift != change.get("shiftId"):
-            raise AppError("CONFLICT", "This adjustment reference was already used with different details.", 409)
+            raise AppError(
+                "CONFLICT",
+                "This adjustment reference was already used with different details.",
+                409,
+            )
         return order
     status = FROM_TILL.get(data["status"])
     if status is None or status in {"failed"}:
@@ -704,10 +728,12 @@ def shift_for(user, reference, lock=False):
         raise not_found(f"Shift {reference} was not found.")
     return shift
 
+
 def require_shift_terminal(request, shift):
     terminal = terminal_of(request)
     if not terminal or terminal != shift.terminal_id:
         raise AppError("CONFLICT", "This cash shift belongs to another terminal.", 409)
+
 
 def cash_move(request, shift, move):
     require_shift_terminal(request, shift)
@@ -718,7 +744,11 @@ def cash_move(request, shift, move):
 
     if existing is not None:
         if existing != move:
-            raise AppError("CONFLICT", "This cash movement reference was already used with different details.", 409)
+            raise AppError(
+                "CONFLICT",
+                "This cash movement reference was already used with different details.",
+                409,
+            )
         return shift
 
     if shift.status != "open":
@@ -748,6 +778,7 @@ def cash_shift_totals(shift):
     )
     return sales, refunds
 
+
 def close_shift(request, shift, data):
     require_shift_terminal(request, shift)
     staff = require_staff_permission(request, "cash.out", shift.location)
@@ -756,7 +787,6 @@ def close_shift(request, shift, data):
         if shift.counted_cents == data["counted"]:
             return shift
         raise AppError("CONFLICT", "This shift is already closed.", 409)
-
 
     sales, refunds = cash_shift_totals(shift)
     if data["cashSales"] != sales or data["cashRefunds"] != refunds:
@@ -780,7 +810,9 @@ def close_shift(request, shift, data):
 
     expected = expected_cash(shift.float_cents, sales, refunds, moves)
     if data["expected"] != expected or data["variance"] != data["counted"] - expected:
-        raise invalid("The expected cash or variance does not match server calculations.", expected="invalid")
+        raise invalid(
+            "The expected cash or variance does not match server calculations.", expected="invalid"
+        )
 
     shift.moves = moves
     shift.cash_sales_cents = sales
@@ -797,6 +829,7 @@ def close_shift(request, shift, data):
     shift.updated_by = staff
     shift.save()
     return shift
+
 
 def record_transaction(request, data):
     location = location_for(request.user, data["cafeId"])
@@ -1073,17 +1106,21 @@ def upsert_catering(request, reference, data):
     audit(request, enquiry, before, "pos_create" if before is None else "pos_update")
     return enquiry
 
+
 def set_category_order(request, cafe, ids):
     location = location_for(request.user, cafe)
 
     if request.user.role not in {"owner", "admin", "manager"}:
         raise AppError("FORBIDDEN", "A manager account is required to change category order.", 403)
 
-    valid = set(Category.objects.filter(is_active=True, slug__in=ids).values_list("slug", flat=True))
+    valid = set(
+        Category.objects.filter(is_active=True, slug__in=ids).values_list("slug", flat=True)
+    )
     if any(category not in valid for category in ids):
         raise invalid("One or more categories are unknown or inactive.", ids="invalid")
 
     TillSettings.objects.update_or_create(location=location, defaults={"category_order": ids})
+
 
 def set_item_price(request, cafe, item_slug, price):
     location = location_for(request.user, cafe)
@@ -1095,13 +1132,18 @@ def set_item_price(request, cafe, item_slug, price):
     if item.location_id is not None and item.location_id != location.pk:
         raise not_found("This item does not belong to the selected cafe.")
 
-    set_availability(request, location.slug, [item.slug], {"price_override_cents": int(price * 100)})
+    set_availability(
+        request, location.slug, [item.slug], {"price_override_cents": int(price * 100)}
+    )
+
 
 def set_modifier_availability(request, cafe, label, available):
     location = location_for(request.user, cafe)
 
     if request.user.role not in {"owner", "admin", "manager"}:
-        raise AppError("FORBIDDEN", "A manager account is required to change modifier availability.", 403)
+        raise AppError(
+            "FORBIDDEN", "A manager account is required to change modifier availability.", 403
+        )
 
     entries = menu_items(location, include_unavailable_modifiers=True)
     labels = {name for entry in entries for group in entry.groups for name, price in group.options}
@@ -1114,9 +1156,14 @@ def set_modifier_availability(request, cafe, label, available):
         location=location,
         label=label,
         defaults={"available": available, "updated_by": request.user},
-        create_defaults={"available": available, "created_by": request.user, "updated_by": request.user},
+        create_defaults={
+            "available": available,
+            "created_by": request.user,
+            "updated_by": request.user,
+        },
     )
     audit(request, row, before, "create" if created else "update")
+
 
 def update_till_toggles(request, cafe, toggles):
     location = location_for(request.user, cafe)
@@ -1133,6 +1180,7 @@ def update_till_toggles(request, cafe, toggles):
     settings.updated_by = request.user
     settings.save(update_fields=["toggles", "updated_by", "updated_at"])
     audit(request, settings, before, "create" if created else "update")
+
 
 ##### Loyalty #####
 @transaction.atomic
@@ -1185,14 +1233,20 @@ def award_pos_order_loyalty(request, order):
     settings = TillSettings.objects.filter(location=order.location).first()
     auto_stamp = (settings.toggles or {}).get("autoStamp", True) if settings else True
 
-    coffee_count = order.lines.filter(
-        qty__gt=0, menu_item__category__slug="coffee",
-    ).aggregate(total=Sum("qty"))["total"] or 0
+    coffee_count = (
+        order.lines.filter(
+            qty__gt=0,
+            menu_item__category__slug="coffee",
+        ).aggregate(total=Sum("qty"))["total"]
+        or 0
+    )
 
     before = card.stamps
     earning_units = max(0, coffee_count - int(order.reward_redeemed))
     after, earned = loyalty.stamps_after_order(
-        before, earning_units if auto_stamp else 0, False,
+        before,
+        earning_units if auto_stamp else 0,
+        False,
     )
 
     if after != before:
@@ -1205,11 +1259,17 @@ def award_pos_order_loyalty(request, order):
     order.stamps_earned = earned
     order.pos_loyalty_processed_at = timezone.now()
     order.updated_by = staff
-    order.save(update_fields=[
-        "stamps_earned", "pos_loyalty_lines", "pos_loyalty_processed_at",
-        "updated_by", "updated_at",
-    ])
+    order.save(
+        update_fields=[
+            "stamps_earned",
+            "pos_loyalty_lines",
+            "pos_loyalty_processed_at",
+            "updated_by",
+            "updated_at",
+        ]
+    )
     return order
+
 
 @transaction.atomic
 def reserve_pos_order_reward(request, order):
@@ -1229,17 +1289,23 @@ def reserve_pos_order_reward(request, order):
     if order.payments.exists():
         raise AppError("CONFLICT", "Reserve the reward before recording payment.", 409)
 
-    eligible = order.lines.filter(
-        qty__gt=0,
-        menu_item__category__slug="coffee",
-        unit_price_cents__gt=0,
-    ).order_by("unit_price_cents").first()
+    eligible = (
+        order.lines.filter(
+            qty__gt=0,
+            menu_item__category__slug="coffee",
+            unit_price_cents__gt=0,
+        )
+        .order_by("unit_price_cents")
+        .first()
+    )
     if eligible is None:
         raise invalid("A reward requires an eligible coffee or hot drink.")
 
     reward_value = eligible.unit_price_cents
     if len(order.discounts or []) != 1 or order.discount_cents != reward_value:
-        raise invalid("The reward must discount the cheapest eligible drink, without another discount.")
+        raise invalid(
+            "The reward must discount the cheapest eligible drink, without another discount."
+        )
 
     User.objects.select_for_update().get(pk=order.customer_id)
     card = loyalty.card_for(order.customer, lock=True)
@@ -1255,10 +1321,16 @@ def reserve_pos_order_reward(request, order):
     order.reward_cents = reward_value
     order.pos_reward_reserved_at = timezone.now()
     order.updated_by = staff
-    order.save(update_fields=[
-        "reward_cents", "pos_reward_reserved_at", "updated_by", "updated_at",
-    ])
+    order.save(
+        update_fields=[
+            "reward_cents",
+            "pos_reward_reserved_at",
+            "updated_by",
+            "updated_at",
+        ]
+    )
     return order
+
 
 @transaction.atomic
 def return_unpaid_pos_order_reward(request, order):
@@ -1288,6 +1360,7 @@ def return_unpaid_pos_order_reward(request, order):
     order.updated_by = staff
     order.save(update_fields=["pos_reward_returned_at", "updated_by", "updated_at"])
     return order
+
 
 @transaction.atomic
 def reverse_fully_refunded_pos_loyalty(request, order):
@@ -1330,15 +1403,24 @@ def reverse_fully_refunded_pos_loyalty(request, order):
     if restore_reward:
         order.pos_reward_returned_at = now
     order.updated_by = staff
-    order.save(update_fields=[
-        "pos_loyalty_reversed_at", "pos_reward_returned_at", "updated_by", "updated_at",
-    ])
+    order.save(
+        update_fields=[
+            "pos_loyalty_reversed_at",
+            "pos_reward_returned_at",
+            "updated_by",
+            "updated_at",
+        ]
+    )
     return order
 
+
 def pos_loyalty_line_snapshot(order, earned):
-    lines = list(order.lines.filter(
-        qty__gt=0, menu_item__category__slug="coffee",
-    ).order_by("position", "pk"))
+    lines = list(
+        order.lines.filter(
+            qty__gt=0,
+            menu_item__category__slug="coffee",
+        ).order_by("position", "pk")
+    )
 
     free_line = None
     if order.reward_redeemed and lines:
@@ -1367,13 +1449,15 @@ def pos_loyalty_line_snapshot(order, earned):
         raise invalid("The earned stamps do not match the eligible order lines.")
     return result
 
+
 @transaction.atomic
 def reverse_partial_pos_loyalty(request, order, adjustment):
     order = Order.objects.select_for_update().get(pk=order.pk)
     staff = require_staff_permission(request, "orders.refund", order.location)
     adjustment = get_object_or_404(
         OrderAdjustment.objects.select_for_update(),
-        pk=adjustment.pk, order=order,
+        pk=adjustment.pk,
+        order=order,
     )
 
     if order.channel != "pos" or order.pos_loyalty_processed_at is None:
@@ -1401,7 +1485,9 @@ def reverse_partial_pos_loyalty(request, order, adjustment):
         row = recorded[key]
         remaining_units = row["qty"] - row["returned_units"]
         if qty > remaining_units:
-            raise AppError("CONFLICT", "More coffee units were returned than remain on this order.", 409)
+            raise AppError(
+                "CONFLICT", "More coffee units were returned than remain on this order.", 409
+            )
 
         reversed_for_line = min(qty, row["awarded"] - row["reversed_stamps"])
         row["returned_units"] += qty
@@ -1426,6 +1512,7 @@ def reverse_partial_pos_loyalty(request, order, adjustment):
     adjustment.save(update_fields=["pos_loyalty_processed_at", "updated_at"])
     return order
 
+
 def validate_pos_loyalty_adjustment(order, data):
     if order.channel != "pos" or not (
         order.pos_loyalty_processed_at or order.pos_reward_reserved_at
@@ -1446,7 +1533,9 @@ def validate_pos_loyalty_adjustment(order, data):
     if mode == "cancel":
         remaining = paid_cents(order) - refunded_cents(order)
         if change["amount"] != remaining:
-            raise invalid("Cancelling an order must return its remaining payment.", amount="invalid")
+            raise invalid(
+                "Cancelling an order must return its remaining payment.", amount="invalid"
+            )
         return
 
     removed = {}
@@ -1458,7 +1547,9 @@ def validate_pos_loyalty_adjustment(order, data):
             removed[key] = line.qty - qty
 
     if mode == "refund" and removed:
-        raise invalid("Use void to remove items; a refund keeps order quantities unchanged.", lines="invalid")
+        raise invalid(
+            "Use void to remove items; a refund keeps order quantities unchanged.", lines="invalid"
+        )
     if mode == "void" and items != removed:
         raise invalid("Selected void items must match the quantities removed.", items="invalid")
 

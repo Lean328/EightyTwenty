@@ -162,8 +162,11 @@ class Promotion(ManagedModel):
         self.code = (self.code or "").strip().upper()
         super().save(*args, **kwargs)
 
+
 class TillSettings(ManagedModel):
-    location = models.OneToOneField("locations.Location", on_delete=models.PROTECT, related_name="till_settings")
+    location = models.OneToOneField(
+        "locations.Location", on_delete=models.PROTECT, related_name="till_settings"
+    )
     category_order = models.JSONField(default=list, blank=True)
     toggles = models.JSONField(default=dict, blank=True)
 

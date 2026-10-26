@@ -3,8 +3,9 @@ Request validation and response shapes for /api/v1/pos (camelCase, as the till's
 src/domain/types.ts). Serializers only check shapes; rules live in services.py.
 """
 
-from rest_framework import serializers
 from decimal import Decimal
+
+from rest_framework import serializers
 
 TILL_STATUSES = ["new", "preparing", "ready", "completed", "refunded", "cancelled", "failed"]
 ORDER_TYPES = ["dinein", "pickup", "takeaway", "delivery"]
@@ -104,17 +105,22 @@ class PosPaymentIn(serializers.Serializer):
 
         if data["method"] != "cash":
             if rounding != 0 or cash_paid is not None or change is not None:
-                raise serializers.ValidationError({"method": "Cash details are only allowed for cash payments."})
+                raise serializers.ValidationError(
+                    {"method": "Cash details are only allowed for cash payments."}
+                )
             return data
 
         rounded = ((data["amount"] + 2) // 5) * 5
         if rounding != rounded - data["amount"]:
-            raise serializers.ValidationError({"rounding": "Cash rounding must match the nearest five cents."})
+            raise serializers.ValidationError(
+                {"rounding": "Cash rounding must match the nearest five cents."}
+            )
         if cash_paid is not None and cash_paid != rounded:
-            raise serializers.ValidationError({"cashPaid": "Cash paid must match the rounded payment amount."})
+            raise serializers.ValidationError(
+                {"cashPaid": "Cash paid must match the rounded payment amount."}
+            )
 
         return data
-    
 
 
 class PosOrderIn(serializers.Serializer):
@@ -161,11 +167,15 @@ class PosPrepIn(serializers.Serializer):
     status = serializers.ChoiceField(choices=TILL_STATUSES)
     note = text(300)
 
+
 class PosRefundAllocationIn(serializers.Serializer):
     method = serializers.ChoiceField(choices=METHODS)
     amount = cents(min_value=1)
     ref = serializers.CharField(max_length=80)
-    giftLast4 = serializers.CharField(max_length=4, required=False, allow_null=True, allow_blank=True, default=None)
+    giftLast4 = serializers.CharField(
+        max_length=4, required=False, allow_null=True, allow_blank=True, default=None
+    )
+
 
 class PosAdjustmentIn(serializers.Serializer):
     key = serializers.CharField(max_length=60)
@@ -184,14 +194,20 @@ class PosAdjustmentIn(serializers.Serializer):
 
         if allocations:
             if sum(row["amount"] for row in allocations) != data["amount"]:
-                raise serializers.ValidationError({"alloc": "Allocated amounts must equal the refund amount."})
+                raise serializers.ValidationError(
+                    {"alloc": "Allocated amounts must equal the refund amount."}
+                )
 
             references = [row["ref"] for row in allocations]
             if len(references) != len(set(references)):
-                raise serializers.ValidationError({"alloc": "Each payment reference may appear only once."})
+                raise serializers.ValidationError(
+                    {"alloc": "Each payment reference may appear only once."}
+                )
 
         if data.get("shiftId") and data["amount"] > 0 and not allocations:
-            raise serializers.ValidationError({"alloc": "Refunds linked to a shift must include payment allocations."})
+            raise serializers.ValidationError(
+                {"alloc": "Refunds linked to a shift must include payment allocations."}
+            )
 
         return data
 
@@ -629,12 +645,15 @@ class PosCategoryOrderIn(serializers.Serializer):
             raise serializers.ValidationError("Category IDs must not be repeated.")
         return value
 
+
 class PosItemPriceIn(serializers.Serializer):
     price = serializers.DecimalField(max_digits=8, decimal_places=2, min_value=Decimal("0.00"))
+
 
 class PosModifierAvailabilityIn(serializers.Serializer):
     label = serializers.CharField(max_length=120)
     available = serializers.BooleanField()
+
 
 class PosTogglesIn(serializers.Serializer):
     toggles = serializers.DictField(child=serializers.BooleanField(), allow_empty=False)
@@ -649,6 +668,7 @@ class PosTogglesIn(serializers.Serializer):
         if set(self.initial_data) - {"toggles"}:
             raise serializers.ValidationError("This endpoint only accepts operational toggles.")
         return data
+
 
 class PosLoyaltyActionIn(serializers.Serializer):
     cafe = serializers.SlugField(max_length=50)

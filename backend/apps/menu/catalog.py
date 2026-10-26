@@ -9,11 +9,11 @@ from django.db.models import Prefetch, Q
 
 from .models import (
     LocationMenuItem,
+    LocationModifierAvailability,
     MenuItem,
     MenuItemDietaryTag,
     MenuItemModifierGroup,
     ModifierOption,
-    LocationModifierAvailability,
 )
 from .services import effective_price
 
@@ -76,7 +76,9 @@ def menu_items(location=None, slugs=None, any_location=False, include_unavailabl
     unavailable_modifiers = set()
     if location is not None and not include_unavailable_modifiers:
         unavailable_modifiers = set(
-            LocationModifierAvailability.objects.filter(location=location, available=False).values_list("label", flat=True)
+            LocationModifierAvailability.objects.filter(
+                location=location, available=False
+            ).values_list("label", flat=True)
         )
 
     entries = []
@@ -90,7 +92,10 @@ def menu_items(location=None, slugs=None, any_location=False, include_unavailabl
                 name=link.modifier_group.name,
                 required=link.modifier_group.is_required,
                 max_select=link.modifier_group.max_select,
-                options=[(option.name, option.price_delta_cents) for option in link.modifier_group.options.all() if option.name not in unavailable_modifiers
+                options=[
+                    (option.name, option.price_delta_cents)
+                    for option in link.modifier_group.options.all()
+                    if option.name not in unavailable_modifiers
                 ],
             )
             for link in item.modifier_links.all()
@@ -99,7 +104,8 @@ def menu_items(location=None, slugs=None, any_location=False, include_unavailabl
             Entry(
                 item=item,
                 price_cents=effective_price(item, override),
-                available=(not override or override.is_available) and not any(group.required and not group.options for group in groups),
+                available=(not override or override.is_available)
+                and not any(group.required and not group.options for group in groups),
                 groups=groups,
             )
         )

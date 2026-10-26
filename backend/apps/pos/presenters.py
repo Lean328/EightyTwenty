@@ -24,7 +24,7 @@ from apps.orders import services as order_services
 from apps.orders.models import Order, OrderLine, OrderPayment
 
 from . import pins
-from .models import CashShift, Promotion, TillTable, TillSettings
+from .models import CashShift, Promotion, TillSettings, TillTable
 from .services import (
     AUDIT_TYPE,
     LIVE,
@@ -317,7 +317,9 @@ def availability(user, location, unavailable_here):
         "soldOut": [slug for slug in unavailable_here if slug in everywhere],
         "branchOff": {location.slug: [slug for slug in unavailable_here if slug not in everywhere]},
         "unavailableMods": list(
-            LocationModifierAvailability.objects.filter(location=location, available=False).order_by("label").values_list("label", flat=True)
+            LocationModifierAvailability.objects.filter(location=location, available=False)
+            .order_by("label")
+            .values_list("label", flat=True)
         ),
         "prices": {},
         "lastPushedAt": local(SiteSettings.load().updated_at).isoformat(),

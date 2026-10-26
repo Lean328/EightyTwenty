@@ -11661,6 +11661,92 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorOut'
+  /api/v1/pos/customers/{customer_id}/loyalty/actions:
+    post:
+      operationId: v1_pos_customers_loyalty_actions_create
+      summary: Add a coffee stamp or redeem a reward
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+        description: One per command, reused on every retry (the till's outbox entry
+          id).
+      - in: header
+        name: X-Terminal-Id
+        schema:
+          type: string
+        description: This till, e.g. PHILLIP-TILL-1.
+      - in: path
+        name: customer_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - POS · Customers & bookings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PosLoyaltyActionInRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PosCustomerOut'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
   /api/v1/pos/items/{item_id}/sold-out:
     put:
       operationId: v1_pos_items_sold_out_update
@@ -11882,6 +11968,92 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorOut'
+  /api/v1/pos/locations/{slug}/categories/order:
+    put:
+      operationId: v1_pos_locations_categories_order_update
+      summary: Set category order for one cafe
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+        description: One per command, reused on every retry (the till's outbox entry
+          id).
+      - in: header
+        name: X-Terminal-Id
+        schema:
+          type: string
+        description: This till, e.g. PHILLIP-TILL-1.
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - POS · Customers & bookings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PosCategoryOrderInRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PosOkOut'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
   /api/v1/pos/locations/{slug}/items/{item_id}/availability:
     put:
       operationId: v1_pos_locations_items_availability_update
@@ -11969,6 +12141,97 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorOut'
+  /api/v1/pos/locations/{slug}/items/{item_id}/price:
+    put:
+      operationId: v1_pos_locations_items_price_update
+      summary: Set an item price for one cafe
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+        description: One per command, reused on every retry (the till's outbox entry
+          id).
+      - in: header
+        name: X-Terminal-Id
+        schema:
+          type: string
+        description: This till, e.g. PHILLIP-TILL-1.
+      - in: path
+        name: item_id
+        schema:
+          type: string
+        required: true
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - POS · Customers & bookings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PosItemPriceInRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PosOkOut'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
   /api/v1/pos/locations/{slug}/menu:
     get:
       operationId: v1_pos_locations_menu_list
@@ -12019,6 +12282,178 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorOut'
         '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/pos/locations/{slug}/modifiers/availability:
+    put:
+      operationId: v1_pos_locations_modifiers_availability_update
+      summary: Set modifier availability at one cafe
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+        description: One per command, reused on every retry (the till's outbox entry
+          id).
+      - in: header
+        name: X-Terminal-Id
+        schema:
+          type: string
+        description: This till, e.g. PHILLIP-TILL-1.
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - POS · Customers & bookings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PosModifierAvailabilityInRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PosOkOut'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/pos/locations/{slug}/settings/toggles:
+    put:
+      operationId: v1_pos_locations_settings_toggles_update
+      summary: Update cafe operational toggles
+      parameters:
+      - in: header
+        name: Idempotency-Key
+        schema:
+          type: string
+        description: One per command, reused on every retry (the till's outbox entry
+          id).
+      - in: header
+        name: X-Terminal-Id
+        schema:
+          type: string
+        description: This till, e.g. PHILLIP-TILL-1.
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - POS · Start-up & catalogue
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PosTogglesInRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PosOkOut'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
           description: 'App error: {error: {code, message, fields}}'
           content:
             application/json:
@@ -14527,6 +14962,14 @@ paths:
                     type: boolean
 components:
   schemas:
+    ActionEnum:
+      enum:
+      - stamp
+      - redeem
+      type: string
+      description: |-
+        * `stamp` - stamp
+        * `redeem` - redeem
     AddCardInRequest:
       type: object
       properties:
@@ -18682,8 +19125,7 @@ components:
         alloc:
           type: array
           items:
-            type: object
-            additionalProperties: {}
+            $ref: '#/components/schemas/PosRefundAllocationInRequest'
         reason:
           type: string
           default: ''
@@ -18705,6 +19147,10 @@ components:
           additionalProperties:
             type: integer
             minimum: 0
+        shiftId:
+          type: string
+          minLength: 1
+          maxLength: 60
       required:
       - amount
       - key
@@ -18855,6 +19301,18 @@ components:
       description: |-
         * `in` - in
         * `out` - out
+    PosCategoryOrderInRequest:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            type: string
+            minLength: 1
+            pattern: ^[-a-zA-Z0-9_]+$
+          maxItems: 200
+      required:
+      - ids
     PosCategoryOut:
       type: object
       properties:
@@ -19286,6 +19744,15 @@ components:
       required:
       - at
       - what
+    PosItemPriceInRequest:
+      type: object
+      properties:
+        price:
+          type: string
+          format: decimal
+          pattern: ^-?\d{0,6}(?:\.\d{0,2})?$
+      required:
+      - price
     PosLineInRequest:
       type: object
       properties:
@@ -19413,6 +19880,19 @@ components:
       - id
       - name
       - slug
+    PosLoyaltyActionInRequest:
+      type: object
+      properties:
+        cafe:
+          type: string
+          minLength: 1
+          maxLength: 50
+          pattern: ^[-a-zA-Z0-9_]+$
+        action:
+          $ref: '#/components/schemas/ActionEnum'
+      required:
+      - action
+      - cafe
     PosLoyaltyInRequest:
       type: object
       properties:
@@ -19470,6 +19950,18 @@ components:
       - modifierGroups
       - name
       - priceCents
+    PosModifierAvailabilityInRequest:
+      type: object
+      properties:
+        label:
+          type: string
+          minLength: 1
+          maxLength: 120
+        available:
+          type: boolean
+      required:
+      - available
+      - label
     PosMoveOut:
       type: object
       properties:
@@ -19617,6 +20109,9 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/PosHistoryInRequest'
+        serverLoyalty:
+          type: boolean
+          default: false
       required:
       - cafe
       - channel
@@ -19695,6 +20190,8 @@ components:
         stamped:
           type: boolean
         cleared:
+          type: boolean
+        serverLoyalty:
           type: boolean
       required:
       - accepted
@@ -19808,6 +20305,10 @@ components:
           maximum: 10000000
           minimum: 0
           nullable: true
+        shiftId:
+          type: string
+          minLength: 1
+          maxLength: 60
       required:
       - amount
       - method
@@ -19872,9 +20373,15 @@ components:
           type: array
           items:
             type: string
+        staffToken:
+          type: string
+        staffTokenExpiresIn:
+          type: integer
       required:
       - permissions
       - staff
+      - staffToken
+      - staffTokenExpiresIn
     PosPrepInRequest:
       type: object
       properties:
@@ -19903,6 +20410,27 @@ components:
       required:
       - key
       - prep
+    PosRefundAllocationInRequest:
+      type: object
+      properties:
+        method:
+          $ref: '#/components/schemas/PosTenderMethod'
+        amount:
+          type: integer
+          maximum: 10000000
+          minimum: 1
+        ref:
+          type: string
+          minLength: 1
+          maxLength: 80
+        giftLast4:
+          type: string
+          nullable: true
+          maxLength: 4
+      required:
+      - amount
+      - method
+      - ref
     PosReservationInRequest:
       type: object
       properties:
@@ -20346,6 +20874,15 @@ components:
         * `wallet` - wallet
         * `gift` - gift
         * `reward` - reward
+    PosTogglesInRequest:
+      type: object
+      properties:
+        toggles:
+          type: object
+          additionalProperties:
+            type: boolean
+      required:
+      - toggles
     PosTransactionInKindEnum:
       enum:
       - sale

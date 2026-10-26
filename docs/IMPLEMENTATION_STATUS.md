@@ -16,7 +16,7 @@ Backend (Django, `backend/`) đang chạy production trên Render (https://eight
   - Quản lý tài khoản theo quán (22/10/2026): Team by café, filter Role/Café trên Team, tóm tắt tài khoản team (`tests/test_team_pages.py`). Chỉ UI; quyền server giữ nguyên — xem `docs/BRANCH_ACCESS_HANDOFF.md` cho phần backend cần xác minh.
   - Danh sách: bấm cả dòng để mở; Bookings mặc định hôm nay + sắp tới; tách Team và Customers; Coffee cards có nút +1 stamp / Redeem; Orders có cột món; Overview đếm đơn app đang chờ (`tests/test_admin_lists.py`).
 - **API app:** 41 path theo hợp đồng app Expo; giá tính khớp từng cent với app (`compute_totals`); không N+1 (đếm truy vấn); ẩn danh hóa; push Expo (mock).
-- **API POS:** PIN, snapshot, đơn quầy + idempotency, thanh toán, bếp, hoàn/void/hủy, ca két, sổ giao dịch, khách hàng + thẻ cà phê, còn/hết món, đặt bàn, catering, bàn, mã giảm giá. Mã giảm giá được server kiểm lại khi tạo đơn: sai/hết hạn/sai quán/giảm quá mức thì ghi chú "Check prices", không từ chối đơn.
+- **API POS:** PIN, snapshot, đơn quầy + idempotency, thanh toán, bếp, hoàn/void/hủy, ca két, sổ giao dịch, khách hàng + thẻ cà phê, còn/hết món, đặt bàn, catering, bàn, mã giảm giá. Mã giảm giá được server kiểm lại khi tạo đơn: sai/hết hạn/sai quán/giảm quá mức thì ghi chú "Check prices", không từ chối đơn. Từ 26/10/2026 (code của Ân): phiên nhân viên `X-POS-Staff` cho lệnh tiền/thẻ, thanh toán/hoàn gắn ca két, giá riêng/thứ tự danh mục/tắt modifier/toggle theo quán, nút +1 stamp / redeem từ máy POS. Tích dấu tự động theo đơn quầy: service đã có, chưa nối vào luồng bán.
 - **PostgreSQL (CI):** khóa slot đặt bàn khi tranh nhau, refresh token dùng một lần, RLS bật trên mọi bảng.
 - **Dữ liệu dev:** `seed_demo` dựng DB SQLite local có dữ liệu mẫu và từ chối mọi DB không phải local (`tests/test_seed_demo.py`).
 
@@ -40,7 +40,7 @@ Backend (Django, `backend/`) đang chạy production trên Render (https://eight
 - Không hard delete dữ liệu kinh doanh: dùng khóa / bỏ publish / trạng thái. Admin không có nút xóa.
 - Thời gian đặt bàn không kéo qua ngày hoặc chiếm nhiều slot. Hai form public chưa có idempotency key.
 - Auth dùng bearer JSON, chưa có cookie HttpOnly. Khách chưa verify email vẫn đăng nhập được.
-- Đơn quầy: server kiểm tổng tiền (lệch ≤ 1¢), giá lệch menu và mã giảm giá chỉ được ghi chú, không từ chối. Server không kiểm quyền từng nhân viên trên máy POS (chỉ kiểm tài khoản máy).
+- Đơn quầy: server kiểm tổng tiền (lệch ≤ 1¢), giá lệch menu và mã giảm giá chỉ được ghi chú, không từ chối. Server kiểm quyền từng nhân viên (qua `X-POS-Staff`) chỉ ở lệnh tiền/thẻ; lệnh khác chỉ kiểm tài khoản máy.
 - Thay đổi catalog phải đi qua service/save để tăng `menu_version`. SQL tay hoặc bulk update không được bảo đảm làm mới cache.
 - Ẩn danh hóa khách xóa PII trong user/profile, booking, đơn app, địa chỉ, feed. Audit do nhân viên tạo vẫn giữ lại.
 - Theo yêu cầu chủ dự án (16/10/2026): host + CORS mở hoàn toàn, không thêm lớp bảo mật nếu không cần.

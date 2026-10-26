@@ -76,7 +76,8 @@ class Order(ManagedModel):
     total_cents = models.PositiveIntegerField()
     stamps_earned = models.PositiveSmallIntegerField(default=0)
     pos_loyalty_processed_at = models.DateTimeField(
-        null=True, blank=True,
+        null=True,
+        blank=True,
         help_text="When POS loyalty was processed after full payment.",
     )
     pos_loyalty_reversed_at = models.DateTimeField(null=True, blank=True)
