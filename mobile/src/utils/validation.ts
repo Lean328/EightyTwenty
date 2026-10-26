@@ -30,3 +30,5 @@ export function isBlank(value: string | null | undefined): boolean {
 }
 
 export const PASSWORD_MIN_LENGTH = 6;
+/** New accounts: the backend's password rule (Django validators) needs 10+ characters. */
+export const SIGNUP_PASSWORD_MIN_LENGTH = 10;

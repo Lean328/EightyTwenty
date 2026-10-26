@@ -75,7 +75,7 @@ describe('AuthSheet', () => {
 
     await type('Mobile number', '0400 123 456');
     await type('Email', DEMO_EMAIL);
-    await type('Password', 'secret12');
+    await type('Password', 'secret1234');
     await press('Create account');
     expect(await screen.findByRole('alert')).toHaveTextContent('An account with this email already exists. Log in instead.');
     expect(useSessionStore.getState().status).toBe('signedOut');

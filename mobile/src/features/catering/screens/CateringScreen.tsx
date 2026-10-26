@@ -19,6 +19,7 @@ import { Text } from '@/components/ui/Text';
 import { Field, TextField } from '@/components/ui/TextField';
 import { TimeField } from '@/components/ui/TimeField';
 import { Touchable } from '@/components/ui/Touchable';
+import { config } from '@/constants/config';
 import { cateringEmailDraft, cateringEstimate, validateCateringEnquiry, type CateringErrors } from '@/domain/catering';
 import { DIETARY_OPTIONS } from '@/domain/dietary';
 import { usePreferences, useProfile } from '@/features/profile/hooks';
@@ -29,6 +30,9 @@ import type { CateringEnquiryRequest } from '@/types';
 import { formatDateLong, formatDateShort, parseISODate } from '@/utils/datetime';
 import { firstNameOf, formatTimeOfDay, lastNameOf } from '@/utils/format';
 import { useCateringPackages, useCreateCateringEnquiry } from '../hooks';
+
+/** With the real API the server saves the request and emails the café, so no email draft is needed. */
+const SENT_BY_SERVER = config.dataSource === 'api';
 
 const HIGHLIGHTS = [
   { icon: require('../../../../assets/icons/catering-tailored.webp'), title: 'Tailored to you', sub: 'Made to suit your event' },
@@ -91,10 +95,10 @@ export function CateringScreen() {
     try {
       setSubmitError('');
       await create.mutateAsync(req);
-      const draft = cateringEmailDraft(pkg, req);
+      const draft = SENT_BY_SERVER ? '' : cateringEmailDraft(pkg, req);
       setSent({ draft });
       scroll.current?.scrollTo({ y: 0, animated: false });
-      void openEmailDraft(draft);
+      if (draft) void openEmailDraft(draft);
     } catch (e) {
       setSubmitError(errorMessage(e));
     }
@@ -109,9 +113,9 @@ export function CateringScreen() {
       <KeyboardAwareScrollView ref={scroll} contentContainerStyle={styles.content}>
         {sent && pkg ? (
           <Rise duration={400}>
-            <SuccessCard title="Your email draft is ready.">
-              <Text style={[sans(15, 400, 1.5), { color: colors.espresso }]}>Send it from your email app to complete the enquiry. We’ll respond as soon as we can with a quote for your event.</Text>
-              <TextAction label="Open it again" onPress={() => openEmailDraft(sent.draft)} underline weight={500} style={styles.selfStart} />
+            <SuccessCard title={SENT_BY_SERVER ? 'Your enquiry is in.' : 'Your email draft is ready.'}>
+              <Text style={[sans(15, 400, 1.5), { color: colors.espresso }]}>{SENT_BY_SERVER ? 'We’ll respond as soon as we can with a quote for your event.' : 'Send it from your email app to complete the enquiry. We’ll respond as soon as we can with a quote for your event.'}</Text>
+              {sent.draft ? <TextAction label="Open it again" onPress={() => openEmailDraft(sent.draft)} underline weight={500} style={styles.selfStart} /> : null}
               <Summary rows={[['Package', pkg.name], ['People', guests ? String(guests) : 'To be confirmed'], ['When', when], ['Contact', form.email]]} />
               <View style={styles.row2}>
                 <Button

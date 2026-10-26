@@ -17,6 +17,7 @@ import { Field, TextField } from '@/components/ui/TextField';
 import { TimeField } from '@/components/ui/TimeField';
 import { Touchable } from '@/components/ui/Touchable';
 import { BOOKING_RULES, CONTACT } from '@/constants/business';
+import { config } from '@/constants/config';
 import { bookingEmailDraft, checkBookingTime, validateReservation, type ReservationErrors } from '@/domain/reservations';
 import { useLocations, useSelectedLocation } from '@/features/locations/hooks';
 import { useProfile } from '@/features/profile/hooks';
@@ -29,6 +30,9 @@ import type { ReservationRequest, TablePreference } from '@/types';
 import { formatDateLong, formatDateShort, parseISODate } from '@/utils/datetime';
 import { formatTimeOfDay } from '@/utils/format';
 import { useCreateReservation } from '../hooks';
+
+/** With the real API the server saves the request and emails the café, so no email draft is needed. */
+const SENT_BY_SERVER = config.dataSource === 'api';
 
 const BRUNCH = require('../../../../assets/images/lifestyle/brunch-table.webp');
 
@@ -79,10 +83,10 @@ export function ReserveScreen() {
     try {
       setSubmitError('');
       await create.mutateAsync(req);
-      const draft = bookingEmailDraft(location, req);
+      const draft = SENT_BY_SERVER ? '' : bookingEmailDraft(location, req);
       setDone({ draft });
       scroll.current?.scrollTo({ y: 0, animated: false });
-      void openEmailDraft(draft);
+      if (draft) void openEmailDraft(draft);
     } catch (e) {
       setSubmitError(errorMessage(e));
     }
@@ -103,9 +107,9 @@ export function ReserveScreen() {
       <KeyboardAwareScrollView ref={scroll} contentContainerStyle={styles.content}>
         {done ? (
           <Rise duration={400}>
-            <SuccessCard title="Your booking email is ready.">
-              <Text style={[sans(15, 400, 1.5), { color: colors.espresso }]}>Send the draft from your email app to request your table. The café will confirm by email.</Text>
-              <TextAction label="Open the email draft again" onPress={() => openEmailDraft(done.draft)} underline weight={500} style={styles.link} />
+            <SuccessCard title={SENT_BY_SERVER ? 'Your table request is in.' : 'Your booking email is ready.'}>
+              <Text style={[sans(15, 400, 1.5), { color: colors.espresso }]}>{SENT_BY_SERVER ? 'The café will confirm by email.' : 'Send the draft from your email app to request your table. The café will confirm by email.'}</Text>
+              {done.draft ? <TextAction label="Open the email draft again" onPress={() => openEmailDraft(done.draft)} underline weight={500} style={styles.link} /> : null}
               <Summary
                 rows={[
                   ['Café', location?.bookingLabel ?? location?.name ?? ''],
@@ -221,8 +225,8 @@ export function ReserveScreen() {
               {hasErrors ? <AlertBox>Please fill in the highlighted fields so we can confirm your booking.</AlertBox> : null}
               {submitError ? <AlertBox>{submitError}</AlertBox> : null}
               <View style={styles.ctaWrap}>
-                <Button label="Prepare booking email" variant="espresso" onPress={submit} loading={create.isPending} disabled={!check.ok} height={52} radius={999} weight={500} fontSize={15} style={{ opacity: check.ok ? 1 : 0.45 }} />
-                <Text style={[sans(12, 400, 1.4), styles.caption]}>Send the email draft to request a table.</Text>
+                <Button label={SENT_BY_SERVER ? 'Request a table' : 'Prepare booking email'} variant="espresso" onPress={submit} loading={create.isPending} disabled={!check.ok} height={52} radius={999} weight={500} fontSize={15} style={{ opacity: check.ok ? 1 : 0.45 }} />
+                <Text style={[sans(12, 400, 1.4), styles.caption]}>{SENT_BY_SERVER ? 'The café replies by email to confirm your table.' : 'Send the email draft to request a table.'}</Text>
               </View>
             </View>
 
