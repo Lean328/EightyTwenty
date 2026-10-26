@@ -15,6 +15,7 @@ urlpatterns = [
     path("auth/password-reset", v.PasswordResetView.as_view()),
     path("me", v.MeView.as_view()),
     path("me/closure-request", v.ClosureRequestView.as_view()),
+    path("me/password", v.PasswordView.as_view()),
     path("me/preferences", v.PreferencesView.as_view()),
     path("me/favourites", v.FavouritesView.as_view()),
     path("me/favourites/<str:item_id>", v.FavouriteView.as_view()),

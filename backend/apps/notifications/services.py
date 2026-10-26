@@ -92,13 +92,17 @@ PUSH_TOGGLES = {
 }
 
 
-def notify(user, kind, text):
-    """Add a line to a customer's in-app feed (mobile app bell) and push it to their phones."""
+def notify(user, kind, text, url=""):
+    """
+    Add a line to a customer's in-app feed (mobile app bell) and push it to their phones.
+    `url` is the app screen a tap on the push opens (e.g. /orders/<id>); the app falls back to a
+    screen per kind.
+    """
     if user is None or not user.is_active:
         return None
     item = AppNotification.objects.create(user=user, kind=kind, text=text[:300])
     if wants_push(user, kind):
-        transaction.on_commit(lambda: send_push(user.pk, item), robust=True)
+        transaction.on_commit(lambda: send_push(user.pk, item, url), robust=True)
     return item
 
 
@@ -118,7 +122,7 @@ def wants_push(user, kind):
     return bool(toggles.get(PUSH_TOGGLES.get(kind, ""), True))
 
 
-def send_push(user_id, item):
+def send_push(user_id, item, url=""):
     """One Expo push request for every active phone of the user. Failures never raise."""
     devices = list(PushDevice.objects.filter(user_id=user_id, is_active=True))
     if not devices:
@@ -129,7 +133,7 @@ def send_push(user_id, item):
             "title": "EightyTwenty",
             "body": item.text,
             "sound": "default",
-            "data": {"kind": item.kind, "notificationId": str(item.pk)},
+            "data": {"kind": item.kind, "notificationId": str(item.pk), "url": url},
         }
         for device in devices
     ]

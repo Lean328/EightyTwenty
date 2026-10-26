@@ -42,20 +42,21 @@ curl https://eightytwenty-api.onrender.com/api/v1/app/locations
 | Area | Status |
 |---|---|
 | Sign up, sign in, refresh, sign out, password reset | ✅ Live. Reset emails a link to a page on this server where the customer sets a new password. |
-| Profile, preferences, favourites, saved addresses, account closure request | ✅ Live. Closure emails the team (they close it by hand). |
+| Profile, preferences, favourites, saved addresses | ✅ Live. |
+| Change password, delete account | ✅ `POST /me/password` returns a new session and signs out every other one. `DELETE /me` deletes the account at once (personal data removed, orders kept for the books, coffee card and gift card balance lost) — the app's "Close my account". The older `POST /me/closure-request` (email to the team) still works. |
 | Cafés, opening hours, menu, categories, item detail | ✅ Live, from the same data as the website (edited in BOS). Sold-out items are left out per café. |
 | Catering packages and enquiries | ✅ Live. Enquiries land in BOS → Enquiries and the customer gets an email. |
 | Table booking requests (create, list, cancel) | ✅ Live. Saved in BOS → Bookings; the café inbox and the guest are emailed; the café confirms. |
 | Coffee card (stamps, history, free coffee) | ✅ Live. Stamps are earned on app orders and can be added at the counter in BOS. |
 | Gift card balance and activity | ✅ Live. Balance is topped up by the chain owner in BOS; spent on app orders. |
-| In-app notification feed (bell) | ✅ Live. Filled by order status changes, stamps, booking decisions and gift card top-ups. |
+| In-app notification feed (bell) | ✅ Live. Filled by order status changes, stamps, booking decisions, gift card top-ups and offers the team sends from BOS (App offers → tick → "Send to the app"). |
 | Offers and FAQs | ✅ Live, editable in BOS → Website. |
 | **Orders** | ✅ Pricing, validation, status tracking, stamps, gift card spend, café workflow. ⚠️ **Card / Apple Pay payment is not connected** (no payment provider chosen yet): any order with money to pay answers `501 NOT_IMPLEMENTED`. Orders fully covered by the gift card go through. A demo mode exists for testing (section 3.8). |
 | Order quote (`POST /orders/quote`) | ✅ Live (optional for the app; returns server-priced totals). |
 | Saved cards | ⚠️ `GET` returns `[]`, `POST` answers `501`, `DELETE` is a no-op `204` (needs the payment provider). |
 | Send an eGift card | ⚠️ `501` until a payment provider is connected (demo mode records it without sending anything). |
 | Apple Wallet pass | ⚠️ `GET /me/loyalty/wallet-pass` answers `404` (no pass signing yet), which the app already treats as "not available". |
-| Push notifications | ✅ Expo push: register the phone with `POST /me/push-tokens` after sign-in, remove it with `DELETE /me/push-tokens/{token}` before sign-out. Every feed item is pushed too, following the notification toggles in preferences. |
+| Push notifications | ✅ Expo push: register the phone with `POST /me/push-tokens` after sign-in, remove it with `DELETE /me/push-tokens/{token}` before sign-out. Every feed item is pushed too, following the notification toggles in preferences. Push `data` = `{kind, notificationId, url}`; `url` is the app screen to open (`/orders/<id>` for order updates, `/offers` for offers, empty otherwise). |
 
 ## 3. Conventions
 
@@ -198,7 +199,7 @@ Read these before switching the app to `api` mode.
 | 11 | **Catering enquiries** | `date`, when sent, must be after today; `guests` 1–10000; `time` `HH:MM`. Occasion defaults to "Catering". | None. |
 | 12 | **eGift send** | `501` until a payment provider exists; in demo mode it is recorded only (no email to the recipient). Allowed amounts 2500/5000/7500/10000. | None. |
 | 13 | **Password reset** | `204` whether or not the email has an account. The email links to `https://<api-host>/account/reset-password?uid=…&token=…`, a small page on this server where the customer chooses a new password (the link works once, for 3 days). | The app only needs to show "Check your email for a reset link". |
-| 14 | **Closure request** | `204`; emails the team, who close the account by hand (gift card balance is checked first). | Show "Account closure requested". |
+| 14 | **Closing an account** | `DELETE /me` deletes it straight away (`204`); staff accounts → `403`. `POST /me/closure-request` still only emails the team. | Confirm first, then clear the local session. |
 | 15 | **Errors on unknown paths** | A path that does not exist answers `404` with a generic body (`code: "not_found"`, lower case). | The app maps the 404 status to `NOT_FOUND` anyway. |
 
 ## 5. What the café team sees (BOS)

@@ -71,11 +71,17 @@ def test_register_and_remove_a_phone(app, customer):
 def test_feed_items_are_pushed(customer, expo, django_capture_on_commit_callbacks):
     PushDevice.objects.create(user=customer, token=TOKEN)
     with django_capture_on_commit_callbacks(execute=True):
-        item = notify(customer, "order", "Order #8020-4471 is ready at the Braddon counter.")
+        item = notify(
+            customer, "order", "Order #8020-4471 is ready at the Braddon counter.", "/orders/abc"
+        )
     assert len(expo["calls"]) == 1
     message = expo["calls"][0]["json"][0]
     assert message["to"] == TOKEN and message["body"].startswith("Order #8020-4471")
-    assert message["data"] == {"kind": "order", "notificationId": str(item.pk)}
+    assert message["data"] == {
+        "kind": "order",
+        "notificationId": str(item.pk),
+        "url": "/orders/abc",
+    }
 
 
 def test_push_follows_the_customers_toggles(customer, expo, django_capture_on_commit_callbacks):

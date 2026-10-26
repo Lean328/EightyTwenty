@@ -1,8 +1,11 @@
 from django.contrib import admin
 
+from apps.accounts.models import User
 from apps.core.admin_base import RECORD_FIELDS, OperationsAdmin, OperationsInline
 from apps.core.admin_forms import ValidatedAdminForm
+from apps.core.services import audit
 from apps.core.templatetags.bos_admin import status_badge
+from apps.notifications.services import notify
 
 from .models import ContentBlock, Faq, NavigationItem, Offer, Page
 from .serializers import ContentBlockSerializer, NavigationSerializer
@@ -82,13 +85,28 @@ class OfferAdmin(OperationsAdmin):
     search_fields = ("name", "line")
     prepopulated_fields = {"slug": ("name",)}
     description = (
-        "In-store offers shown in the mobile app (Home and Offers). Nothing is redeemed online."
+        "In-store offers shown in the mobile app (Home and Offers). Nothing is redeemed online. "
+        "Tick an offer and choose “Send to the app” to add it to every customer's notifications "
+        "(pushed to phones only for customers who turned on Offers & news)."
     )
     fieldsets = [
         ("Offer", {"fields": ("name", "slug", "tag", "line", "fine", "image")}),
         ("Visibility", {"fields": ("sort_order", "is_active")}),
         RECORD_FIELDS,
     ]
+    actions = ("send_to_app",)
+
+    @admin.action(description="Send to the app (notifications + push)")
+    def send_to_app(self, request, queryset):
+        offers = list(queryset.filter(is_active=True))
+        customers = list(User.objects.filter(role="customer", is_active=True))
+        for offer in offers:
+            for user in customers:
+                notify(user, "offer", f"{offer.name}: {offer.line}"[:300], "/offers")
+            audit(request, offer, action="send_to_app", after={"customers": len(customers)})
+        self.message_user(
+            request, f"{len(offers)} offer(s) sent to {len(customers)} app customer(s)."
+        )
 
 
 @admin.register(Faq)

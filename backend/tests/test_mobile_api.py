@@ -650,6 +650,88 @@ def test_closure_request_emails_the_team(app, customer):
     ).exists()
 
 
+def test_deleting_the_account_signs_out_everywhere(client, customer, cafe, menu, settings):
+    settings.PAYMENT_PROVIDER = "demo"
+    session = client.post(
+        f"{BASE}/auth/sign-in", {"email": customer.email, "password": PASSWORD}, format="json"
+    ).json()
+    app = APIClient()
+    app.credentials(HTTP_AUTHORIZATION=f"Bearer {session['accessToken']}")
+    order = app.post(f"{BASE}/orders", order_body(), format="json", HTTP_IDEMPOTENCY_KEY="ord_del")
+    assert order.status_code == 201
+    email = customer.email
+    assert app.delete(f"{BASE}/me").status_code == 204
+    customer.refresh_from_db()
+    assert not customer.is_active and customer.email.endswith("@example.invalid")
+    assert Order.objects.get().contact_name == "Deleted customer"  # kept for the books
+    again = client.post(
+        f"{BASE}/auth/sign-in", {"email": email, "password": PASSWORD}, format="json"
+    )
+    assert again.status_code == 401
+    expired = client.post(
+        f"{BASE}/auth/refresh", {"refreshToken": session["refreshToken"]}, format="json"
+    )
+    assert expired.status_code == 401
+
+
+def test_staff_cannot_delete_their_account_from_the_app(db):
+    staff = APIClient()
+    staff.force_authenticate(UserFactory(role="staff"))
+    response = staff.delete(f"{BASE}/me")
+    assert response.status_code == 403 and response.json()["error"]["code"] == "FORBIDDEN"
+
+
+def test_changing_the_password_returns_a_fresh_session(client, customer):
+    old = client.post(
+        f"{BASE}/auth/sign-in", {"email": customer.email, "password": PASSWORD}, format="json"
+    ).json()
+    app = APIClient()
+    app.credentials(HTTP_AUTHORIZATION=f"Bearer {old['accessToken']}")
+    wrong = app.post(
+        f"{BASE}/me/password",
+        {"currentPassword": "nope", "newPassword": "Another-strong-2026"},
+        format="json",
+    )
+    assert wrong.status_code == 422
+    assert wrong.json()["error"]["fields"] == {"currentPassword": "invalid"}
+    weak = app.post(
+        f"{BASE}/me/password", {"currentPassword": PASSWORD, "newPassword": "short"}, format="json"
+    )
+    assert weak.json()["error"]["fields"] == {"newPassword": "too_short"}
+    done = app.post(
+        f"{BASE}/me/password",
+        {"currentPassword": PASSWORD, "newPassword": "Another-strong-2026"},
+        format="json",
+    )
+    assert done.status_code == 200 and done.json()["refreshToken"]
+    customer.refresh_from_db()
+    assert customer.check_password("Another-strong-2026")
+    stale = client.post(
+        f"{BASE}/auth/refresh", {"refreshToken": old["refreshToken"]}, format="json"
+    )
+    assert stale.status_code == 401
+    fresh = client.post(
+        f"{BASE}/auth/refresh", {"refreshToken": done.json()["refreshToken"]}, format="json"
+    )
+    assert fresh.status_code == 200
+
+
+def test_sending_an_offer_to_the_app_fills_every_feed(customer, admin_client):
+    from apps.cms.models import Offer
+
+    other = UserFactory()
+    UserFactory(role="staff")
+    offer = Offer.objects.get(slug="keepcups")
+    response = admin_client.post(
+        reverse("admin:cms_offer_changelist"),
+        {"action": "send_to_app", "_selected_action": [offer.pk]},
+    )
+    assert response.status_code == 302
+    texts = AppNotification.objects.filter(kind="offer").values_list("user", "text")
+    assert {user for user, _ in texts} == {customer.pk, other.pk}
+    assert all(text.startswith("Keep Cups: Buy a keep cup") for _, text in texts)
+
+
 def test_images_are_phone_sized_storage_urls(client, cafe, menu):
     stored = MediaAsset.objects.create(
         storage_path="menu/x/1600.webp",

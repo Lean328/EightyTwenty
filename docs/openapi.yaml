@@ -1292,6 +1292,64 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorOut'
+    delete:
+      operationId: v1_app_me_destroy
+      description: |-
+        Deletes the customer's account straight away (Privacy & security → "Close my account").
+        Name, email, phone, addresses, favourites, preferences, the feed and push devices are
+        removed; orders stay for the books without personal details; the coffee card and any gift
+        card balance are lost. Every session is signed out (`204`); the app then clears its own
+        session. Staff accounts → `403`.
+      summary: Delete this account
+      tags:
+      - App · Account
+      security:
+      - jwtAuth: []
+      responses:
+        '204':
+          description: No response body
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
   /api/v1/app/me/addresses:
     get:
       operationId: v1_app_me_addresses_list
@@ -2179,9 +2237,10 @@ paths:
       operationId: v1_app_me_notifications_retrieve
       description: |-
         The in-app feed (latest 50, newest first). Lines are added by the server when an order
-        changes status, stamps are added, the café decides on a booking, or the gift card is topped
-        up. `unseenIds` = unread items newer than the last `seen` call (the bell badge). Push
-        notifications are not built yet.
+        changes status, stamps are added, the café decides on a booking, the gift card is topped
+        up, or the team sends an offer from BOS. `unseenIds` = unread items newer than the last
+        `seen` call (the bell badge). Each item is also pushed to the customer's registered phones
+        (`POST /me/push-tokens`).
       summary: In-app notification feed
       tags:
       - App · Notifications & content
@@ -2436,6 +2495,82 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OrderPageOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '403':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '404':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+  /api/v1/app/me/password:
+    post:
+      operationId: v1_app_me_password_create
+      description: |-
+        Changes the password (Privacy & security → "Change password") and returns a **new
+        session**: every other session, on any phone or the website, is signed out.
+
+        **Errors** — `422` `fields.currentPassword: "invalid"` "Your current password isn’t
+        right." · `fields.newPassword` (`too_short`/`invalid`) with the password rule's message
+        (10+ characters, not common, not only digits, not like your name or email).
+      summary: Change password
+      tags:
+      - App · Account
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordChangeInRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SessionOut'
+          description: ''
+        '422':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
           description: ''
         '400':
           description: 'App error: {error: {code, message, fields}}'
@@ -18481,6 +18616,20 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/User'
+    PasswordChangeInRequest:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+          minLength: 1
+          maxLength: 128
+        newPassword:
+          type: string
+          minLength: 1
+          maxLength: 128
+      required:
+      - currentPassword
+      - newPassword
     PatchedAvailabilityRequest:
       type: object
       properties:

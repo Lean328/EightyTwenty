@@ -331,7 +331,7 @@ def after_status_change(order, previous):
         loyalty.reverse_order(order)
         payments.refund(order.payment_reference, order.total_cents)
     if text := status_message(order):
-        notify(order.customer, "order", text)
+        notify(order.customer, "order", text, f"/orders/{order.pk}")
 
 
 @transaction.atomic

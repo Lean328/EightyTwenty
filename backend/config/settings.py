@@ -97,6 +97,12 @@ if DATABASES["default"]["ENGINE"].endswith("postgresql"):
     DATABASES["default"].setdefault("OPTIONS", {})["prepare_threshold"] = None
     if not DEBUG and not TESTING:
         DATABASES["default"]["OPTIONS"]["sslmode"] = "require"
+elif DATABASES["default"]["ENGINE"].endswith("sqlite3"):
+    # Dev SQLite: the app fires many requests at once and each one writes its rate-limit
+    # bucket; take the write lock up front and wait for it instead of "database is locked".
+    DATABASES["default"].setdefault("OPTIONS", {}).update(
+        {"transaction_mode": "IMMEDIATE", "timeout": 20}
+    )
 AUTH_USER_MODEL = "accounts.User"
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},

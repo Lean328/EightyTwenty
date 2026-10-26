@@ -386,6 +386,50 @@ class MeView(AppView):
         user.save()
         return out(s.CustomerOut, p.customer(user))
 
+    @doc(ACCOUNT, "Delete this account", responses={204: None}, errors=(401, 403))
+    @transaction.atomic
+    def delete(self, request):
+        """
+        Deletes the customer's account straight away (Privacy & security → "Close my account").
+        Name, email, phone, addresses, favourites, preferences, the feed and push devices are
+        removed; orders stay for the books without personal details; the coffee card and any gift
+        card balance are lost. Every session is signed out (`204`); the app then clears its own
+        session. Staff accounts → `403`.
+        """
+        account_services.anonymize(request.user)
+        return Response(status=204)
+
+
+class PasswordView(AppView):
+    throttle_scope = "auth"
+
+    @doc(ACCOUNT, "Change password", s.PasswordChangeIn, {200: s.SessionOut}, (422,))
+    @transaction.atomic
+    def post(self, request):
+        """
+        Changes the password (Privacy & security → "Change password") and returns a **new
+        session**: every other session, on any phone or the website, is signed out.
+
+        **Errors** — `422` `fields.currentPassword: "invalid"` "Your current password isn’t
+        right." · `fields.newPassword` (`too_short`/`invalid`) with the password rule's message
+        (10+ characters, not common, not only digits, not like your name or email).
+        """
+        data = s.PasswordChangeIn(data=request.data)
+        data.is_valid(raise_exception=True)
+        values = data.validated_data
+        user = User.objects.select_for_update().get(pk=request.user.pk)
+        if not user.check_password(values["currentPassword"]):
+            raise invalid("Your current password isn’t right.", currentPassword="invalid")
+        try:
+            validate_password(values["newPassword"], user)
+        except DjangoValidationError as exc:
+            short = any(error.code == "password_too_short" for error in exc.error_list)
+            raise invalid(exc.messages[0], newPassword="too_short" if short else "invalid") from exc
+        user.set_password(values["newPassword"])
+        user.save(update_fields=["password", "updated_at"])
+        account_services.revoke_sessions(user)
+        return out(s.SessionOut, session(user))
+
 
 class ClosureRequestView(AppView):
     @doc(ACCOUNT, "Ask the team to close this account", responses={204: None})
@@ -1148,9 +1192,10 @@ class NotificationsView(AppView):
     def get(self, request):
         """
         The in-app feed (latest 50, newest first). Lines are added by the server when an order
-        changes status, stamps are added, the café decides on a booking, or the gift card is topped
-        up. `unseenIds` = unread items newer than the last `seen` call (the bell badge). Push
-        notifications are not built yet.
+        changes status, stamps are added, the café decides on a booking, the gift card is topped
+        up, or the team sends an offer from BOS. `unseenIds` = unread items newer than the last
+        `seen` call (the bell badge). Each item is also pushed to the customer's registered phones
+        (`POST /me/push-tokens`).
         """
         rows = list(AppNotification.objects.filter(user=request.user).order_by("-created_at")[:50])
         seen = profile_of(request.user).notifications_seen_at

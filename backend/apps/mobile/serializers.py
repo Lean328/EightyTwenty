@@ -72,6 +72,13 @@ class SignOutIn(serializers.Serializer):
     refreshToken = serializers.CharField(max_length=4096, allow_null=True, required=False)
 
 
+class PasswordChangeIn(serializers.Serializer):
+    currentPassword = text("Enter your current password.", max_length=128, trim_whitespace=False)
+    newPassword = text(
+        "Your new password needs at least 10 characters.", max_length=128, trim_whitespace=False
+    )
+
+
 class EmailIn(serializers.Serializer):
     email = text("Enter a valid email address.", max_length=254)
 
