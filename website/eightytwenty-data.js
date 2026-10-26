@@ -4,6 +4,7 @@
 import * as MOCK from './mock-data.js';
 import { API_BASE } from './config.js';
 export { SHOW_MENU_PRICES } from './config.js';
+export { menuText } from './public-presentation.js';
 import { publicLocations } from './public-presentation.js';
 export { preferredLocation, rememberLocation, phillipFirst } from './location-preference.js';
 

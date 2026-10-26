@@ -531,7 +531,7 @@ test('saving the profile sends name and phone to the API, never the email', asyn
 
 
 import * as bundled from '../website/mock-data.js';
-import { publicLocations } from '../website/public-presentation.js';
+import { publicLocations, menuText } from '../website/public-presentation.js';
 
 for (const mode of ['api', 'cache', 'mock']) {
   test(`closed location stays hidden with ${mode} data and stale preferences`, async () => {
@@ -562,7 +562,7 @@ for (const showPrices of [false, true]) {
       const { app, context } = mountWithCms({}, null);
       context.window.innerWidth = width;
       context.setInterval = () => 0;
-      app.D = { ...bundled, LOCATIONS: publicLocations(bundled.LOCATIONS), SHOW_MENU_PRICES: showPrices,
+      app.D = { ...bundled, LOCATIONS: publicLocations(bundled.LOCATIONS), SHOW_MENU_PRICES: showPrices, menuText,
         ORDER_RULES: { cardSurcharge: .0295, deliveryRate: .1 } };
       app.state.narrow = width < 900;
       app.state.view = 'menu';
@@ -575,7 +575,9 @@ for (const showPrices of [false, true]) {
       for (const item of values.sections.flatMap(section => section.items)) {
         const original = bundled.MENU.find(row => row.id === item.id);
         assert.equal(Boolean(item.priceLabel), showPrices);
-        for (const field of ['name', 'desc', 'img', 'price']) assert.equal(item[field], original[field]);
+        for (const field of ['img', 'price']) assert.equal(item[field], original[field]);
+        assert.equal(item.name, menuText(original.name, showPrices));
+        assert.equal(item.desc, menuText(original.desc, showPrices));
         assert.deepEqual(item.diet, original.diet);
       }
       for (const option of values.itemGroups.flatMap(group => group.opts)) {
@@ -588,3 +590,45 @@ for (const showPrices of [false, true]) {
     });
   }
 }
+
+
+test('menu display copy hides embedded prices while preserving ingredients, options and quantities', () => {
+  const cases = [
+    ['Free Range Eggs (Poached/Fried/Scramble +$1)', 'Free Range Eggs (Poached/Fried/Scramble)'],
+    ['Pulled Lamb +2 / Smoked Salmon +2 / Pulled Beef +2', 'Pulled Lamb / Smoked Salmon / Pulled Beef'],
+    ['250ml/750ml · Small $5 / Large $10', '250ml/750ml · Small / Large'],
+    ['Add +$3 any Fruit/Pea Protein', 'Add any Fruit/Pea Protein'],
+    ['Chicken+$1 / GFO + $1.50', 'Chicken / GFO'],
+    ['Soft Tacos (3pcs), 330ml · Fig + Raisin · Green + / 100% GF', 'Soft Tacos (3pcs), 330ml · Fig + Raisin · Green + / 100% GF'],
+    ['Small A$5.50 / Large AUD $10.00', 'Small / Large'],
+  ];
+  for (const [raw, display] of cases) {
+    assert.equal(menuText(raw, false), display);
+    assert.equal(menuText(raw, true), raw);
+  }
+});
+
+test('every menu card, featured item and detail uses price-free copy without mutating source data', () => {
+  const { app } = mountWithCms({}, null);
+  const before = JSON.stringify(bundled.MENU);
+  app.D = { ...bundled, LOCATIONS: publicLocations(bundled.LOCATIONS), SHOW_MENU_PRICES: false, menuText,
+    ORDER_RULES: { cardSurcharge: .0295, deliveryRate: .1 } };
+  app.bkCarousel = () => null;
+  let count = 0;
+  for (const category of bundled.CATEGORIES) {
+    app.state.cat = category.id;
+    const values = app.renderVals();
+    for (const card of values.sections.flatMap(section => section.items)) {
+      count++;
+      assert.doesNotMatch(card.name + ' ' + card.desc, /\$|\+\s*\d/);
+      app.state.item = bundled.MENU.find(row => row.id === card.id);
+      const detail = app.renderVals();
+      assert.equal(detail.item.name, card.name);
+      assert.equal(detail.item.desc, card.desc);
+      assert.equal(detail.itemBaseLabel, '');
+    }
+    for (const card of values.featured) assert.doesNotMatch(card.name + ' ' + card.desc, /\$|\+\s*\d/);
+  }
+  assert.equal(count, 84);
+  assert.equal(JSON.stringify(bundled.MENU), before);
+});
