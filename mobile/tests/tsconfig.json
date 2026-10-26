@@ -1,0 +1,9 @@
+{
+  // Type-checks the Jest suite with Jest globals, without exposing them to app code.
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["jest"]
+  },
+  "include": ["**/*.ts", "**/*.tsx", "../src/**/*.ts", "../src/**/*.tsx", "../expo-env.d.ts"],
+  "exclude": []
+}
