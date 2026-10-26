@@ -65,7 +65,10 @@ def till_role(user):
 
 
 def permissions(user):
-    return list(ROLES[till_role(user)]["perms"])
+    perms = list(ROLES[till_role(user)]["perms"])
+    if "loyalty" in perms and "loyalty.stamp" not in perms:
+        perms.append("loyalty.stamp")
+    return perms
 
 
 def pin_hash(user, pin):

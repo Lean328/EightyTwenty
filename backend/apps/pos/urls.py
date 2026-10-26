@@ -37,4 +37,5 @@ urlpatterns = [
     path("locations/<slug:slug>/items/<slug:item_id>/price", v.ItemPriceView.as_view()),
     path("locations/<slug:slug>/modifiers/availability", v.ModifierAvailabilityView.as_view()),
     path("locations/<slug:slug>/settings/toggles", v.TillTogglesView.as_view()),
+    path("customers/<str:customer_id>/loyalty/actions", v.CustomerLoyaltyActionView.as_view()),
 ]

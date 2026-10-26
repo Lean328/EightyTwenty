@@ -15,6 +15,7 @@ from apps.core.models import AuditLog
 from apps.core.throttles import PersistentThrottle
 from apps.locations.models import Location
 from apps.loyalty.models import GiftCard, LoyaltyCard
+from apps.mobile.errors import AppError
 from apps.menu.models import (
     Category,
     LocationMenuItem,
@@ -203,7 +204,10 @@ def test_pins_are_unique_and_scoped_to_the_cafes(cafe, elsewhere, cashier):
     assert pins.find_by_pin("1357", [elsewhere.pk]) == other
     manager = UserFactory(role="manager")
     StaffAssignment.objects.create(user=manager, location=cafe)
-    assert pins.permissions(manager) == pins.ROLES["manager"]["perms"]
+    permissions = pins.permissions(manager)
+    expected = set(pins.ROLES["manager"]["perms"]) | {"loyalty.stamp"}
+    assert set(permissions) == expected
+    assert len(permissions) == len(expected)
     assert pins.till_role(UserFactory(role="owner")) == "admin"
 
 
@@ -669,11 +673,15 @@ def test_snapshot_lists_customers_with_their_coffee_card(till, cafe, menu, regul
     assert people[0]["homeCafe"] == "braddon" and people[0]["notes"] == "Oat milk"
 
 
-def test_customer_edit_and_coffee_card_from_the_till(till, regular):
+def test_customer_edit_and_coffee_card_from_the_till(till, regular, refund_session):
     path = f"/customers/{regular.pk}"
-    edited = post(till, path, {"name": "Sophie N", "dietary": ["Vegan"], "notes": "Allergic to nuts"},
-                  method="put").json()  # fmt: skip
-    assert edited["name"] == "Sophie N" and edited["dietary"] == ["Vegan"]
+    response = post(
+        till, path,
+        {"name": "Sophie N", "dietary": ["Vegan"], "notes": "Allergic to nuts"},
+        method="put",
+    )
+    assert response.status_code == 200, response.data
+    edited = response.json()
     other = UserFactory(email="taken@example.com")
     assert post(till, path, {"email": other.email}, method="put").status_code == 409
     redeemed = post(till, f"{path}/loyalty", {"stamps": 0, "rewards": 0, "reason": "Free coffee"},
@@ -1745,3 +1753,666 @@ def test_embedded_payment_requires_verified_staff(till, cafe, menu, request, sig
     saved = order.payments.get()
     assert saved.amount_cents == 1000
     assert saved.staff_name == (staff.get_full_name().strip() or staff.email)
+
+@pytest.mark.parametrize("session_fixture", [None, "staff_session", "refund_session"])
+def test_customer_update_requires_manager_permission(till, cafe, request, session_fixture):
+    customer = UserFactory(role="customer", phone="0400000000")
+    if session_fixture:
+        request.getfixturevalue(session_fixture)
+
+    response = post(
+        till,
+        f"/customers/{customer.pk}",
+        {"phone": "0412345678"},
+        method="put",
+    )
+
+    customer.refresh_from_db()
+    if session_fixture == "refund_session":
+        assert response.status_code == 200, response.data
+        assert customer.phone == "0412345678"
+    else:
+        assert response.status_code == 403, response.data
+        assert customer.phone == "0400000000"
+
+def test_loyalty_action_requires_staff_session(till, cafe):
+    customer = UserFactory(role="customer")
+    response = post(
+        till, f"/customers/{customer.pk}/loyalty/actions",
+        {"cafe": cafe.slug, "action": "stamp"},
+        key="loyalty-no-session",
+    )
+    assert response.status_code == 403, response.data
+
+
+def test_loyalty_actions_are_incremental_and_idempotent(till, cafe, staff_session):
+    from apps.loyalty import services as loyalty
+
+    customer = UserFactory(role="customer")
+    card = loyalty.card_for(customer)
+    card.stamps = 7
+    card.save(update_fields=["stamps"])
+    path = f"/customers/{customer.pk}/loyalty/actions"
+    stamp = {"cafe": cafe.slug, "action": "stamp"}
+
+    first = post(till, path, stamp, key="stamp-001")
+    assert first.status_code == 200, first.data
+
+    retry = post(till, path, stamp, key="stamp-001")
+    assert retry.status_code == 200, retry.data
+    card.refresh_from_db()
+    assert card.stamps == 8
+
+    second = post(till, path, stamp, key="stamp-002")
+    assert second.status_code == 200, second.data
+    card.refresh_from_db()
+    assert card.stamps == 9
+    assert card.updated_by_id == staff_session.pk
+
+    full = post(till, path, stamp, key="stamp-003")
+    assert full.status_code == 409, full.data
+
+    redeem = {"cafe": cafe.slug, "action": "redeem"}
+    redeemed = post(till, path, redeem, key="redeem-001")
+    assert redeemed.status_code == 200, redeemed.data
+    card.refresh_from_db()
+    assert card.stamps == 0
+
+    retry = post(till, path, redeem, key="redeem-001")
+    assert retry.status_code == 200, retry.data
+
+    empty = post(till, path, redeem, key="redeem-002")
+    assert empty.status_code == 409, empty.data
+    card.refresh_from_db()
+    assert card.stamps == 0
+
+def test_manager_can_add_loyalty_stamp(till, cafe, refund_session):
+    from apps.loyalty import services as loyalty
+
+    customer = UserFactory(role="customer")
+    card = loyalty.card_for(customer)
+    before = card.stamps
+
+    response = post(
+        till, f"/customers/{customer.pk}/loyalty/actions",
+        {"cafe": cafe.slug, "action": "stamp"},
+        key="manager-loyalty-stamp-001",
+    )
+    assert response.status_code == 200, response.data
+    card.refresh_from_db()
+    assert card.stamps == before + 1
+    assert card.updated_by_id == refund_session.pk
+
+
+def test_order_loyalty_requires_full_payment_and_runs_once(till, cafe, menu, cashier, staff_session):
+    from types import SimpleNamespace
+    from apps.loyalty import services as loyalty
+    from apps.pos.services import award_pos_order_loyalty
+
+    customer = UserFactory(role="customer")
+    card = loyalty.card_for(customer)
+    card.stamps = 2
+    card.save(update_fields=["stamps"])
+
+    created = create(till, customerId=str(customer.pk))
+    order = Order.objects.get(number=created["id"])
+    request = SimpleNamespace(
+        user=cashier,
+        headers={
+            "X-Terminal-Id": TERMINAL,
+            "X-Pos-Staff": till._credentials["HTTP_X_POS_STAFF"],
+        },
+    )
+
+    partial = pay(till, order.number, 1000, ref="LOYALTY-PARTIAL")
+    assert partial.status_code == 200, partial.data
+
+    with pytest.raises(AppError) as error:
+        award_pos_order_loyalty(request, order)
+    assert getattr(error.value, "status_code", None) == 409
+
+    order.refresh_from_db()
+    card.refresh_from_db()
+    assert order.pos_loyalty_processed_at is None
+    assert card.stamps == 2
+
+    remaining = order.total_cents - 1000
+    paid = pay(till, order.number, remaining, ref="LOYALTY-FINAL")
+    assert paid.status_code == 200, paid.data
+
+    coffee_count = sum(
+        line.qty for line in order.lines.select_related("menu_item__category")
+        if line.menu_item_id and line.menu_item.category.slug == "coffee"
+    )
+    assert coffee_count > 0
+
+    processed = award_pos_order_loyalty(request, order)
+    expected, earned = loyalty.stamps_after_order(2, coffee_count, False)
+    card.refresh_from_db()
+    assert card.stamps == expected
+    assert processed.stamps_earned == earned
+    assert processed.pos_loyalty_processed_at is not None
+
+    activity_count = card.activity.count()
+    processed_at = processed.pos_loyalty_processed_at
+    repeated = award_pos_order_loyalty(request, order)
+    card.refresh_from_db()
+    assert card.stamps == expected
+    assert card.activity.count() == activity_count
+    assert repeated.pos_loyalty_processed_at == processed_at
+
+
+@pytest.mark.parametrize("initial, auto_stamp, expected, earned", [
+    (8, True, 9, 1),
+    (9, True, 9, 0),
+    (2, False, 2, 0),
+])
+def test_order_loyalty_respects_card_cap_and_settings(
+    till, cafe, menu, cashier, staff_session, initial, auto_stamp, expected, earned,
+):
+    from types import SimpleNamespace
+    from apps.loyalty import services as loyalty
+    from apps.pos.models import TillSettings
+    from apps.pos.services import award_pos_order_loyalty
+
+    TillSettings.objects.update_or_create(
+        location=cafe, defaults={"toggles": {"autoStamp": auto_stamp}},
+    )
+    customer = UserFactory(role="customer")
+    card = loyalty.card_for(customer)
+    card.stamps = initial
+    card.save(update_fields=["stamps"])
+
+    created = create(till, customerId=str(customer.pk))
+    order = Order.objects.get(number=created["id"])
+    paid = pay(till, order.number, order.total_cents, ref="LOYALTY-CAP-PAYMENT")
+    assert paid.status_code == 200, paid.data
+
+    request = SimpleNamespace(
+        user=cashier,
+        headers={
+            "X-Terminal-Id": TERMINAL,
+            "X-Pos-Staff": till._credentials["HTTP_X_POS_STAFF"],
+        },
+    )
+    activity_before = card.activity.count()
+    processed = award_pos_order_loyalty(request, order)
+
+    card.refresh_from_db()
+    assert card.stamps == expected
+    assert processed.stamps_earned == earned
+    processed.refresh_from_db()
+    recorded = processed.pos_loyalty_lines
+    assert recorded
+    assert sum(row["awarded"] for row in recorded.values()) == earned
+    for row in recorded.values():
+        assert 0 <= row["awarded"] <= row["qty"] - row["free_units"]
+        assert row["returned_units"] == 0
+        assert row["reversed_stamps"] == 0
+    assert processed.pos_loyalty_processed_at is not None
+    assert card.activity.count() == activity_before + (1 if earned else 0)
+
+    processed_at = processed.pos_loyalty_processed_at
+    repeated = award_pos_order_loyalty(request, order)
+    card.refresh_from_db()
+    assert card.stamps == expected
+    assert repeated.pos_loyalty_processed_at == processed_at
+    assert card.activity.count() == activity_before + (1 if earned else 0)
+
+def test_pos_reward_reservation_is_applied_once(till, cafe, menu, cashier, staff_session):
+    from types import SimpleNamespace
+    from apps.loyalty import services as loyalty
+    from apps.pos.services import reserve_pos_order_reward
+
+    customer = UserFactory(role="customer")
+    card = loyalty.card_for(customer)
+    card.stamps = 9
+    card.save(update_fields=["stamps"])
+
+    body = order_body()
+    coffee = next(row for row in body["lines"] if row["itemId"] == menu["coffee"].slug)
+    reward_value = coffee["price"]
+
+    created = create(
+        till,
+        customerId=str(customer.pk),
+        rewardUsed=True,
+        discounts=[{"label": "Free coffee", "amount": reward_value}],
+        total=body["total"] - reward_value,
+    )
+    order = Order.objects.get(number=created["id"])
+    request = SimpleNamespace(
+        user=cashier,
+        headers={
+            "X-Terminal-Id": TERMINAL,
+            "X-Pos-Staff": till._credentials["HTTP_X_POS_STAFF"],
+        },
+    )
+
+    reserved = reserve_pos_order_reward(request, order)
+    card.refresh_from_db()
+    assert card.stamps == 0
+    assert reserved.reward_cents == round(reward_value * 100)
+    assert reserved.pos_reward_reserved_at is not None
+    assert reserved.pos_reward_returned_at is None
+
+    activity_count = card.activity.count()
+    repeated = reserve_pos_order_reward(request, order)
+    card.refresh_from_db()
+    assert card.stamps == 0
+    assert repeated.pos_reward_reserved_at == reserved.pos_reward_reserved_at
+    assert card.activity.count() == activity_count
+
+def test_pos_reward_cannot_be_used_by_two_orders(till, cafe, menu, cashier, staff_session):
+    from types import SimpleNamespace
+    from apps.loyalty import services as loyalty
+    from apps.pos.services import reserve_pos_order_reward
+
+    customer = UserFactory(role="customer")
+    card = loyalty.card_for(customer)
+    card.stamps = 9
+    card.save(update_fields=["stamps"])
+
+    body = order_body()
+    coffee = next(row for row in body["lines"] if row["itemId"] == menu["coffee"].slug)
+    reward_value = coffee["price"]
+    request = SimpleNamespace(
+        user=cashier,
+        headers={
+            "X-Terminal-Id": TERMINAL,
+            "X-Pos-Staff": till._credentials["HTTP_X_POS_STAFF"],
+        },
+    )
+
+    def make_order(number):
+        created = create(
+            till, id=number, customerId=str(customer.pk), rewardUsed=True,
+            discounts=[{"label": "Free coffee", "amount": reward_value}],
+            total=body["total"] - reward_value,
+        )
+        return Order.objects.get(number=created["id"])
+
+    first = make_order("REWARD-RESERVE-001")
+    second = make_order("REWARD-RESERVE-002")
+    reserve_pos_order_reward(request, first)
+
+    with pytest.raises(AppError) as error:
+        reserve_pos_order_reward(request, second)
+    assert error.value.status_code == 409
+
+    second.refresh_from_db()
+    card.refresh_from_db()
+    assert second.pos_reward_reserved_at is None
+    assert card.stamps == 0
+
+def test_cancelled_unpaid_order_returns_reward_once(till, cafe, menu, cashier, refund_session):
+    from types import SimpleNamespace
+    from apps.loyalty import services as loyalty
+    from apps.pos.services import reserve_pos_order_reward, return_unpaid_pos_order_reward
+
+    customer = UserFactory(role="customer")
+    card = loyalty.card_for(customer)
+    card.stamps = 9
+    card.save(update_fields=["stamps"])
+
+    body = order_body()
+    coffee = next(row for row in body["lines"] if row["itemId"] == menu["coffee"].slug)
+    reward_value = coffee["price"]
+    created = create(
+        till, customerId=str(customer.pk), rewardUsed=True,
+        discounts=[{"label": "Free coffee", "amount": reward_value}],
+        total=body["total"] - reward_value,
+    )
+    order = Order.objects.get(number=created["id"])
+    request = SimpleNamespace(
+        user=cashier,
+        headers={
+            "X-Terminal-Id": TERMINAL,
+            "X-Pos-Staff": till._credentials["HTTP_X_POS_STAFF"],
+        },
+    )
+
+    reserve_pos_order_reward(request, order)
+
+    with pytest.raises(AppError) as error:
+        return_unpaid_pos_order_reward(request, order)
+    assert error.value.status_code == 409
+    card.refresh_from_db()
+    assert card.stamps == 0
+
+    order.status = "cancelled"
+    order.save(update_fields=["status"])
+    returned = return_unpaid_pos_order_reward(request, order)
+    card.refresh_from_db()
+    assert card.stamps == 9
+    assert card.updated_by_id == refund_session.pk
+
+    activity_count = card.activity.count()
+    repeated = return_unpaid_pos_order_reward(request, order)
+    assert repeated.pos_reward_returned_at == returned.pos_reward_returned_at
+    assert card.activity.count() == activity_count
+
+def test_paid_reward_order_preserves_other_stamps(till, cafe, menu, cashier, refund_session):
+    from types import SimpleNamespace
+    from apps.loyalty import services as loyalty
+    from apps.pos.services import (
+        apply_loyalty_action,
+        award_pos_order_loyalty,
+        reserve_pos_order_reward,
+        return_unpaid_pos_order_reward,
+    )
+
+    customer = UserFactory(role="customer")
+    card = loyalty.card_for(customer)
+    card.stamps = 9
+    card.save(update_fields=["stamps"])
+
+    body = order_body()
+    coffee = next(row for row in body["lines"] if row["itemId"] == menu["coffee"].slug)
+    reward_value = coffee["price"]
+    created = create(
+        till, customerId=str(customer.pk), rewardUsed=True,
+        discounts=[{"label": "Free coffee", "amount": reward_value}],
+        total=body["total"] - reward_value,
+    )
+    order = Order.objects.get(number=created["id"])
+    request = SimpleNamespace(
+        user=cashier,
+        headers={
+            "X-Terminal-Id": TERMINAL,
+            "X-Pos-Staff": till._credentials["HTTP_X_POS_STAFF"],
+        },
+    )
+
+    reserve_pos_order_reward(request, order)
+    apply_loyalty_action(request, customer, {"cafe": cafe.slug, "action": "stamp"})
+    card.refresh_from_db()
+    assert card.stamps == 1
+
+    paid = pay(till, order.number, order.total_cents, ref="REWARD-ORDER-PAYMENT")
+    assert paid.status_code == 200, paid.data
+
+    coffee_count = sum(
+        line.qty for line in order.lines.select_related("menu_item__category")
+        if line.menu_item_id and line.menu_item.category.slug == "coffee"
+    )
+    expected, earned = loyalty.stamps_after_order(1, max(0, coffee_count - 1), False)
+    processed = award_pos_order_loyalty(request, order)
+
+    card.refresh_from_db()
+    assert card.stamps == expected
+    assert processed.stamps_earned == earned
+    processed.refresh_from_db()
+    recorded = processed.pos_loyalty_lines
+    assert sum(row["free_units"] for row in recorded.values()) == 1
+    assert sum(row["awarded"] for row in recorded.values()) == earned
+    assert processed.pos_loyalty_processed_at is not None
+
+    activity_count = card.activity.count()
+    award_pos_order_loyalty(request, order)
+    card.refresh_from_db()
+    assert card.stamps == expected
+    assert card.activity.count() == activity_count
+
+    order.status = "cancelled"
+    order.save(update_fields=["status"])
+    with pytest.raises(AppError) as error:
+        return_unpaid_pos_order_reward(request, order)
+    assert error.value.status_code == 409
+
+    order.refresh_from_db()
+    card.refresh_from_db()
+    assert order.pos_reward_returned_at is None
+    assert card.stamps == expected
+
+def test_full_refund_reverses_pos_stamps_once(till, cafe, menu, cashier, refund_session):
+    from types import SimpleNamespace
+    from apps.loyalty import services as loyalty
+    from apps.pos.services import award_pos_order_loyalty, reverse_fully_refunded_pos_loyalty
+
+    customer = UserFactory(role="customer")
+    card = loyalty.card_for(customer)
+    card.stamps = 2
+    card.save(update_fields=["stamps"])
+    created = create(till, customerId=str(customer.pk))
+    order = Order.objects.get(number=created["id"])
+
+    paid = pay(till, order.number, order.total_cents, ref="FULL-REFUND-LOYALTY-PAY")
+    assert paid.status_code == 200, paid.data
+    request = SimpleNamespace(
+        user=cashier,
+        headers={
+            "X-Terminal-Id": TERMINAL,
+            "X-Pos-Staff": till._credentials["HTTP_X_POS_STAFF"],
+        },
+    )
+    award_pos_order_loyalty(request, order)
+
+    with pytest.raises(AppError) as error:
+        reverse_fully_refunded_pos_loyalty(request, order)
+    assert error.value.status_code == 409
+
+    body = {
+        "adjustment": {
+            "key": "FULL-REFUND-LOYALTY-001",
+            "mode": "refund",
+            "amount": order.total_cents,
+            "alloc": [{
+                "method": "cash",
+                "amount": order.total_cents,
+                "ref": "FULL-REFUND-LOYALTY-PAY",
+            }],
+            "reason": "Customer requested a full refund",
+        },
+        "lines": [{"key": line.key, "qty": line.qty} for line in order.lines.all()],
+        "total": order.total_cents / 100,
+        "status": "refunded",
+    }
+    response = post(till, f"/orders/{quote(order.number)}/adjustments", body)
+    assert response.status_code == 200, response.data
+
+    reversed_order = reverse_fully_refunded_pos_loyalty(request, order)
+    card.refresh_from_db()
+    assert card.stamps == 2
+    assert reversed_order.pos_loyalty_reversed_at is not None
+
+    activity_count = card.activity.count()
+    repeated = reverse_fully_refunded_pos_loyalty(request, order)
+    card.refresh_from_db()
+    assert card.stamps == 2
+    assert repeated.pos_loyalty_reversed_at == reversed_order.pos_loyalty_reversed_at
+    assert card.activity.count() == activity_count
+
+def test_full_refund_returns_used_reward_once(till, cafe, menu, cashier, refund_session):
+    from types import SimpleNamespace
+    from apps.loyalty import services as loyalty
+    from apps.pos.services import (
+        award_pos_order_loyalty,
+        reserve_pos_order_reward,
+        reverse_fully_refunded_pos_loyalty,
+    )
+
+    customer = UserFactory(role="customer")
+    card = loyalty.card_for(customer)
+    card.stamps = 9
+    card.save(update_fields=["stamps"])
+
+    body = order_body()
+    coffee = next(row for row in body["lines"] if row["itemId"] == menu["coffee"].slug)
+    reward_value = coffee["price"]
+    created = create(
+        till, customerId=str(customer.pk), rewardUsed=True,
+        discounts=[{"label": "Free coffee", "amount": reward_value}],
+        total=body["total"] - reward_value,
+    )
+    order = Order.objects.get(number=created["id"])
+    request = SimpleNamespace(
+        user=cashier,
+        headers={
+            "X-Terminal-Id": TERMINAL,
+            "X-Pos-Staff": till._credentials["HTTP_X_POS_STAFF"],
+        },
+    )
+
+    reserve_pos_order_reward(request, order)
+    paid = pay(till, order.number, order.total_cents, ref="REWARD-REFUND-PAY")
+    assert paid.status_code == 200, paid.data
+    award_pos_order_loyalty(request, order)
+
+    refund = {
+        "adjustment": {
+            "key": "REWARD-FULL-REFUND-001",
+            "mode": "refund",
+            "amount": order.total_cents,
+            "alloc": [{
+                "method": "cash",
+                "amount": order.total_cents,
+                "ref": "REWARD-REFUND-PAY",
+            }],
+            "reason": "Customer requested a full refund",
+        },
+        "lines": [{"key": line.key, "qty": line.qty} for line in order.lines.all()],
+        "total": order.total_cents / 100,
+        "status": "refunded",
+    }
+    response = post(till, f"/orders/{quote(order.number)}/adjustments", refund)
+    assert response.status_code == 200, response.data
+
+    returned = reverse_fully_refunded_pos_loyalty(request, order)
+    card.refresh_from_db()
+    assert card.stamps == 9
+    assert returned.pos_reward_returned_at is not None
+    assert returned.pos_loyalty_reversed_at is not None
+    assert card.updated_by_id == refund_session.pk
+
+    activity_count = card.activity.count()
+    repeated = reverse_fully_refunded_pos_loyalty(request, order)
+    card.refresh_from_db()
+    assert card.stamps == 9
+    assert repeated.pos_reward_returned_at == returned.pos_reward_returned_at
+    assert repeated.pos_loyalty_reversed_at == returned.pos_loyalty_reversed_at
+    assert card.activity.count() == activity_count
+
+def test_partial_loyalty_reversal_is_limited_and_idempotent(till, cafe, menu, cashier, refund_session):
+    from types import SimpleNamespace
+    from apps.loyalty import services as loyalty
+    from apps.pos.services import award_pos_order_loyalty, reverse_partial_pos_loyalty
+
+    customer = UserFactory(role="customer")
+    card = loyalty.card_for(customer)
+    card.stamps = 2
+    card.save(update_fields=["stamps"])
+
+    created = create(till, customerId=str(customer.pk))
+    order = Order.objects.get(number=created["id"])
+    paid = pay(till, order.number, order.total_cents, ref="PARTIAL-LOYALTY-PAY")
+    assert paid.status_code == 200, paid.data
+
+    request = SimpleNamespace(
+        user=cashier,
+        headers={
+            "X-Terminal-Id": TERMINAL,
+            "X-Pos-Staff": till._credentials["HTTP_X_POS_STAFF"],
+        },
+    )
+    processed = award_pos_order_loyalty(request, order)
+    line = order.lines.get(menu_item=menu["coffee"])
+    assert line.qty == 2
+    assert processed.pos_loyalty_lines[line.key]["awarded"] == 2
+
+    first = order.adjustments.create(
+        key="PARTIAL-LOYALTY-001", mode="refund",
+        amount_cents=100, items={line.key: 1},
+    )
+    reverse_partial_pos_loyalty(request, order, first)
+    card.refresh_from_db()
+    assert card.stamps == 3
+
+    activity_count = card.activity.count()
+    reverse_partial_pos_loyalty(request, order, first)
+    card.refresh_from_db()
+    assert card.stamps == 3
+    assert card.activity.count() == activity_count
+
+    second = order.adjustments.create(
+        key="PARTIAL-LOYALTY-002", mode="refund",
+        amount_cents=100, items={line.key: 1},
+    )
+    reverse_partial_pos_loyalty(request, order, second)
+    card.refresh_from_db()
+    assert card.stamps == 2
+
+    excessive = order.adjustments.create(
+        key="PARTIAL-LOYALTY-003", mode="refund",
+        amount_cents=100, items={line.key: 1},
+    )
+    with pytest.raises(AppError) as error:
+        reverse_partial_pos_loyalty(request, order, excessive)
+    assert error.value.status_code == 409
+
+    excessive.refresh_from_db()
+    card.refresh_from_db()
+    assert excessive.pos_loyalty_processed_at is None
+    assert card.stamps == 2
+
+def test_adjustment_rejects_excess_loyalty_items_without_changes(till, cafe, menu, cashier, refund_session):
+    from types import SimpleNamespace
+    from apps.loyalty import services as loyalty
+    from apps.pos.services import award_pos_order_loyalty
+
+    customer = UserFactory(role="customer")
+    card = loyalty.card_for(customer)
+    created = create(till, customerId=str(customer.pk))
+    order = Order.objects.get(number=created["id"])
+    paid = pay(till, order.number, order.total_cents, ref="INVALID-ITEMS-PAY")
+    assert paid.status_code == 200, paid.data
+
+    request = SimpleNamespace(
+        user=cashier,
+        headers={
+            "X-Terminal-Id": TERMINAL,
+            "X-Pos-Staff": till._credentials["HTTP_X_POS_STAFF"],
+        },
+    )
+    award_pos_order_loyalty(request, order)
+    card.refresh_from_db()
+    before_stamps = card.stamps
+    before_status = order.status
+    line = order.lines.get(menu_item=menu["coffee"])
+
+    body = {
+        "adjustment": {
+            "key": "INVALID-LOYALTY-ITEMS",
+            "mode": "refund",
+            "amount": 100,
+            "items": {line.key: line.qty + 1},
+            "alloc": [{"method": "cash", "amount": 100, "ref": "INVALID-ITEMS-PAY"}],
+            "reason": "Partial refund",
+        },
+        "lines": [{"key": row.key, "qty": row.qty} for row in order.lines.all()],
+        "total": order.total_cents / 100,
+        "status": "new",
+    }
+    response = post(till, f"/orders/{quote(order.number)}/adjustments", body)
+    assert response.status_code == 409, response.data
+
+    order.refresh_from_db()
+    card.refresh_from_db()
+    line.refresh_from_db()
+    assert not order.adjustments.exists()
+    assert order.status == before_status
+    assert card.stamps == before_stamps
+    assert line.qty == 2
+
+@pytest.mark.parametrize("managed", [False, True])
+def test_order_preserves_loyalty_processing_mode(till, cafe, menu, staff_session, managed):
+    created = create(till, serverLoyalty=managed)
+    order = Order.objects.get(number=created["id"])
+
+    assert order.pos_loyalty_managed is managed
+    assert created.get("serverLoyalty", False) is managed
+
+    response = till.get(f"{BASE}/snapshot", {"cafe": cafe.slug})
+    assert response.status_code == 200, response.data
+    saved = next(row for row in response.data["orders"] if row["id"] == order.number)
+    assert saved.get("serverLoyalty", False) is managed

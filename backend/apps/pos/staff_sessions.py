@@ -125,3 +125,12 @@ def require_embedded_payment_staff(handler):
             request.pos_staff = require_staff_permission(request, "pos", location)
         return handler(self, request, *args, **kwargs)
     return wrapped
+
+def require_staff_access(permission):
+    def decorate(handler):
+        @wraps(handler)
+        def wrapped(self, request, *args, **kwargs):
+            request.pos_staff = require_staff_permission(request, permission)
+            return handler(self, request, *args, **kwargs)
+        return wrapped
+    return decorate

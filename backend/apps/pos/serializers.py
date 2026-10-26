@@ -143,6 +143,7 @@ class PosOrderIn(serializers.Serializer):
     rewardUsed = serializers.BooleanField(required=False, default=False)
     staff = text(120)
     history = PosHistoryIn(many=True, required=False, default=list)
+    serverLoyalty = serializers.BooleanField(required=False, default=False)
 
 
 class PosStatusIn(serializers.Serializer):
@@ -484,6 +485,7 @@ class PosOrderOut(serializers.Serializer):
     extRef = serializers.CharField(required=False)
     stamped = serializers.BooleanField()
     cleared = serializers.BooleanField()
+    serverLoyalty = serializers.BooleanField(required=False)
 
 
 class PosOrderFeedOut(serializers.Serializer):
@@ -647,3 +649,7 @@ class PosTogglesIn(serializers.Serializer):
         if set(self.initial_data) - {"toggles"}:
             raise serializers.ValidationError("This endpoint only accepts operational toggles.")
         return data
+
+class PosLoyaltyActionIn(serializers.Serializer):
+    cafe = serializers.SlugField(max_length=50)
+    action = serializers.ChoiceField(choices=["stamp", "redeem"])

@@ -470,6 +470,8 @@ def order(row):
         data["customerId"] = str(row.customer_id)
     if row.channel == "app":
         data["extRef"] = str(row.pk)
+    if row.pos_loyalty_managed:
+        data["serverLoyalty"] = True
     return data
 
 

@@ -75,6 +75,15 @@ class Order(ManagedModel):
     gift_card_cents = models.PositiveIntegerField(default=0)
     total_cents = models.PositiveIntegerField()
     stamps_earned = models.PositiveSmallIntegerField(default=0)
+    pos_loyalty_processed_at = models.DateTimeField(
+        null=True, blank=True,
+        help_text="When POS loyalty was processed after full payment.",
+    )
+    pos_loyalty_reversed_at = models.DateTimeField(null=True, blank=True)
+    pos_loyalty_lines = models.JSONField(default=dict, blank=True)
+    pos_loyalty_managed = models.BooleanField(default=False)
+    pos_reward_reserved_at = models.DateTimeField(null=True, blank=True)
+    pos_reward_returned_at = models.DateTimeField(null=True, blank=True)
     reward_redeemed = models.BooleanField(default=False)
     estimated_wait = models.CharField(max_length=40, blank=True)
     idempotency_key = models.CharField(max_length=100, blank=True, editable=False)
@@ -221,6 +230,7 @@ class OrderAdjustment(BaseModel):
     approver_name = models.CharField(max_length=120, blank=True)
     made_at = models.CharField(max_length=40, blank=True, help_text="As shown on the till.")
     terminal_id = models.CharField(max_length=60, blank=True)
+    pos_loyalty_processed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta(BaseModel.Meta):
         verbose_name = "refund or void"

@@ -8,14 +8,17 @@ its prices no longer match the menu; the differences are noted on the order for 
 
 import ipaddress
 import re
+import json
 from datetime import timedelta
 from decimal import ROUND_HALF_UP, Decimal
 
 from django.core.exceptions import ValidationError
 from django.db.models import Q, Sum
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 from django.utils.dateformat import format as date_format
 from django.utils.dateparse import parse_date, parse_datetime
+from django.shortcuts import get_object_or_404
 from rest_framework.throttling import BaseThrottle
 
 from apps.accounts.models import CustomerProfile, User
@@ -34,6 +37,7 @@ from apps.menu.services import set_availability
 from apps.mobile.errors import AppError, invalid, not_found
 from apps.orders import services as order_services
 from apps.orders.models import Order, OrderAdjustment, OrderLine, OrderPayment
+from apps.mobile.errors import AppError
 
 from .models import CashShift, Promotion, TillTransaction, TillSettings
 from .staff_sessions import require_staff_permission
@@ -231,7 +235,7 @@ def customer_of(customer_id):
     except (ValueError, TypeError, ValidationError):
         return None
 
-
+@transaction.atomic
 def create_order(request, data):
     user = request.user
     location = location_for(user, data["cafe"])
@@ -278,6 +282,7 @@ def create_order(request, data):
         handled_at=timezone.now(),
         created_by=user,
         updated_by=user,
+        pos_loyalty_managed=data.get("serverLoyalty", False),
     )
     for position, line in enumerate(data["lines"]):
         entry = entries.get(line["itemId"])
@@ -336,6 +341,7 @@ def resolve_cash_shift(request, location, reference):
 
     return shift
 
+@transaction.atomic
 def record_payment(request, order, data, save=True):
     """Records a tender already taken (cash counted, card approved on the terminal)."""
     staff = require_staff_permission(request, "pos", order.location)
@@ -537,6 +543,7 @@ def validate_refund_allocations(order, change):
             raise invalid("The refund exceeds the remaining amount of the original payment.", alloc="invalid")
 
 
+@transaction.atomic
 def adjust(request, order, data):
     staff = require_staff_permission(request, "orders.refund", order.location)
     actor = staff.get_full_name().strip() or staff.email
@@ -579,6 +586,7 @@ def adjust(request, order, data):
             "A refund, void or cancellation can’t raise the order total.", total="invalid"
         )
 
+    validate_pos_loyalty_adjustment(order, data)
     validate_refund_allocations(order, change)
     shift = resolve_cash_shift(request, order.location, change.get("shiftId"))
     lines = {line.key or str(line.pk): line for line in order.lines.all()}
@@ -862,6 +870,7 @@ def card_stamps(stamps, rewards):
 
 
 def update_customer(request, customer, patch):
+    require_staff_permission(request, "customers")
     before = snapshot(customer)
     profile = CustomerProfile.objects.select_for_update().filter(
         user=customer
@@ -1124,3 +1133,341 @@ def update_till_toggles(request, cafe, toggles):
     settings.updated_by = request.user
     settings.save(update_fields=["toggles", "updated_by", "updated_at"])
     audit(request, settings, before, "create" if created else "update")
+
+##### Loyalty #####
+@transaction.atomic
+def apply_loyalty_action(request, customer, data):
+    location = location_for(request.user, data["cafe"])
+    staff = require_staff_permission(request, "loyalty.stamp", location)
+
+    # Serialize POS operations, including creation of a missing card.
+    User.objects.select_for_update().get(pk=customer.pk)
+    card = loyalty.card_for(customer, lock=True)
+    before = card.stamps
+
+    if data["action"] == "stamp":
+        if before >= STAMPS_PER_REWARD:
+            raise AppError("CONFLICT", "This card already has a reward ready to redeem.", 409)
+        card.stamps = before + 1
+    else:
+        if before != STAMPS_PER_REWARD:
+            raise AppError("CONFLICT", "This card has no reward ready to redeem.", 409)
+        card.stamps = 0
+
+    card.updated_by = staff
+    card.save(update_fields=["stamps", "updated_by", "updated_at"])
+    loyalty.record_stamp_change(card, before, location_name=location.name)
+    return customer
+
+
+@transaction.atomic
+def award_pos_order_loyalty(request, order):
+    order = Order.objects.select_for_update().get(pk=order.pk)
+    staff = require_staff_permission(request, "pos", order.location)
+
+    if order.channel != "pos":
+        raise invalid("Only POS orders can use this loyalty operation.")
+    if order.pos_loyalty_processed_at is not None:
+        return order
+    if order.status in {"declined", "cancelled", "refunded"}:
+        raise AppError("CONFLICT", "Loyalty cannot be awarded for this order status.", 409)
+    if not order.customer_id:
+        raise invalid("Attach a customer before processing loyalty.")
+    if order.reward_redeemed and (
+        order.pos_reward_reserved_at is None or order.pos_reward_returned_at is not None
+    ):
+        raise AppError("CONFLICT", "This order has no valid reward reservation.", 409)
+    if paid_cents(order) < till_total_cents(order):
+        raise AppError("CONFLICT", "The order must be fully paid before awarding stamps.", 409)
+
+    User.objects.select_for_update().get(pk=order.customer_id)
+    card = loyalty.card_for(order.customer, lock=True)
+    settings = TillSettings.objects.filter(location=order.location).first()
+    auto_stamp = (settings.toggles or {}).get("autoStamp", True) if settings else True
+
+    coffee_count = order.lines.filter(
+        qty__gt=0, menu_item__category__slug="coffee",
+    ).aggregate(total=Sum("qty"))["total"] or 0
+
+    before = card.stamps
+    earning_units = max(0, coffee_count - int(order.reward_redeemed))
+    after, earned = loyalty.stamps_after_order(
+        before, earning_units if auto_stamp else 0, False,
+    )
+
+    if after != before:
+        card.stamps = after
+        card.updated_by = staff
+        card.save(update_fields=["stamps", "updated_by", "updated_at"])
+        loyalty.record_stamp_change(card, before, location_name=order.location.name)
+
+    order.pos_loyalty_lines = pos_loyalty_line_snapshot(order, earned)
+    order.stamps_earned = earned
+    order.pos_loyalty_processed_at = timezone.now()
+    order.updated_by = staff
+    order.save(update_fields=[
+        "stamps_earned", "pos_loyalty_lines", "pos_loyalty_processed_at",
+        "updated_by", "updated_at",
+    ])
+    return order
+
+@transaction.atomic
+def reserve_pos_order_reward(request, order):
+    order = Order.objects.select_for_update().get(pk=order.pk)
+    staff = require_staff_permission(request, "loyalty.stamp", order.location)
+
+    if order.channel != "pos" or not order.reward_redeemed:
+        raise invalid("This operation requires a POS order using a reward.")
+    if order.pos_reward_returned_at is not None:
+        raise AppError("CONFLICT", "This order's reward has already been returned.", 409)
+    if order.pos_reward_reserved_at is not None:
+        return order
+    if order.status in {"declined", "cancelled", "refunded"}:
+        raise AppError("CONFLICT", "A reward cannot be reserved for this order status.", 409)
+    if not order.customer_id:
+        raise invalid("Attach a customer before redeeming a reward.")
+    if order.payments.exists():
+        raise AppError("CONFLICT", "Reserve the reward before recording payment.", 409)
+
+    eligible = order.lines.filter(
+        qty__gt=0,
+        menu_item__category__slug="coffee",
+        unit_price_cents__gt=0,
+    ).order_by("unit_price_cents").first()
+    if eligible is None:
+        raise invalid("A reward requires an eligible coffee or hot drink.")
+
+    reward_value = eligible.unit_price_cents
+    if len(order.discounts or []) != 1 or order.discount_cents != reward_value:
+        raise invalid("The reward must discount the cheapest eligible drink, without another discount.")
+
+    User.objects.select_for_update().get(pk=order.customer_id)
+    card = loyalty.card_for(order.customer, lock=True)
+    if card.stamps != STAMPS_PER_REWARD:
+        raise AppError("CONFLICT", "This customer has no reward available.", 409)
+
+    before = card.stamps
+    card.stamps = 0
+    card.updated_by = staff
+    card.save(update_fields=["stamps", "updated_by", "updated_at"])
+    loyalty.record_stamp_change(card, before, location_name=order.location.name)
+
+    order.reward_cents = reward_value
+    order.pos_reward_reserved_at = timezone.now()
+    order.updated_by = staff
+    order.save(update_fields=[
+        "reward_cents", "pos_reward_reserved_at", "updated_by", "updated_at",
+    ])
+    return order
+
+@transaction.atomic
+def return_unpaid_pos_order_reward(request, order):
+    order = Order.objects.select_for_update().get(pk=order.pk)
+    staff = require_staff_permission(request, "orders.refund", order.location)
+
+    if order.channel != "pos":
+        raise invalid("Only POS orders can use this reward operation.")
+    if order.pos_reward_reserved_at is None:
+        return order
+    if order.pos_reward_returned_at is not None:
+        return order
+    if order.status not in {"declined", "cancelled"}:
+        raise AppError("CONFLICT", "Cancel the unpaid order before returning its reward.", 409)
+    if order.payments.exists() or order.pos_loyalty_processed_at is not None:
+        raise AppError("CONFLICT", "Paid orders require the refund loyalty flow.", 409)
+
+    User.objects.select_for_update().get(pk=order.customer_id)
+    card = loyalty.card_for(order.customer, lock=True)
+    before = card.stamps
+    card.stamps = STAMPS_PER_REWARD
+    card.updated_by = staff
+    card.save(update_fields=["stamps", "updated_by", "updated_at"])
+    loyalty.record_stamp_change(card, before, location_name=order.location.name)
+
+    order.pos_reward_returned_at = timezone.now()
+    order.updated_by = staff
+    order.save(update_fields=["pos_reward_returned_at", "updated_by", "updated_at"])
+    return order
+
+@transaction.atomic
+def reverse_fully_refunded_pos_loyalty(request, order):
+    order = Order.objects.select_for_update().get(pk=order.pk)
+    staff = require_staff_permission(request, "orders.refund", order.location)
+
+    if order.channel != "pos":
+        raise invalid("Only POS orders can use this loyalty operation.")
+    if order.pos_loyalty_reversed_at is not None:
+        return order
+    if order.pos_loyalty_processed_at is None:
+        raise AppError("CONFLICT", "This order's loyalty has not been processed.", 409)
+    if order.status != "refunded" or refunded_cents(order) < paid_cents(order):
+        raise AppError("CONFLICT", "Fully refund the order before reversing its loyalty.", 409)
+    if not order.customer_id:
+        raise invalid("This order has no customer.")
+
+    User.objects.select_for_update().get(pk=order.customer_id)
+    card = loyalty.card_for(order.customer, lock=True)
+    before = card.stamps
+    restore_reward = (
+        order.reward_redeemed
+        and order.pos_reward_reserved_at is not None
+        and order.pos_reward_returned_at is None
+    )
+    restored = STAMPS_PER_REWARD if restore_reward else 0
+    already_reversed = sum(
+        row.get("reversed_stamps", 0) for row in order.pos_loyalty_lines.values()
+    )
+    remaining_earned = max(0, order.stamps_earned - already_reversed)
+    card.stamps = max(0, min(STAMPS_PER_REWARD, before - remaining_earned + restored))
+
+    if card.stamps != before:
+        card.updated_by = staff
+        card.save(update_fields=["stamps", "updated_by", "updated_at"])
+        loyalty.record_stamp_change(card, before, location_name=order.location.name)
+
+    now = timezone.now()
+    order.pos_loyalty_reversed_at = now
+    if restore_reward:
+        order.pos_reward_returned_at = now
+    order.updated_by = staff
+    order.save(update_fields=[
+        "pos_loyalty_reversed_at", "pos_reward_returned_at", "updated_by", "updated_at",
+    ])
+    return order
+
+def pos_loyalty_line_snapshot(order, earned):
+    lines = list(order.lines.filter(
+        qty__gt=0, menu_item__category__slug="coffee",
+    ).order_by("position", "pk"))
+
+    free_line = None
+    if order.reward_redeemed and lines:
+        free_line = min(
+            (line for line in lines if line.unit_price_cents > 0),
+            key=lambda line: (line.unit_price_cents, line.position, str(line.pk)),
+            default=None,
+        )
+
+    remaining = earned
+    result = {}
+    for line in lines:
+        key = line.key or str(line.pk)
+        free_units = int(free_line is not None and line.pk == free_line.pk)
+        awarded = min(remaining, max(0, line.qty - free_units))
+        result[key] = {
+            "qty": line.qty,
+            "free_units": free_units,
+            "awarded": awarded,
+            "returned_units": 0,
+            "reversed_stamps": 0,
+        }
+        remaining -= awarded
+
+    if remaining:
+        raise invalid("The earned stamps do not match the eligible order lines.")
+    return result
+
+@transaction.atomic
+def reverse_partial_pos_loyalty(request, order, adjustment):
+    order = Order.objects.select_for_update().get(pk=order.pk)
+    staff = require_staff_permission(request, "orders.refund", order.location)
+    adjustment = get_object_or_404(
+        OrderAdjustment.objects.select_for_update(),
+        pk=adjustment.pk, order=order,
+    )
+
+    if order.channel != "pos" or order.pos_loyalty_processed_at is None:
+        raise AppError("CONFLICT", "This POS order's loyalty has not been processed.", 409)
+    if adjustment.pos_loyalty_processed_at is not None:
+        return order
+    if order.pos_loyalty_reversed_at is not None:
+        raise AppError("CONFLICT", "This order's loyalty has already been fully reversed.", 409)
+    if adjustment.mode not in {"refund", "void"}:
+        raise invalid("Partial loyalty reversal requires a refund or void.")
+
+    recorded = json.loads(json.dumps(order.pos_loyalty_lines))
+    items = adjustment.items or {}
+    known = {line.key or str(line.pk) for line in order.lines.all()}
+    reversed_stamps = 0
+
+    for key, qty in items.items():
+        if key not in known:
+            raise invalid("The adjustment contains an unknown order line.")
+        if not isinstance(qty, int) or isinstance(qty, bool) or qty < 0:
+            raise invalid("Returned quantities must be non-negative whole numbers.")
+        if key not in recorded or qty == 0:
+            continue
+
+        row = recorded[key]
+        remaining_units = row["qty"] - row["returned_units"]
+        if qty > remaining_units:
+            raise AppError("CONFLICT", "More coffee units were returned than remain on this order.", 409)
+
+        reversed_for_line = min(qty, row["awarded"] - row["reversed_stamps"])
+        row["returned_units"] += qty
+        row["reversed_stamps"] += reversed_for_line
+        reversed_stamps += reversed_for_line
+
+    if reversed_stamps:
+        User.objects.select_for_update().get(pk=order.customer_id)
+        card = loyalty.card_for(order.customer, lock=True)
+        before = card.stamps
+        card.stamps = max(0, before - reversed_stamps)
+        if card.stamps != before:
+            card.updated_by = staff
+            card.save(update_fields=["stamps", "updated_by", "updated_at"])
+            loyalty.record_stamp_change(card, before, location_name=order.location.name)
+
+    order.pos_loyalty_lines = recorded
+    order.updated_by = staff
+    order.save(update_fields=["pos_loyalty_lines", "updated_by", "updated_at"])
+
+    adjustment.pos_loyalty_processed_at = timezone.now()
+    adjustment.save(update_fields=["pos_loyalty_processed_at", "updated_at"])
+    return order
+
+def validate_pos_loyalty_adjustment(order, data):
+    if order.channel != "pos" or not (
+        order.pos_loyalty_processed_at or order.pos_reward_reserved_at
+    ):
+        return
+
+    change = data["adjustment"]
+    mode = change["mode"]
+    lines = {line.key or str(line.pk): line for line in order.lines.all()}
+    kept = {row["key"]: row["qty"] for row in data["lines"]}
+    items = {key: qty for key, qty in (change.get("items") or {}).items() if qty}
+
+    if len(kept) != len(data["lines"]):
+        raise invalid("Each order line may appear only once.", lines="invalid")
+    if set(kept) - set(lines) or set(items) - set(lines):
+        raise invalid("The adjustment contains an unknown order line.", items="invalid")
+
+    if mode == "cancel":
+        remaining = paid_cents(order) - refunded_cents(order)
+        if change["amount"] != remaining:
+            raise invalid("Cancelling an order must return its remaining payment.", amount="invalid")
+        return
+
+    removed = {}
+    for key, line in lines.items():
+        qty = kept.get(key, 0)
+        if qty > line.qty:
+            raise invalid("An adjustment cannot increase item quantities.", lines="invalid")
+        if qty < line.qty:
+            removed[key] = line.qty - qty
+
+    if mode == "refund" and removed:
+        raise invalid("Use void to remove items; a refund keeps order quantities unchanged.", lines="invalid")
+    if mode == "void" and items != removed:
+        raise invalid("Selected void items must match the quantities removed.", items="invalid")
+
+    previously_refunded = {}
+    for previous in order.adjustments.filter(mode="refund"):
+        for key, qty in (previous.items or {}).items():
+            previously_refunded[key] = previously_refunded.get(key, 0) + qty
+
+    for key, qty in items.items():
+        available = max(0, lines[key].qty - previously_refunded.get(key, 0))
+        if qty > available:
+            raise AppError("CONFLICT", "More item units were returned than remain available.", 409)

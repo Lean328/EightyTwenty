@@ -34,6 +34,7 @@ from .staff_sessions import (
     require_shift_staff,
     require_open_shift_staff,
     require_embedded_payment_staff,
+    require_staff_access,
 )
 
 
@@ -544,6 +545,7 @@ class AuditView(PosView):
 
 class CustomerView(PosView):
     @doc(GUESTS, "Edit a customer", s.PosCustomerPatchIn, {200: s.PosCustomerOut}, (404, 409), True)
+    @require_staff_access("customers")
     @idempotent
     def put(self, request, customer_id):
         """
@@ -693,3 +695,23 @@ class TillTogglesView(PosView):
         data = self.valid(s.PosTogglesIn)
         services.update_till_toggles(request, slug, data["toggles"])
         return Response({"ok": True})
+
+
+##### loyalty #####
+class CustomerLoyaltyActionView(PosView):
+    @doc(
+        GUESTS,
+        "Add a coffee stamp or redeem a reward",
+        s.PosLoyaltyActionIn,
+        {200: s.PosCustomerOut},
+        (403, 404, 409, 422),
+        True,
+    )
+    @require_staff_access("loyalty.stamp")
+    @idempotent
+    def post(self, request, customer_id):
+        data = self.valid(s.PosLoyaltyActionIn)
+        customer = services.customer_for(customer_id)
+        services.apply_loyalty_action(request, customer, data)
+        customer = services.customer_for(customer_id)
+        return Response(s.PosCustomerOut(p.customer(customer)).data)
