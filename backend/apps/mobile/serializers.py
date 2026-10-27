@@ -527,6 +527,11 @@ class NotificationOut(serializers.Serializer):
     text = serializers.CharField()
     createdAt = serializers.DateTimeField()
     unread = serializers.BooleanField()
+    url = serializers.CharField(
+        required=False,
+        allow_blank=True,
+        help_text="App screen a tap opens (e.g. /orders/<id>); empty: pick one by kind.",
+    )
 
 
 class NotificationFeedOut(serializers.Serializer):

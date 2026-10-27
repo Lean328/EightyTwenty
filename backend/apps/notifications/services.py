@@ -100,7 +100,7 @@ def notify(user, kind, text, url=""):
     """
     if user is None or not user.is_active:
         return None
-    item = AppNotification.objects.create(user=user, kind=kind, text=text[:300])
+    item = AppNotification.objects.create(user=user, kind=kind, text=text[:300], url=url[:200])
     if wants_push(user, kind):
         transaction.on_commit(lambda: send_push(user.pk, item, url), robust=True)
     return item

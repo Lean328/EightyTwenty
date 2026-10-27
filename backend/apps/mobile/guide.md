@@ -56,7 +56,7 @@ curl https://eightytwenty-api.onrender.com/api/v1/app/locations
 | Saved cards | ⚠️ `GET` returns `[]`, `POST` answers `501`, `DELETE` is a no-op `204` (needs the payment provider). |
 | Send an eGift card | ⚠️ `501` until a payment provider is connected (demo mode records it without sending anything). |
 | Apple Wallet pass | ⚠️ `GET /me/loyalty/wallet-pass` answers `404` (no pass signing yet), which the app already treats as "not available". |
-| Push notifications | ✅ Expo push: register the phone with `POST /me/push-tokens` after sign-in, remove it with `DELETE /me/push-tokens/{token}` before sign-out. Every feed item is pushed too, following the notification toggles in preferences. Push `data` = `{kind, notificationId, url}`; `url` is the app screen to open (`/orders/<id>` for order updates, `/offers` for offers, empty otherwise). |
+| Push notifications | ✅ Expo push: register the phone with `POST /me/push-tokens` after sign-in, remove it with `DELETE /me/push-tokens/{token}` before sign-out. Every feed item is pushed too, following the notification toggles in preferences. Push `data` = `{kind, notificationId, url}`; `url` is the app screen to open (`/orders/<id>` for order updates, `/offers` for offers, empty otherwise); feed items carry the same `url`, so a tap in the in-app feed opens the same screen. |
 
 ## 3. Conventions
 

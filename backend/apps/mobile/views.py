@@ -1195,7 +1195,8 @@ class NotificationsView(AppView):
         changes status, stamps are added, the café decides on a booking, the gift card is topped
         up, or the team sends an offer from BOS. `unseenIds` = unread items newer than the last
         `seen` call (the bell badge). Each item is also pushed to the customer's registered phones
-        (`POST /me/push-tokens`).
+        (`POST /me/push-tokens`). `url` is the app screen a tap opens (`/orders/<id>` for order
+        updates, `/offers`); empty means the app picks one by `kind`.
         """
         rows = list(AppNotification.objects.filter(user=request.user).order_by("-created_at")[:50])
         seen = profile_of(request.user).notifications_seen_at

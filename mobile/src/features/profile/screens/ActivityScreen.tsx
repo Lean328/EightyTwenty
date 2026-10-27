@@ -12,7 +12,7 @@ import { SegmentedControl } from '@/components/ui/SegmentedControl';
 import { Text } from '@/components/ui/Text';
 import { Touchable } from '@/components/ui/Touchable';
 import { buildLine } from '@/domain/cart';
-import { STATUS_LABEL } from '@/domain/orders';
+import { isLiveStatus, STATUS_LABEL } from '@/domain/orders';
 import { useCateringEnquiries } from '@/features/catering/hooks';
 import { useLocations } from '@/features/locations/hooks';
 import { useMenuIndex } from '@/features/menu/hooks';
@@ -102,7 +102,8 @@ function OrdersSegment() {
         const tone = o.status === 'completed' ? 'success' : o.status === 'declined' ? 'danger' : 'pending';
         return (
           <View key={o.id} style={styles.card}>
-            <View style={styles.orderTop}>
+            {/* Tapping the order opens its status screen (live progress, or the outcome). */}
+            <Touchable onPress={() => router.push(`/orders/${o.id}`)} pressedScale={0.99} accessibilityLabel={`Order ${o.number}, ${STATUS_LABEL[o.status]}. View status`} style={styles.orderTop}>
               <View style={styles.thumbs}>
                 {thumbs.map((src, i) => (
                   <View key={i} style={styles.thumb}>
@@ -119,7 +120,7 @@ function OrdersSegment() {
                 </Text>
               </View>
               <Text style={[sans(14, 600), { color: colors.ink }]}>{formatMoney(o.totals.total)}</Text>
-            </View>
+            </Touchable>
             <View style={styles.orderBottom}>
               <StatusChip label={`${STATUS_LABEL[o.status]} · ${o.method}`} tone={tone} />
               <View style={styles.orderActions}>
@@ -129,9 +130,15 @@ function OrdersSegment() {
                     <Icon name="chevronDown" size={13} strokeWidth={2.2} color={colors.textSecondary} />
                   </View>
                 </Touchable>
-                <Touchable onPress={() => reorder(o)} style={styles.details}>
-                  <Text style={[sans(13, 600), { color: colors.caramelDeep }]}>Reorder</Text>
-                </Touchable>
+                {isLiveStatus(o.status) ? (
+                  <Touchable onPress={() => router.push(`/orders/${o.id}`)} style={styles.details}>
+                    <Text style={[sans(13, 600), { color: colors.caramelDeep }]}>Track</Text>
+                  </Touchable>
+                ) : (
+                  <Touchable onPress={() => reorder(o)} style={styles.details}>
+                    <Text style={[sans(13, 600), { color: colors.caramelDeep }]}>Reorder</Text>
+                  </Touchable>
+                )}
               </View>
             </View>
             {isOpen ? (

@@ -313,6 +313,7 @@ def notification(row):
         "text": row.text,
         "createdAt": iso(row.created_at),
         "unread": row.unread,
+        "url": row.url,
     }
 
 

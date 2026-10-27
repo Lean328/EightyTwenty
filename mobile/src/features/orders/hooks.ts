@@ -1,6 +1,7 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { isLiveStatus } from '@/domain/orders';
 import { useIdempotentAttempt } from '@/hooks/useIdempotentAttempt';
+import { useNow } from '@/hooks/useNow';
 import { queryKeys, useRepositories } from '@/repositories';
 import { AppError } from '@/services/errors';
 import { paymentProvider, type DemoCardInput } from '@/services/integrations/payments';
@@ -25,6 +26,13 @@ export function useOrderHistory() {
     initialPageParam: null as string | null,
     getNextPageParam: (last) => last.nextCursor,
   });
+}
+
+/** An order placed in the last 12 hours that the café has not finished yet (Home links to it). */
+export function useLiveOrder(): Order | undefined {
+  const history = useOrderHistory();
+  const since = useNow().getTime() - 12 * 60 * 60 * 1000;
+  return history.data?.pages[0]?.items.find((o) => isLiveStatus(o.status) && Date.parse(o.createdAt) > since);
 }
 
 export type PlaceOrderInput = Omit<CreateOrderRequest, 'payment'> & {

@@ -8,6 +8,8 @@ export interface AppNotification {
   text: string;
   createdAt: ISODateTime;
   unread: boolean;
+  /** App screen a tap opens, when the server names one (e.g. /orders/<id>). */
+  url?: string;
 }
 
 export interface Offer {

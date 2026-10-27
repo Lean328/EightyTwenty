@@ -198,6 +198,8 @@ export interface NotificationDTO {
   text: string;
   createdAt: string;
   unread: boolean;
+  /** App screen a tap opens (e.g. /orders/<id>); empty or missing: pick one by kind. */
+  url?: string | null;
 }
 
 export interface NotificationFeedDTO {

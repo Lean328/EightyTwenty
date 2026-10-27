@@ -7,12 +7,14 @@ import { EmptyState, ErrorState, Skeleton } from '@/components/ui/Feedback';
 import { Icon } from '@/components/ui/Icon';
 import { TextAction } from '@/components/ui/Links';
 import { Text } from '@/components/ui/Text';
+import { Touchable } from '@/components/ui/Touchable';
 import { useBottomSpace } from '@/hooks/useBottomSpace';
 import { useNow } from '@/hooks/useNow';
 import { errorMessage } from '@/services/errors';
 import { colors, inkA, sans } from '@/theme';
 import { formatRelativeShort } from '@/utils/datetime';
 import { KIND_ICON } from '../constants';
+import { screenForNotification } from '../pushRoutes';
 import { useNotificationAction, useNotificationFeed } from '../hooks';
 
 export function NotificationsScreen() {
@@ -47,7 +49,13 @@ export function NotificationsScreen() {
           contentContainerStyle={[styles.list, { paddingBottom: bottom }]}
           ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
           renderItem={({ item: n }) => (
-            <View style={styles.card} accessible accessibilityLabel={`${n.unread ? 'Unread. ' : ''}${n.kind}. ${n.text}. ${formatRelativeShort(n.createdAt, now)}`}>
+            // A tap opens what the line is about (an order's status, the coffee card…), like its push.
+            <Touchable
+              onPress={() => router.push(screenForNotification(n))}
+              pressedScale={0.99}
+              accessibilityLabel={`${n.unread ? 'Unread. ' : ''}${n.kind}. ${n.text}. ${formatRelativeShort(n.createdAt, now)}`}
+              style={styles.card}
+            >
               <View style={styles.icon}>
                 <Icon name={KIND_ICON[n.kind]} size={19} strokeWidth={1.7} />
               </View>
@@ -57,7 +65,7 @@ export function NotificationsScreen() {
                 <Text style={[sans(12), styles.when]}>{formatRelativeShort(n.createdAt, now)}</Text>
               </View>
               {n.unread ? <View style={styles.dot} /> : null}
-            </View>
+            </Touchable>
           )}
           ListFooterComponent={
             items.length ? (

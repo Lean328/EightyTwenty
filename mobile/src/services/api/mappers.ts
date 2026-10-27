@@ -227,7 +227,7 @@ export function giftActivityFromDto(dto: D.GiftCardActivityDTO): GiftCardActivit
 const KIND: Record<D.NotificationDTO['kind'], NotificationKind> = { order: 'Order', loyalty: 'Loyalty', booking: 'Booking', offer: 'Offer', gift_card: 'Gift card' };
 
 export function notificationFromDto(dto: D.NotificationDTO): AppNotification {
-  return { id: dto.id, kind: KIND[dto.kind], text: dto.text, createdAt: dto.createdAt, unread: dto.unread };
+  return { id: dto.id, kind: KIND[dto.kind], text: dto.text, createdAt: dto.createdAt, unread: dto.unread, ...(dto.url ? { url: dto.url } : {}) };
 }
 
 export function offerFromDto(dto: D.OfferDTO): Offer {

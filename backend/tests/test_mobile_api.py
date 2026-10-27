@@ -466,6 +466,8 @@ def test_staff_move_orders_along_and_a_decline_gives_everything_back(
         "confirmed"
         in AppNotification.objects.filter(user=customer, kind="order").latest("created_at").text
     )
+    # The feed line opens that order's status screen when tapped in the app.
+    assert app.get(f"{BASE}/me/notifications").json()["items"][0]["url"] == f"/orders/{order.pk}"
     web.post(reverse("admin:orders_order_transition", args=[order.pk, "declined"]))
     order.refresh_from_db()
     assert order.status == "declined"
@@ -603,6 +605,7 @@ def test_notification_feed_seen_read_and_clear(app, customer):
     AppNotification.objects.create(user=customer, kind="order", text="Order ready")
     feed = app.get(f"{BASE}/me/notifications").json()
     assert len(feed["unseenIds"]) == 1 and feed["items"][0]["unread"] is True
+    assert feed["items"][0]["url"] == ""
     assert app.post(f"{BASE}/me/notifications/seen").status_code == 204
     feed = app.get(f"{BASE}/me/notifications").json()
     assert feed["unseenIds"] == [] and feed["items"][0]["unread"] is True

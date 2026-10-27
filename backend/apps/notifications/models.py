@@ -51,6 +51,8 @@ class AppNotification(BaseModel):
     )
     kind = models.CharField(max_length=10, choices=Kind.choices)
     text = models.CharField(max_length=300)
+    # App screen a tap opens (e.g. /orders/<id>); empty = the app picks one by kind.
+    url = models.CharField(max_length=200, blank=True, default="")
     unread = models.BooleanField(default=True)
 
     class Meta(BaseModel.Meta):

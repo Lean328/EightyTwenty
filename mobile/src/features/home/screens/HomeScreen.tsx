@@ -12,11 +12,13 @@ import { useCateringPackages } from '@/features/catering/hooks';
 import { useLocations, useSelectedLocation } from '@/features/locations/hooks';
 import { useMenu } from '@/features/menu/hooks';
 import { useNotificationFeed } from '@/features/notifications/hooks';
+import { useLiveOrder } from '@/features/orders/hooks';
 import { useProfile } from '@/features/profile/hooks';
 import { useBottomSpace } from '@/hooks/useBottomSpace';
 import { useNow } from '@/hooks/useNow';
 import { useTabReselect } from '@/hooks/useTabReselect';
 import { useGoToTab } from '@/navigation/tabNavigation';
+import { STATUS_LABEL } from '@/domain/orders';
 import { colors, sans, serif } from '@/theme';
 import { formatRelativeShort } from '@/utils/datetime';
 import { firstNameOf } from '@/utils/format';
@@ -48,6 +50,7 @@ export function HomeScreen() {
   const cafes = useMemo(() => locations.filter((l) => l.id !== location?.id && !isComingSoon(l)), [locations, location?.id]);
   const kitchen = useMemo(() => menu.filter((m) => m.featured && m.image).slice(0, 6), [menu]);
   const latest = feed?.unseen[0];
+  const liveOrder = useLiveOrder();
 
   return (
     <Screen>
@@ -58,6 +61,20 @@ export function HomeScreen() {
             {greeting(now.getHours())}, {firstNameOf(profile?.name ?? '')}
           </Text>
         </Rise>
+        {liveOrder ? (
+          // The way back to an order in progress once its push or status screen is closed.
+          <Rise delay={70} style={styles.latestWrap}>
+            <Touchable onPress={() => router.push(`/orders/${liveOrder.id}`)} pressedOpacity={0.85} accessibilityLabel={`Order ${liveOrder.number}, ${STATUS_LABEL[liveOrder.status]}. Track your order`} style={styles.latest}>
+              <View style={styles.latestIcon}>
+                <Icon name="receipt" size={13} strokeWidth={2} color={colors.creamText} />
+              </View>
+              <Text numberOfLines={1} style={[sans(13, 500, 1.2), styles.latestText]}>
+                {STATUS_LABEL[liveOrder.status]} · {liveOrder.locationName}
+              </Text>
+              <Text style={[sans(12, 500), { color: colors.caramelDeep }]}>Track</Text>
+            </Touchable>
+          </Rise>
+        ) : null}
         {latest ? (
           <Rise delay={70} style={styles.latestWrap}>
             <Touchable onPress={() => router.push('/notifications')} pressedOpacity={0.85} accessibilityLabel={`${latest.kind}: ${latest.text}`} style={styles.latest}>
