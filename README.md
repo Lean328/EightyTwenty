@@ -16,6 +16,26 @@ Set-Location backend
 ..\.venv\Scripts\python manage.py runserver
 ```
 
+### Lệnh `make` (từ thư mục gốc, không cần `cd`)
+
+Cần GNU Make (Windows: GnuWin32 `make` hoặc `choco install make`) và Git for Windows (Makefile tự dùng bash của Git). `make help` liệt kê đủ; hay dùng:
+
+| Lệnh | Làm gì |
+|---|---|
+| `make run` | Backend `0.0.0.0:8000` cho trình duyệt **và** điện thoại, thanh toán demo, push bật (`port=8001` để đổi cổng) |
+| `make run-local` | Backend chỉ `127.0.0.1`, giữ nguyên `backend/.env` |
+| `make mobile` / `make mobile-clear` | `npx expo start` (Expo Go) / kèm `--clear`; kiểm tra điện thoại gọi được backend chưa |
+| `make mobile-prod` / `mobile-mock` / `mobile-web` / `mobile-tunnel` | App dùng API production / dữ liệu mock / trên trình duyệt (:8082) / qua tunnel |
+| `make website` | Website tĩnh :8123 |
+| `make status` | Server nào đang chạy (backend, từ điện thoại, website, Metro) + production |
+| `make test [f=… k=…]` / `make ci` | pytest / đúng các bước CI GitHub (ruff, check, migration, pytest, OpenAPI) |
+| `make mobile-check` / `mobile-test [t=…]` / `mobile-bundle` | App: tsc + eslint + jest + expo-doctor / jest / build bundle iOS + Android |
+| `make api-smoke [as=email]` | Gọi mọi API của app vào backend local đang chạy |
+| `make qa` | `ci` + `test-web` + `mobile-check` + `mobile-bundle` |
+| `make migrate` / `makemigrations` / `shell` / `superuser` / `openapi` | Lệnh Django thường dùng (`migrate` từ chối nếu `backend/.env` trỏ DB không phải máy này) |
+
+Script nằm ở `scripts/dev.sh` (backend, website, QA) và `scripts/mobile.sh` (Expo), dùng chung `scripts/_lib.sh`.
+
 Các địa chỉ sau dùng được khi server đang chạy:
 
 - Swagger: http://127.0.0.1:8000/api/docs/

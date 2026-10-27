@@ -90,6 +90,11 @@ python manage.py runserver 0.0.0.0:8000
 restart with `npx expo start --clear` — Metro only reads `.env` at start-up. Production:
 `EXPO_PUBLIC_API_BASE_URL=https://eightytwenty-api.onrender.com/api/v1/app`.
 
+**From the repo root with make** (no `cd`): `make run` (backend for the phone, demo payments,
+push), `make mobile` (`npx expo start`, checks the phone can reach the backend), `make mobile-clear`,
+`make mobile-prod`, `make mobile-mock`, `make mobile-check`, `make api-smoke` — `make help` lists
+them all (`scripts/mobile.sh`).
+
 **Mock data instead:** set `EXPO_PUBLIC_DATA_SOURCE=mock`, then sign in with the demo account
 email defined as `DEMO_EMAIL` in
 [`src/services/mock/fixtures/demoCustomer.ts`](src/services/mock/fixtures/demoCustomer.ts) and
