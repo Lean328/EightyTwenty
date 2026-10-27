@@ -1,15 +1,11 @@
-from datetime import timedelta
-
-from django.core.management import call_command
-from django.utils import timezone
 from drf_spectacular.utils import extend_schema
 from rest_framework import generics, serializers, viewsets
 from rest_framework.response import Response
 
 from apps.notifications.models import EmailMessage
-from apps.notifications.services import retry_emails
 
-from .models import AuditLog, RateLimitBucket
+from . import jobs
+from .models import AuditLog
 from .permissions import HasJobToken, IsGlobalAdmin
 
 
@@ -63,35 +59,17 @@ class RetryEmailsView(generics.GenericAPIView):
 
     @extend_schema(request=None, responses=JobResultSerializer, auth=[{"JobToken": []}])
     def post(self, request):
-        return Response({"processed": retry_emails(limit=10)})
+        return Response({"processed": jobs.retry_emails()})
 
 
 class BookingRemindersView(RetryEmailsView):
     @extend_schema(request=None, responses=JobResultSerializer, auth=[{"JobToken": []}])
     def post(self, request):
         """Email + app reminder for confirmed tables starting in 2–26 hours (once each)."""
-        from apps.bookings.services import send_reminders
-
-        return Response({"processed": send_reminders()})
+        return Response({"processed": jobs.booking_reminders()})
 
 
 class CleanupView(RetryEmailsView):
     @extend_schema(request=None, responses=JobResultSerializer, auth=[{"JobToken": []}])
     def post(self, request):
-        call_command("flushexpiredtokens")
-        count, _ = RateLimitBucket.objects.filter(
-            expires_at__lt=timezone.now() - timedelta(days=1)
-        ).delete()
-        # Till command receipts only need to outlive the till's retries.
-        from apps.pos.models import CommandReceipt
-
-        count += CommandReceipt.objects.filter(
-            created_at__lt=timezone.now() - timedelta(days=30)
-        ).delete()[0]
-        # Account emails contain short-lived reset/verification links; purge their body.
-        count += (
-            EmailMessage.objects.filter(sent_at__lt=timezone.now() - timedelta(days=7))
-            .exclude(body="")
-            .update(body="")
-        )
-        return Response({"processed": count})
+        return Response({"processed": jobs.cleanup()})

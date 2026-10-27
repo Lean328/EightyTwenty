@@ -161,7 +161,7 @@ eightytwenty/
 └── .github/workflows/
     ├── ci.yml                   # lint + test
     ├── db-backup.yml            # pg_dump hằng đêm
-    └── scheduled-jobs.yml       # gọi các job định kỳ
+    └── (job định kỳ chạy trong server: apps/core/jobs.py)
 ```
 
 ⚠️ Khi chuyển website vào `web/`, phải đổi **Root Directory = `web`** trong Vercel project settings, nếu không bản production sẽ hỏng. Bước này cần người dùng xác nhận trước khi làm.
@@ -383,7 +383,7 @@ Chỉ sửa `web/eightytwenty-data.js` (+ các hàm submit trong `index.html`):
 
 ### 10.4 Backup & job định kỳ (GitHub Actions)
 - `db-backup.yml`: chạy 02:00 giờ Canberra mỗi ngày → `pg_dump --format=custom` (qua session pooler) → nén → lưu làm artifact (giữ 14 ngày) và/hoặc upload sang storage ngoài (vd. Cloudflare R2 free / Google Drive). Có hướng dẫn restore trong `docs/`.
-- `scheduled-jobs.yml`: gọi `POST /api/v1/jobs/{job}` với `X-Job-Token` (vd. nhắc booking ngày mai, tính DailySales, dọn token hết hạn).
+- Job định kỳ (27/10/2026): không còn `scheduled-jobs.yml`; web process tự chạy `retry-emails`, `booking-reminders`, `cleanup` mỗi 15 phút khi có request (`apps/core/jobs.py`, khóa bằng bảng `JobClock`). Endpoint `POST /api/v1/jobs/{job}` + `X-Job-Token` vẫn dùng để chạy tay.
 
 ### 10.5 Email
 - Dịch vụ transactional có free tier (Resend hoặc Brevo) qua HTTP API, gọi đồng bộ trong request nhưng có timeout ngắn và **không làm hỏng request nếu email lỗi** (ghi log + đánh dấu để retry bằng job).

@@ -33,7 +33,7 @@ Cập nhật 27/10/2026 (`main`). Ký hiệu: ✅ xong và đã kiểm · ⛔ ch
 
 ## ⚠️ Nên làm
 
-- **Bật job định kỳ** (GitHub Actions, `docs/OPERATIONS.md`): nhắc lịch đặt bàn + gửi lại email lỗi. Có 9 email lỗi cũ (21–26/10) sẽ được gửi lại khi bật.
+- ✅ **Job định kỳ** (nhắc lịch đặt bàn, gửi lại email lỗi, dọn dẹp) chạy trong server mỗi 15 phút từ 27/10 (`docs/OPERATIONS.md`).
 - Báo các quán có thể có đơn thử từ Apple trong lúc duyệt.
 - **Android / Google Play**: chưa làm (push Android cần FCM).
 

@@ -25,7 +25,7 @@ Backend (Django, `backend/`) đang chạy production trên Render (https://eight
 - App Expo (nay ở `mobile/`, SDK 58): 26/10/2026 đã chạy end-to-end bản web của app với backend local (đăng ký/đăng nhập, menu, đặt món demo → café đổi trạng thái → app cập nhật, đặt bàn, catering, thẻ cà phê, feed) và đọc dữ liệu production; chủ dự án đã chạy được trên Expo Go và đăng nhập. Đã thêm xóa tài khoản, đổi mật khẩu, push Expo (cần `eas init` để có projectId; Android cần development build), barcode thật cho thẻ cà phê. Frontend POS thật: dev khác đang nối, các luồng đã test bằng client giả theo hợp đồng.
 - Resend (email) và Expo push mới được mock. Email cần domain có SPF/DKIM (ARCHITECTURE mục 14, câu 10).
 - Production chưa có dữ liệu vận hành, chỉ có menu và quán. Chưa có superuser (chủ dự án tự tạo), chưa ai đặt Till PIN.
-- Job định kỳ (`scheduled-jobs.yml`) và backup (`db-backup.yml`) chưa được xác nhận là chạy được trên production.
+- Job định kỳ chạy trong server từ 27/10/2026 (`apps/core/jobs.py`, không dùng GitHub Actions). Backup (`db-backup.yml`) chưa được xác nhận là chạy được trên production.
 
 ## Chưa làm (chờ khách hoặc bên thứ ba)
 

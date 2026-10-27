@@ -10,7 +10,7 @@ Email (27/10/2026): **Brevo** — dùng chung tài khoản và domain gửi `oms
 
 Apple Wallet (thẻ cà phê, 27/10/2026, `apps/loyalty/wallet.py`, theo dự án loyalty-soya-nail): cần `APPLE_WALLET_PASS_TYPE_ID` (vd `pass.au.com.eightytwentyfood.loyalty`), `APPLE_WALLET_TEAM_ID`, `APPLE_WALLET_CERT_PATH` / `APPLE_WALLET_KEY_PATH` (chứng chỉ Pass Type ID + private key, PEM; mật khẩu key nếu có: `APPLE_WALLET_KEY_PASSWORD`), `APPLE_WALLET_WWDR_CERT_PATH` (Apple WWDR G4, PEM), `APPLE_WALLET_WEB_SERVICE_URL=https://eightytwenty-api.onrender.com/api/v1/app/wallet`. Trên Render: 3 file PEM là **Secret Files** (`pass.pem`, `pass.key`, `wwdr.pem` → `/etc/secrets/...`). Đủ cấu hình → BOS System status "Apple Wallet: Passes issued", app tự hiện nút Apple Wallet (`walletPassAvailable`), không cần build lại app. Thẻ tự cập nhật: lưu LoyaltyCard → tăng version → push APNs (HTTP/2, chứng chỉ pass) trong thread nền. Làm chứng chỉ trên Windows (không cần Mac/Keychain, openssl có sẵn trong Git Bash): `openssl genrsa -out pass.key 2048` → `openssl req -new -key pass.key -out pass.csr -subj "/CN=EightyTwenty Wallet/O=EightyTwenty/C=AU"` → developer.apple.com → Identifiers → Pass Type IDs → tạo ID → Create Certificate, upload `pass.csr` → tải `pass.cer` → `openssl x509 -inform DER -in pass.cer -out pass.pem`; WWDR: tải `https://www.apple.com/certificateauthority/AppleWWDRCAG4.cer` → `openssl x509 -inform DER -in AppleWWDRCAG4.cer -out wwdr.pem`. Chứng chỉ hết hạn sau ~1 năm: làm lại cùng Pass Type ID, thay Secret Files. Bản trên máy chủ dự án: `D:\Data\projects\eightytwenty-secrets\wallet\` (ngoài repo).
 
-Nhắc lịch đặt bàn: `POST /api/v1/jobs/booking-reminders` (X-Job-Token) — booking `confirmed` bắt đầu sau 2–26 giờ, mỗi booking một lần (`Booking.reminded_at`): email cho khách + thông báo app. Chạy bởi workflow `Scheduled backend jobs` (15 phút/lần) **chỉ khi** repo GitHub có variable `ENABLE_BOS_JOBS=true`, `BOS_API_BASE=https://eightytwenty-api.onrender.com` và secret `BOS_JOB_TOKEN` = `JOB_TOKEN` của Render (hiện chưa bật → retry email và nhắc lịch chưa chạy).
+Nhắc lịch đặt bàn: `POST /api/v1/jobs/booking-reminders` (X-Job-Token) — booking `confirmed` bắt đầu sau 2–26 giờ, mỗi booking một lần (`Booking.reminded_at`): email cho khách + thông báo app. Chạy tự động trong server (xem mục Job định kỳ bên dưới).
 
 Push cho app: `PUSH_ENABLED` (mặc định `True`) bật gửi qua Expo Push API — không cần key; `EXPO_ACCESS_TOKEN` chỉ cần khi bật "enhanced push security" trong tài khoản Expo của app. Máy đăng ký xem ở BOS → System → Push devices.
 
@@ -65,10 +65,15 @@ Tích hợp gửi mail là Resend HTTP API. Cấu hình domain gửi/SPF/DKIM t�
 
 Booking/enquiry/account link được lưu cùng transaction với email outbox. Gửi thử sau commit, timeout mỗi lần 5 giây; lỗi mail không rollback nghiệp vụ. Job retry tối đa 10 mail/lần, exponential backoff, tối đa 8 lần; xem `/bos/email-messages` để phát hiện failed. Mail sent không được gửi lại. Khi provider nhận mail nhưng response mất, idempotency key của Resend giảm trùng gửi; không cam kết exactly-once ngoài thời hạn idempotency của provider.
 
-- `POST /api/v1/jobs/retry-emails`, header `X-Job-Token`.
-- `POST /api/v1/jobs/cleanup`: xóa blacklist token hết hạn, bucket throttle cũ, bỏ nội dung email đã gửi quá 7 ngày. Không tự xóa audit hay dữ liệu kinh doanh.
-- Workflow `.github/workflows/scheduled-jobs.yml` chỉ chạy khi repository variable `ENABLE_BOS_JOBS=true`. Thêm variable `BOS_API_BASE=https://HOST`, secret `BOS_JOB_TOKEN` bằng JOB_TOKEN server.
-- GitHub schedule có thể trễ; không dùng nó như SLA gửi mail đúng phút. Health pinger cần cấu hình ngoài repo nếu muốn theo dõi uptime; không giả định pinger bảo đảm free service luôn thức.
+### Job định kỳ (27/10/2026: chạy trong server, không dùng GitHub Actions / cron)
+
+Render free không có cron; API được ping 24/7 nên chính web process chạy job (`apps/core/jobs.py`, middleware `JobsMiddleware`): sau mỗi request, tối đa 1 lần/phút mỗi process, hỏi DB đã quá 15 phút từ lần chạy trước chưa (bảng `core_jobclock`, `UPDATE … WHERE last_run_at <= now − 15 phút` nên 2 worker gunicorn không cùng chạy); request giành được lượt chạy 3 job trong thread nền (log `Scheduled jobs: {...}` trên Render):
+
+- `retry-emails`: gửi lại tối đa 10 mail lỗi/lần.
+- `booking-reminders`: nhắc booking `confirmed` bắt đầu sau 2–26 giờ.
+- `cleanup`: xóa blacklist token hết hạn, bucket throttle cũ, biên nhận lệnh POS >30 ngày, bỏ nội dung email đã gửi quá 7 ngày. Không tự xóa audit hay dữ liệu kinh doanh.
+
+Bật/tắt: env `JOBS_IN_PROCESS` (mặc định bật khi `DEBUG` tắt, tức là trên Render; tắt ở máy dev và trong test). Không có request nào (service ngủ) thì job cũng không chạy — giữ pinger. Chạy tay vẫn được: `POST /api/v1/jobs/{retry-emails|booking-reminders|cleanup}` với header `X-Job-Token`. Lên gói Render trả phí thì có thể chuyển sang Render Cron Job gọi các endpoint này.
 
 ## Backup và restore
 

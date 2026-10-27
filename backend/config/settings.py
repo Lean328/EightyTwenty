@@ -71,6 +71,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "apps.core.jobs.JobsMiddleware",
 ]
 ROOT_URLCONF = "config.urls"
 WSGI_APPLICATION = "config.wsgi.application"
@@ -261,6 +262,9 @@ TURNSTILE_ALLOWED_HOSTNAMES = env.list("TURNSTILE_ALLOWED_HOSTNAMES", default=[]
 JOB_TOKEN = env("JOB_TOKEN", default="")
 # Expo push notifications for the customer app (no key needed; optional access token).
 PUSH_ENABLED = env.bool("PUSH_ENABLED", default=True)
+# Scheduled jobs (email retry, booking reminders, cleanup) run inside the web process every 15
+# minutes, driven by incoming requests (apps/core/jobs.py). Off on dev machines unless asked.
+JOBS_IN_PROCESS = env.bool("JOBS_IN_PROCESS", default=not DEBUG)
 EXPO_PUSH_URL = env("EXPO_PUSH_URL", default="https://exp.host/--/api/v2/push/send")
 EXPO_ACCESS_TOKEN = env("EXPO_ACCESS_TOKEN", default="")
 # Mobile app payments (apps/orders/payments.py): empty = card/Apple Pay charges answer 501
@@ -319,6 +323,7 @@ if TESTING:
     SQUARE_ACCESS_TOKEN = SQUARE_LOCATION_ID = ""
     APPLE_WALLET_CERT_PATH = APPLE_WALLET_KEY_PATH = APPLE_WALLET_WWDR_CERT_PATH = ""
     PUSH_ENABLED = False
+    JOBS_IN_PROCESS = False
     # backend/.env points at the shared Supabase database, so anything that is not a local
     # PostgreSQL (CI, docker compose) becomes an in-memory SQLite database.
     if DATABASES["default"]["ENGINE"].endswith("postgresql") and DATABASES["default"].get(
