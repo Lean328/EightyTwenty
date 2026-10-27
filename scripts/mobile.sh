@@ -174,20 +174,35 @@ case "$TARGET" in
     ;;
 
   ios-build)
-    # Release build on EAS with the production API (mobile/eas.json). The first run asks for
-    # the Apple Developer account and creates the certificate, profile and push key.
+    # Release build on EAS with the production API (mobile/eas.json). Certificate, profile and
+    # push key already live on EAS; mobile/.env.asc (App Store Connect API key, gitignored) lets
+    # EAS check them with Apple without an Apple ID login.
     require_node_modules
+    load_asc_key
     log_step "iOS release build on EAS (production API, about 15-20 minutes)"
     log_info "Checklist before submitting: mobile/docs/APP_STORE.md"
     cd "$MB"
-    npx eas-cli build --platform ios --profile production
+    EAS_BUILD_NO_EXPO_GO_WARNING=true EXPO_NO_CAPABILITY_SYNC=1 \
+      npx eas-cli build --platform ios --profile production --non-interactive --no-wait
+    log_info "Follow it on https://expo.dev/accounts/my-an-lien/projects/eightytwenty/builds, then: make ios-submit"
     ;;
 
   ios-submit)
-    # Uploads the latest EAS iOS build to App Store Connect (then TestFlight / review).
+    # Uploads the latest EAS iOS build to App Store Connect (TestFlight). `eas submit` only takes
+    # the API key from eas.json, so it is written into a copy for this run and the file restored.
     require_node_modules
+    load_asc_key
     cd "$MB"
-    npx eas-cli submit --platform ios --latest
+    cp eas.json eas.json.bak
+    trap 'mv -f eas.json.bak eas.json' EXIT
+    node -e '
+      const fs = require("fs"); const e = process.env;
+      const cfg = JSON.parse(fs.readFileSync("eas.json", "utf8"));
+      Object.assign(cfg.submit.production.ios, {
+        ascApiKeyPath: e.EXPO_ASC_API_KEY_PATH, ascApiKeyId: e.EXPO_ASC_KEY_ID,
+        ascApiKeyIssuerId: e.EXPO_ASC_ISSUER_ID });
+      fs.writeFileSync("eas.json", JSON.stringify(cfg, null, 2));'
+    npx eas-cli submit --platform ios --profile production --latest --non-interactive --wait
     ;;
 
   lan-ip)

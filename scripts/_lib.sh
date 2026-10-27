@@ -67,3 +67,13 @@ lan_ip() {
 require_node_modules() {
   [[ -d "$MB/node_modules" ]] || die "mobile/node_modules is missing. Run: make mobile-install"
 }
+
+# App Store Connect API key for EAS (mobile/.env.asc, gitignored; see mobile/docs/APP_STORE.md).
+load_asc_key() {
+  [[ -f "$MB/.env.asc" ]] || die "mobile/.env.asc is missing (App Store Connect API key). See mobile/docs/APP_STORE.md"
+  set -a
+  # shellcheck disable=SC1091
+  source <(tr -d '\r' < "$MB/.env.asc")
+  set +a
+  [[ -f "$EXPO_ASC_API_KEY_PATH" ]] || die "API key file not found: $EXPO_ASC_API_KEY_PATH"
+}

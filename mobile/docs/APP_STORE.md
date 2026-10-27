@@ -39,15 +39,22 @@ Cập nhật 27/10/2026 (`main`). Ký hiệu: ✅ xong và đã kiểm · ⛔ ch
 
 ## Lên TestFlight
 
-Chạy từ thư mục gốc repo, trong terminal (cần đăng nhập tương tác):
+**Đã lên TestFlight lần đầu (27/10/2026):** build EAS `7cbedcef-…` (1.0.0, build 6) tải lên App Store Connect, app `EightyTwenty` (Apple ID app `6827542559`, SKU `eightytwenty-ios`, en-AU, ghi trong `eas.json` → `submit.production.ios.ascAppId`). Cách đã làm, không dùng Apple ID (đăng nhập Google, không nhớ mật khẩu):
 
-1. Đăng nhập Expo bằng tài khoản `my-an-lien`: `npx eas-cli login` (trong `mobile/`).
-2. `make ios-build` — build trên máy chủ EAS (~15–20 phút). Lần đầu EAS hỏi:
-   - đăng nhập **Apple ID** của tài khoản developer (team `988D5VKVXS`, có mã 2 bước) → chọn team;
-   - cho phép EAS **tạo bundle id** `au.com.eightytwentyfood.app`, **Distribution Certificate**, **Provisioning Profile** → Yes;
-   - **Push Notifications key** (APNs) → Yes (không có key thì push trên bản build không chạy).
-3. `make ios-submit` — tải bản build mới nhất lên App Store Connect. Nếu chưa có app trên App Store Connect, EAS tạo luôn (hỏi tên app, ngôn ngữ, SKU — dùng `EightyTwenty`, English (Australia), `eightytwenty-ios`). Tên app trên App Store phải là duy nhất toàn cầu; nếu "EightyTwenty" đã có người dùng thì đặt ví dụ "EightyTwenty Café".
-   - Muốn tự tạo trước: App Store Connect → Apps → **+** → New App → chọn bundle id (chỉ có trong danh sách sau khi bundle id đã được đăng ký, tức sau bước 2).
-4. Chờ Apple xử lý bản build (5–30 phút, có email). App Store Connect → app → **TestFlight** → **Internal Testing** → tạo nhóm, thêm người test (phải là thành viên team trên App Store Connect) → họ cài app **TestFlight** trên iPhone và nhận lời mời. Test nội bộ không cần Apple duyệt; test ngoài (External) cần một lần Beta Review.
+- **Khóa App Store Connect API** (team key, quyền Admin, tạo trên web): file `D:\Data\projects\eightytwenty-secrets\apple\AuthKey_3VFQP9H8X5.p8` (ngoài repo); Key ID / Issuer ID / team ghi trong `mobile/.env.asc` (gitignored, máy này). Máy khác: tạo lại file này cùng các biến `EXPO_ASC_API_KEY_PATH`, `EXPO_ASC_KEY_ID`, `EXPO_ASC_ISSUER_ID`, `EXPO_APPLE_TEAM_ID=988D5VKVXS`, `EXPO_APPLE_TEAM_TYPE=INDIVIDUAL`.
+- **Credentials trên EAS** (project `@my-an-lien/eightytwenty`): bundle id `au.com.eightytwentyfood.app` (EAS đăng ký); quyền **Push Notifications** bật bằng API của Apple (bước "Syncing capabilities" của EAS lỗi với API key → build dùng `EXPO_NO_CAPABILITY_SYNC=1`); **Distribution Certificate dùng chung với dự án Soya** (cùng team, hết hạn 16/10/2027); provisioning profile mới; **push key dùng chung của team** `QUYKTFXZ95` (tạo push key mới bắt buộc đăng nhập Apple ID).
+- **App trên App Store Connect phải tạo tay trên web** (API của Apple không cho tạo app).
 
-Bản build mới sau này: chỉ cần `make ios-build` rồi `make ios-submit` (số build tự tăng). Thử nhanh không cần build: `make mobile-prod` (Expo Go, API production).
+**Bản build mới sau này** (từ thư mục gốc, không hỏi gì):
+
+```bash
+make ios-build
+```
+
+```bash
+make ios-submit
+```
+
+`ios-build` gửi lên EAS rồi thoát (`--no-wait`, ~15 phút, xem trên expo.dev); xong thì `ios-submit` tải bản mới nhất lên (khóa API được ghi tạm vào `eas.json` trong lúc chạy rồi trả lại). Số build tự tăng. Apple xử lý 5–30 phút, có email.
+
+**Người test:** App Store Connect → app → **TestFlight** → **Internal Testing** → nhóm → thêm người test (phải là thành viên team trên App Store Connect) → họ cài app **TestFlight** trên iPhone và nhận lời mời. Test nội bộ không cần Apple duyệt; test ngoài (External, bất kỳ email) cần một lần Beta Review. Thử nhanh không cần build: `make mobile-prod` (Expo Go, API production).
