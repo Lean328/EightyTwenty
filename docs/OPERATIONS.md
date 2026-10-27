@@ -6,6 +6,8 @@
 
 Host và CORS mở cho mọi nơi (xem trên). Nếu dùng Django Admin trên domain custom, thêm origin HTTPS vào `CSRF_TRUSTED_ORIGINS`.
 
+Email (27/10/2026): **Brevo** — dùng chung tài khoản và domain gửi `oms.com.vn` với các dự án mì ăn liền khác. Env: `EMAIL_PROVIDER=brevo`, `EMAIL_PROVIDER_API_KEY=xkeysib-…`, `EMAIL_FROM="EightyTwenty <no-reply@oms.com.vn>"` (giá trị trong `backend/.env.production`, dán vào Render). Vẫn hỗ trợ Resend (`EMAIL_PROVIDER=resend` hoặc key không bắt đầu bằng `xkeysib-`). Tài khoản Brevo bật **Authorised IPs**: IP gọi API phải nằm trong https://app.brevo.com/security/authorised_ips, không thì Brevo trả 401 và email nằm lại hàng đợi (BOS → Email delivery, trạng thái failed, job retry gửi lại). Máy dev: `EMAIL_REDIRECT_TO` chuyển mọi email về một hộp thư (DB dev có email thật của quán); để trống trên Render.
+
 Push cho app: `PUSH_ENABLED` (mặc định `True`) bật gửi qua Expo Push API — không cần key; `EXPO_ACCESS_TOKEN` chỉ cần khi bật "enhanced push security" trong tài khoản Expo của app. Máy đăng ký xem ở BOS → System → Push devices.
 
 `PAYMENT_PROVIDER` (app điện thoại): để trống (mặc định, production) → đơn có tiền phải trả và gửi eGift trả `501 NOT_IMPLEMENTED` vì chưa chọn cổng thanh toán; đơn được gift card trả hết vẫn chạy. `PAYMENT_PROVIDER=demo` chỉ dùng trên server test: nhận token `demo_…` của app, **không thu tiền** — đừng bật ở nơi khách thật đặt đơn (quán sẽ nhận đơn chưa trả tiền). Chi tiết: trang `/api/docs/app/`, mục 3.8.

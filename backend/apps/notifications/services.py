@@ -1,5 +1,6 @@
 import logging
 from datetime import timedelta
+from email.utils import parseaddr
 
 import httpx
 from django.conf import settings
@@ -34,21 +35,7 @@ def deliver_email(message_id):
         message.save(update_fields=["status", "attempts", "next_attempt_at", "updated_at"])
     try:
         if settings.EMAIL_PROVIDER_API_KEY:
-            response = httpx.post(
-                "https://api.resend.com/emails",
-                headers={
-                    "Authorization": f"Bearer {settings.EMAIL_PROVIDER_API_KEY}",
-                    "Idempotency-Key": message.dedup_key,
-                },
-                json={
-                    "from": settings.EMAIL_FROM,
-                    "to": [message.recipient],
-                    "subject": message.subject,
-                    "text": message.body,
-                },
-                timeout=5,
-            )
-            response.raise_for_status()
+            send_with_provider(message)
         elif settings.DEBUG or settings.EMAIL_BACKEND.endswith("locmem.EmailBackend"):
             send_mail(message.subject, message.body, settings.EMAIL_FROM, [message.recipient])
         else:
@@ -67,6 +54,49 @@ def deliver_email(message_id):
         status="sent", sent_at=timezone.now(), last_error=""
     )
     return True
+
+
+def email_provider():
+    """ "brevo" or "resend": EMAIL_PROVIDER, else guessed from the key (Brevo keys start xkeysib-)."""
+    if settings.EMAIL_PROVIDER:
+        return settings.EMAIL_PROVIDER
+    return "brevo" if settings.EMAIL_PROVIDER_API_KEY.startswith("xkeysib-") else "resend"
+
+
+def send_with_provider(message):
+    recipient, subject = message.recipient, message.subject
+    if settings.EMAIL_REDIRECT_TO:
+        # Dev machines hold the cafés' real inboxes: send everything to the developer instead.
+        recipient, subject = settings.EMAIL_REDIRECT_TO, f"[dev → {recipient}] {subject}"
+    if email_provider() == "brevo":
+        name, address = parseaddr(settings.EMAIL_FROM)
+        response = httpx.post(
+            "https://api.brevo.com/v3/smtp/email",
+            headers={"api-key": settings.EMAIL_PROVIDER_API_KEY, "accept": "application/json"},
+            json={
+                "sender": {"name": name or "EightyTwenty", "email": address},
+                "to": [{"email": recipient}],
+                "subject": subject,
+                "textContent": message.body,
+            },
+            timeout=10,
+        )
+    else:
+        response = httpx.post(
+            "https://api.resend.com/emails",
+            headers={
+                "Authorization": f"Bearer {settings.EMAIL_PROVIDER_API_KEY}",
+                "Idempotency-Key": message.dedup_key,
+            },
+            json={
+                "from": settings.EMAIL_FROM,
+                "to": [recipient],
+                "subject": subject,
+                "text": message.body,
+            },
+            timeout=5,
+        )
+    response.raise_for_status()
 
 
 def retry_emails(limit=10):

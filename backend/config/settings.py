@@ -241,7 +241,12 @@ SUPABASE_URL = env("SUPABASE_URL", default="").rstrip("/")
 SUPABASE_SERVICE_ROLE_KEY = env("SUPABASE_SERVICE_ROLE_KEY", default="")
 SUPABASE_STORAGE_BUCKET = env("SUPABASE_STORAGE_BUCKET", default="media")
 SUPABASE_PUBLIC_MEDIA_BASE = env("SUPABASE_PUBLIC_MEDIA_BASE", default="").rstrip("/")
+# Transactional email: Brevo or Resend (EMAIL_PROVIDER, or guessed from the key: Brevo keys start
+# "xkeysib-"). No key on a dev machine prints mail to the console.
+EMAIL_PROVIDER = env("EMAIL_PROVIDER", default="")
 EMAIL_PROVIDER_API_KEY = env("EMAIL_PROVIDER_API_KEY", default="")
+# Dev only: deliver every email to this address instead (the dev DB holds real café inboxes).
+EMAIL_REDIRECT_TO = env("EMAIL_REDIRECT_TO", default="")
 EMAIL_FROM = env("EMAIL_FROM", default="EightyTwenty <no-reply@eightytwentyfood.com.au>")
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 CLIENT_BASE_URL = env("CLIENT_BASE_URL", default="http://localhost:5173").rstrip("/")
@@ -299,7 +304,9 @@ if TESTING:
     MIDDLEWARE = [m for m in MIDDLEWARE if m != "whitenoise.middleware.WhiteNoiseMiddleware"]
     JOB_TOKEN = "test-job-secret-not-for-production"
     SUPABASE_URL = SUPABASE_SERVICE_ROLE_KEY = SUPABASE_PUBLIC_MEDIA_BASE = ""
-    EMAIL_PROVIDER_API_KEY = TURNSTILE_SECRET_KEY = PAYMENT_PROVIDER = EXPO_ACCESS_TOKEN = ""
+    EMAIL_PROVIDER = EMAIL_PROVIDER_API_KEY = EMAIL_REDIRECT_TO = TURNSTILE_SECRET_KEY = (
+        PAYMENT_PROVIDER
+    ) = EXPO_ACCESS_TOKEN = ""
     SQUARE_ACCESS_TOKEN = SQUARE_LOCATION_ID = ""
     PUSH_ENABLED = False
     # backend/.env points at the shared Supabase database, so anything that is not a local

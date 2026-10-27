@@ -40,6 +40,7 @@ from apps.locations.models import Location
 from apps.media.models import MediaAsset
 from apps.menu.models import Category, LocationMenuItem, MenuItem
 from apps.notifications.models import EmailMessage
+from apps.notifications.services import email_provider
 from apps.orders.models import Order, OrderAdjustment, OrderLine, OrderPayment
 from apps.orders.services import CLOSED
 from apps.pos.models import CashShift
@@ -1002,7 +1003,9 @@ def system_view(site):
             check(
                 "Email delivery",
                 bool(settings.EMAIL_PROVIDER_API_KEY),
-                "Resend configured" if settings.EMAIL_PROVIDER_API_KEY else "Not configured",
+                f"{email_provider().title()} configured"
+                if settings.EMAIL_PROVIDER_API_KEY
+                else "Not configured",
                 "Customer emails are queued but cannot be delivered until EMAIL_PROVIDER_API_KEY is set."
                 if not settings.EMAIL_PROVIDER_API_KEY
                 else f"Sending as {settings.EMAIL_FROM}",

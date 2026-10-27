@@ -1,5 +1,6 @@
 """Expo push notifications for the customer app: registering phones and pushing feed items."""
 
+from unittest.mock import patch
 from urllib.parse import quote
 
 import pytest
@@ -129,3 +130,61 @@ def test_closing_the_account_forgets_the_phones(customer):
     PushDevice.objects.create(user=customer, token=TOKEN)
     anonymize(customer)
     assert not PushDevice.objects.exists()
+
+
+def test_email_goes_through_brevo_when_the_key_is_a_brevo_key(settings, db):
+    from apps.notifications.models import EmailMessage
+    from apps.notifications.services import deliver_email
+
+    settings.EMAIL_PROVIDER = ""
+    settings.EMAIL_PROVIDER_API_KEY = "xkeysib-test"
+    settings.EMAIL_FROM = "EightyTwenty <no-reply@oms.com.vn>"
+    message = EmailMessage.objects.create(
+        recipient="sophie@example.com", subject="Hi", body="Body", dedup_key="brevo-1"
+    )
+    with patch("apps.notifications.services.httpx.post") as post:
+        post.return_value.raise_for_status.return_value = None
+        assert deliver_email(message.pk) is True
+    url = post.call_args.args[0]
+    payload = post.call_args.kwargs["json"]
+    assert url == "https://api.brevo.com/v3/smtp/email"
+    assert post.call_args.kwargs["headers"]["api-key"] == "xkeysib-test"
+    assert payload["sender"] == {"name": "EightyTwenty", "email": "no-reply@oms.com.vn"}
+    assert payload["to"] == [{"email": "sophie@example.com"}]
+    assert payload["textContent"] == "Body"
+    message.refresh_from_db()
+    assert message.status == "sent"
+
+
+def test_a_brevo_failure_is_retried_later(settings, db):
+    from apps.notifications.models import EmailMessage
+    from apps.notifications.services import deliver_email
+
+    settings.EMAIL_PROVIDER = "brevo"
+    settings.EMAIL_PROVIDER_API_KEY = "any"
+    message = EmailMessage.objects.create(
+        recipient="sophie@example.com", subject="Hi", body="Body", dedup_key="brevo-2"
+    )
+    with patch("apps.notifications.services.httpx.post") as post:
+        post.return_value.raise_for_status.side_effect = RuntimeError("401")
+        assert deliver_email(message.pk) is False
+    message.refresh_from_db()
+    assert message.status == "failed" and message.attempts == 1
+
+
+def test_dev_redirect_keeps_mail_away_from_real_cafe_inboxes(settings, db):
+    from apps.notifications.models import EmailMessage
+    from apps.notifications.services import deliver_email
+
+    settings.EMAIL_PROVIDER = "brevo"
+    settings.EMAIL_PROVIDER_API_KEY = "any"
+    settings.EMAIL_REDIRECT_TO = "dev@example.com"
+    message = EmailMessage.objects.create(
+        recipient="braddon@eightytwentyfood.com.au", subject="New order", body="B", dedup_key="r"
+    )
+    with patch("apps.notifications.services.httpx.post") as post:
+        post.return_value.raise_for_status.return_value = None
+        deliver_email(message.pk)
+    payload = post.call_args.kwargs["json"]
+    assert payload["to"] == [{"email": "dev@example.com"}]
+    assert payload["subject"] == "[dev → braddon@eightytwentyfood.com.au] New order"
