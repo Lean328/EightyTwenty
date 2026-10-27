@@ -59,7 +59,6 @@
           "faceIDPermission": "Unlock EightyTwenty with Face ID instead of your password."
         }
       ],
-      "react-native-square-in-app-payments",
       [
         "expo-location",
         {

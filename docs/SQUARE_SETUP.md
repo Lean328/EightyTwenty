@@ -86,5 +86,5 @@ Access token là **bí mật**: nhờ khách gửi qua kênh an toàn (ví dụ 
 **Bước 2: chuyển sang thật**
 
 5. Render: đổi sang `SQUARE_ENVIRONMENT=production` cùng access token và location production; điền Square location ID cho từng quán trong BOS.
-6. `mobile/eas.json`, profile `production`: Application ID production + Merchant ID, rồi `make ios-build` và `make ios-submit`.
+6. `mobile/eas.json`, profile `production`: Application ID production + Merchant ID, rồi `make ios-build` và `make ios-submit`. **Trước đó phải gắn lại SDK Square vào bản iOS** (đang tạm bỏ từ 27/10/2026 vì Apple từ chối build 6: ITMS-90035/90205/90206 — nested `Frameworks` + file `setup` chưa ký, bước dọn của plugin không chạy): xóa entry trong `mobile/react-native.config.js`, thêm lại `"react-native-square-in-app-payments"` vào `plugins` của `app.json`, build rồi xác nhận App Store Connect nhận bản tải lên.
 7. Đặt một đơn thật nhỏ, cho quán nhận, sau đó tự hoàn trong Square Dashboard để kiểm tra trọn vòng.
