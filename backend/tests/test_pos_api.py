@@ -880,7 +880,8 @@ def test_bos_tables_and_promo_codes_pages(cafe, elsewhere):
     )  # fmt: skip
     assert added.status_code == 302, added.content[:1500]
     listing = browser.get(reverse("admin:pos_tilltable_changelist")).content.decode()
-    assert "T1" in listing and "C1" not in listing  # only their café's floor plan
+    # Only their café's floor plan (match the table cells: "C1" can occur in the CSRF token).
+    assert ">T1</a>" in listing and ">C1</a>" not in listing
     assert browser.get(reverse("admin:pos_promotion_add")).status_code == 403  # chain owner only
     owner = UserFactory(role="owner", is_superuser=True, is_staff=True)
     browser.force_login(owner)
