@@ -66,6 +66,15 @@ class RetryEmailsView(generics.GenericAPIView):
         return Response({"processed": retry_emails(limit=10)})
 
 
+class BookingRemindersView(RetryEmailsView):
+    @extend_schema(request=None, responses=JobResultSerializer, auth=[{"JobToken": []}])
+    def post(self, request):
+        """Email + app reminder for confirmed tables starting in 2–26 hours (once each)."""
+        from apps.bookings.services import send_reminders
+
+        return Response({"processed": send_reminders()})
+
+
 class CleanupView(RetryEmailsView):
     @extend_schema(request=None, responses=JobResultSerializer, auth=[{"JobToken": []}])
     def post(self, request):

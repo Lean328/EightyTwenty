@@ -2117,8 +2117,10 @@ paths:
     get:
       operationId: v1_app_me_loyalty_wallet_pass_retrieve
       description: |-
-        Apple Wallet pass URL. Answers `404` "Wallet passes aren’t available yet." until pass signing
-        exists — the app already treats 404 as "not available".
+        A link to the customer's coffee card as an Apple Wallet pass (`.pkpass`, valid for 10
+        minutes): the app opens it and iOS shows "Add to Apple Wallet". The pass updates by itself
+        when stamps change. Answers `404` "Wallet passes aren’t available yet." until the server has
+        its Wallet certificates (`walletPassAvailable` on the coffee card says which).
       summary: Apple Wallet pass URL (404 until passes are issued)
       tags:
       - App · Loyalty & gift cards
@@ -10962,6 +10964,64 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/APIError'
+  /api/v1/jobs/booking-reminders:
+    post:
+      operationId: v1_jobs_booking_reminders_create
+      description: Email + app reminder for confirmed tables starting in 2–26 hours
+        (once each).
+      tags:
+      - jobs
+      security:
+      - JobToken: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobResult'
+          description: ''
+        '400':
+          description: Standard API error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
+        '401':
+          description: Standard API error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
+        '403':
+          description: Standard API error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
+        '404':
+          description: Standard API error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
+        '409':
+          description: Standard API error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
+        '429':
+          description: Standard API error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
+        '503':
+          description: Standard API error envelope
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIError'
   /api/v1/jobs/cleanup:
     post:
       operationId: v1_jobs_cleanup_create
@@ -15285,6 +15345,12 @@ components:
             * `outdoor` - Outdoor
         status:
           $ref: '#/components/schemas/BookingStatus'
+        reminded_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+          description: When the day-before reminder went out.
         source:
           allOf:
           - $ref: '#/components/schemas/BookingSourceEnum'
@@ -15332,6 +15398,7 @@ components:
       - party_size
       - phone
       - reference
+      - reminded_at
       - seating
       - source
       - time
@@ -16789,6 +16856,15 @@ components:
           type: string
         flags:
           $ref: '#/components/schemas/FlagsOut'
+        latitude:
+          type: number
+          format: double
+          nullable: true
+          description: Café position (WGS84); null until set in BOS.
+        longitude:
+          type: number
+          format: double
+          nullable: true
       required:
       - address
       - area
@@ -16972,6 +17048,10 @@ components:
           type: string
         walletPassAdded:
           type: boolean
+        walletPassAvailable:
+          type: boolean
+          description: 'The server can issue an Apple Wallet pass: show the Wallet
+            button.'
       required:
       - eligibility
       - memberNumber

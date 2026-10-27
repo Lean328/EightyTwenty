@@ -36,6 +36,7 @@ from apps.enquiries.services import create_enquiry
 from apps.locations.models import Location, LocationImage
 from apps.locations.services import takes_customers
 from apps.loyalty import services as loyalty
+from apps.loyalty import wallet
 from apps.loyalty.models import GiftCardActivity, LoyaltyActivity
 from apps.menu.catalog import menu_items
 from apps.menu.models import Category, MenuItem
@@ -850,10 +851,18 @@ class WalletPassView(AppView):
     )
     def get(self, request):
         """
-        Apple Wallet pass URL. Answers `404` "Wallet passes aren’t available yet." until pass signing
-        exists — the app already treats 404 as "not available".
+        A link to the customer's coffee card as an Apple Wallet pass (`.pkpass`, valid for 10
+        minutes): the app opens it and iOS shows "Add to Apple Wallet". The pass updates by itself
+        when stamps change. Answers `404` "Wallet passes aren’t available yet." until the server has
+        its Wallet certificates (`walletPassAvailable` on the coffee card says which).
         """
-        raise not_found("Wallet passes aren’t available yet.")
+        if not wallet.ready():
+            raise not_found("Wallet passes aren’t available yet.")
+        wallet_pass = wallet.pass_for(loyalty.card_for(request.user))
+        url = request.build_absolute_uri(
+            f"/api/v1/app/wallet/pass?ticket={wallet.download_ticket(wallet_pass)}"
+        )
+        return out(s.WalletPassOut, {"url": url})
 
 
 class WalletPassAddedView(AppView):

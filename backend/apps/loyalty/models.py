@@ -1,4 +1,5 @@
 import secrets
+import uuid
 
 from django.conf import settings
 from django.core.validators import MaxValueValidator
@@ -97,5 +98,49 @@ class GiftCardActivity(BaseModel):
                 fields=["card", "idempotency_key"],
                 condition=~models.Q(idempotency_key=""),
                 name="unique_gift_idempotency_key",
+            )
+        ]
+
+
+def wallet_token():
+    return secrets.token_hex(24)
+
+
+class WalletPass(BaseModel):
+    """
+    The coffee card as an Apple Wallet pass. `version` goes up whenever the card changes, so
+    every iPhone holding the pass is told to fetch the new one (apps/loyalty/wallet.py).
+    """
+
+    def __str__(self):
+        return f"Wallet pass {self.card.member_number}"
+
+    card = models.OneToOneField(LoyaltyCard, on_delete=models.CASCADE, related_name="wallet_pass")
+    serial = models.UUIDField(default=uuid.uuid4, unique=True, editable=False)
+    authentication_token = models.CharField(max_length=64, default=wallet_token, editable=False)
+    version = models.BigIntegerField(default=1)
+
+    class Meta(BaseModel.Meta):
+        verbose_name = "Wallet pass"
+
+
+class WalletRegistration(BaseModel):
+    """An iPhone that holds a pass and wants to hear when it changes (Apple's web service)."""
+
+    def __str__(self):
+        return self.device_library_id
+
+    wallet_pass = models.ForeignKey(
+        WalletPass, on_delete=models.CASCADE, related_name="registrations"
+    )
+    device_library_id = models.CharField(max_length=200)
+    push_token = models.CharField(max_length=256)
+    notified_version = models.BigIntegerField(default=0)
+
+    class Meta(BaseModel.Meta):
+        verbose_name = "Wallet device"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["wallet_pass", "device_library_id"], name="unique_wallet_registration"
             )
         ]

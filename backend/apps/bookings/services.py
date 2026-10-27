@@ -311,3 +311,56 @@ def available_slots(location, date):
             )
         current += timedelta(minutes=rule.slot_minutes)
     return result
+
+
+REMINDER_FROM = timedelta(hours=2)
+REMINDER_UNTIL = timedelta(hours=26)
+
+
+def send_reminders(now=None):
+    """
+    Remind customers of a confirmed table: once, about a day before (anything starting 2–26
+    hours from now that has not been reminded). Run by the scheduled job every 15 minutes.
+    Returns how many bookings were reminded.
+    """
+    now = now or timezone.now()
+    local_now = timezone.localtime(now)
+    tz = timezone.get_current_timezone()
+    candidates = Booking.objects.select_related("location", "customer").filter(
+        status="confirmed",
+        reminded_at__isnull=True,
+        date__gte=local_now.date(),
+        date__lte=(local_now + REMINDER_UNTIL).date(),
+    )
+    sent = 0
+    for booking in candidates:
+        starts = datetime.combine(booking.date, booking.time, tzinfo=tz)
+        if not now + REMINDER_FROM <= starts <= now + REMINDER_UNTIL:
+            continue
+        with transaction.atomic():
+            if not Booking.objects.filter(pk=booking.pk, reminded_at__isnull=True).update(
+                reminded_at=now
+            ):
+                continue
+            day = "today" if booking.date == local_now.date() else "tomorrow"
+            hour = booking.time.hour % 12 or 12
+            noon = "AM" if booking.time.hour < 12 else "PM"
+            when = f"{day} at {hour}:{booking.time.minute:02d} {noon}"
+            where = booking.location.name
+            guests = f"{booking.party_size} guest{'s' if booking.party_size != 1 else ''}"
+            call = f" on {booking.location.phone}" if booking.location.phone else ""
+            if booking.email:
+                enqueue_email(
+                    booking.email,
+                    f"See you {day} at EightyTwenty {where}",
+                    f"Hi {booking.name},\n\n"
+                    f"A reminder of your table at EightyTwenty {where} {when}, {guests} "
+                    f"(booking {booking.reference}).\n\n{booking.location.address}\n\n"
+                    f"Can't make it? Reply to this email or call the café{call}.",
+                    f"booking-{booking.pk}-reminder",
+                )
+            notify(
+                booking.customer, "booking", f"Reminder: your table at {where} {when}, {guests}."
+            )
+        sent += 1
+    return sent

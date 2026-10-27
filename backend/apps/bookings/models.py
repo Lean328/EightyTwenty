@@ -71,6 +71,9 @@ class Booking(ManagedModel):
         related_name="bookings",
     )
     status = models.CharField(max_length=12, choices=Status.choices, default=Status.REQUESTED)
+    reminded_at = models.DateTimeField(
+        null=True, blank=True, editable=False, help_text="When the day-before reminder went out."
+    )
     source = models.CharField(
         max_length=10, choices=[("web", "Web"), ("app", "App"), ("staff", "Staff")], default="web"
     )

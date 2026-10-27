@@ -34,7 +34,7 @@ PASSWORD = "A-strong-password-2026"
 LOCATION_KEYS = {
     "id", "name", "subtitle", "area", "headline", "address", "phone", "email", "hoursLabel",
     "hoursShort", "weeklyHours", "status", "fulfilmentMethods", "note", "waitLabel", "imageUrl",
-    "galleryUrls", "externalOrderUrl", "bookingLabel", "flags",
+    "galleryUrls", "externalOrderUrl", "bookingLabel", "flags", "latitude", "longitude",
 }  # fmt: skip
 ORDER_KEYS = {
     "id", "number", "locationId", "locationName", "method", "status", "createdAt", "timing",

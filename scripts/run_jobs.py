@@ -6,7 +6,7 @@ import urllib.request
 base = os.environ["BOS_API_BASE"].rstrip("/")
 if not base.startswith("https://"):
     raise SystemExit("BOS_API_BASE must use HTTPS")
-for job in ["retry-emails", "cleanup"]:
+for job in ["retry-emails", "booking-reminders", "cleanup"]:
     request = urllib.request.Request(
         f"{base}/api/v1/jobs/{job}",
         method="POST",

@@ -94,6 +94,7 @@ urlpatterns = [
     path("account/reset-password", account_pages.reset_password, name="account_reset_password"),
     path("api/v1/jobs/retry-emails", operations.RetryEmailsView.as_view()),
     path("api/v1/jobs/cleanup", operations.CleanupView.as_view()),
+    path("api/v1/jobs/booking-reminders", operations.BookingRemindersView.as_view()),
     path("api/schema/", SpectacularAPIView.as_view(), name="schema"),
 ]
 if settings.DOCS_ENABLED:

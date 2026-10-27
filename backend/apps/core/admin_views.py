@@ -37,6 +37,7 @@ from apps.bookings.models import Booking, BookingRule
 from apps.bookings.services import TRANSITIONS
 from apps.enquiries.models import Enquiry
 from apps.locations.models import Location
+from apps.loyalty.wallet import ready as wallet_ready
 from apps.media.models import MediaAsset
 from apps.menu.models import Category, LocationMenuItem, MenuItem
 from apps.notifications.models import EmailMessage
@@ -1010,6 +1011,16 @@ def system_view(site):
                 if not settings.EMAIL_PROVIDER_API_KEY
                 else f"Sending as {settings.EMAIL_FROM}",
                 changelist(EmailMessage),
+            ),
+            check(
+                "Apple Wallet",
+                wallet_ready(),
+                "Passes issued" if wallet_ready() else "Not configured",
+                f"Pass type {settings.APPLE_WALLET_PASS_TYPE_ID}; cards update through "
+                f"{settings.APPLE_WALLET_WEB_SERVICE_URL}"
+                if wallet_ready()
+                else "The app hides Add to Apple Wallet until the APPLE_WALLET_* settings "
+                "and certificate files are in place (docs/OPERATIONS.md).",
             ),
             check(
                 "Image storage",

@@ -331,6 +331,10 @@ class LocationOut(serializers.Serializer):
     externalOrderUrl = serializers.CharField(allow_null=True)
     bookingLabel = serializers.CharField()
     flags = FlagsOut()
+    latitude = serializers.FloatField(
+        required=False, allow_null=True, help_text="Café position (WGS84); null until set in BOS."
+    )
+    longitude = serializers.FloatField(required=False, allow_null=True)
 
 
 class CategoryOut(serializers.Serializer):
@@ -455,6 +459,10 @@ class LoyaltyCardOut(serializers.Serializer):
     eligibility = serializers.CharField()
     rewardDescription = serializers.CharField()
     walletPassAdded = serializers.BooleanField()
+    walletPassAvailable = serializers.BooleanField(
+        required=False,
+        help_text="The server can issue an Apple Wallet pass: show the Wallet button.",
+    )
 
 
 class LoyaltyActivityOut(serializers.Serializer):

@@ -3,6 +3,7 @@
 from django.utils import timezone
 
 from apps.locations.services import weekly_hours
+from apps.loyalty import wallet
 from apps.loyalty.models import STAMPS_PER_REWARD
 from apps.loyalty.services import ELIGIBILITY, REWARD
 
@@ -115,6 +116,8 @@ def location(row):
             "limitedMenu": row.is_limited_menu,
             "glutenFree": row.is_gluten_free,
         },
+        "latitude": float(row.lat) if row.lat is not None else None,
+        "longitude": float(row.lng) if row.lng is not None else None,
     }
 
 
@@ -235,6 +238,7 @@ def loyalty_card(card):
         "eligibility": ELIGIBILITY,
         "rewardDescription": REWARD,
         "walletPassAdded": card.wallet_pass_added,
+        "walletPassAvailable": wallet.ready(),
     }
 
 

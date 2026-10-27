@@ -269,6 +269,15 @@ EXPO_ACCESS_TOKEN = env("EXPO_ACCESS_TOKEN", default="")
 # with the access token below (sandbox or production) and the café's Square location
 # (Location.square_location_id, else SQUARE_LOCATION_ID).
 PAYMENT_PROVIDER = env("PAYMENT_PROVIDER", default="")
+# Apple Wallet coffee card (apps/loyalty/wallet.py). Paths point at PEM files (Render: Secret
+# Files under /etc/secrets); the web service URL is this API's /api/v1/app/wallet over HTTPS.
+APPLE_WALLET_PASS_TYPE_ID = env("APPLE_WALLET_PASS_TYPE_ID", default="")
+APPLE_WALLET_TEAM_ID = env("APPLE_WALLET_TEAM_ID", default="")
+APPLE_WALLET_CERT_PATH = env("APPLE_WALLET_CERT_PATH", default="")
+APPLE_WALLET_KEY_PATH = env("APPLE_WALLET_KEY_PATH", default="")
+APPLE_WALLET_KEY_PASSWORD = env("APPLE_WALLET_KEY_PASSWORD", default="")
+APPLE_WALLET_WWDR_CERT_PATH = env("APPLE_WALLET_WWDR_CERT_PATH", default="")
+APPLE_WALLET_WEB_SERVICE_URL = env("APPLE_WALLET_WEB_SERVICE_URL", default="")
 SQUARE_ACCESS_TOKEN = env("SQUARE_ACCESS_TOKEN", default="")
 SQUARE_ENVIRONMENT = env("SQUARE_ENVIRONMENT", default="sandbox")
 SQUARE_LOCATION_ID = env("SQUARE_LOCATION_ID", default="")
@@ -308,6 +317,7 @@ if TESTING:
         PAYMENT_PROVIDER
     ) = EXPO_ACCESS_TOKEN = ""
     SQUARE_ACCESS_TOKEN = SQUARE_LOCATION_ID = ""
+    APPLE_WALLET_CERT_PATH = APPLE_WALLET_KEY_PATH = APPLE_WALLET_WWDR_CERT_PATH = ""
     PUSH_ENABLED = False
     # backend/.env points at the shared Supabase database, so anything that is not a local
     # PostgreSQL (CI, docker compose) becomes an in-memory SQLite database.

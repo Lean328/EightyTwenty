@@ -6,6 +6,7 @@ The app's EXPO_PUBLIC_API_BASE_URL is https://<host>/api/v1/app (no trailing sla
 from django.urls import path
 
 from . import views as v
+from . import wallet_views as w
 
 urlpatterns = [
     path("auth/sign-in", v.SignInView.as_view()),
@@ -52,4 +53,13 @@ urlpatterns = [
     path("gift-cards/send", v.GiftSendView.as_view()),
     path("content/offers", v.OffersView.as_view()),
     path("content/faqs", v.FaqsView.as_view()),
+    # Apple Wallet: the pass download, then Apple's pass web service (webServiceURL = …/wallet).
+    path("wallet/pass", w.PassDownloadView.as_view()),
+    path(
+        "wallet/v1/devices/<str:device>/registrations/<str:pass_type>/<str:serial>",
+        w.RegistrationView.as_view(),
+    ),
+    path("wallet/v1/devices/<str:device>/registrations/<str:pass_type>", w.UpdatesView.as_view()),
+    path("wallet/v1/passes/<str:pass_type>/<str:serial>", w.LatestPassView.as_view()),
+    path("wallet/v1/log", w.LogView.as_view()),
 ]
