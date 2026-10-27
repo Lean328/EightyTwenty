@@ -5,7 +5,7 @@ from drf_spectacular.utils import OpenApiParameter, extend_schema
 from rest_framework import generics, permissions
 from rest_framework.response import Response
 
-from apps.locations.models import Location
+from apps.locations.services import public_locations
 
 from . import public_serializers as s
 from . import public_services as services
@@ -20,7 +20,7 @@ class PublicReadView(generics.GenericAPIView):
 
     def location(self):
         slug = self.request.query_params.get("location")
-        return get_object_or_404(Location, slug=slug, is_published=True) if slug else None
+        return get_object_or_404(public_locations(), slug=slug) if slug else None
 
 
 class BootstrapView(PublicReadView):
@@ -37,7 +37,7 @@ class BootstrapView(PublicReadView):
         settings = SiteSettings.load()
         visible_at = services.published_pages().aggregate(latest=Max("published_at"))["latest"]
         schedule_key = int(visible_at.timestamp()) if visible_at else 0
-        etag = f'W/"bootstrap-v1-{settings.menu_version}-{location.slug if location else "all"}-{schedule_key}"'
+        etag = f'W/"bootstrap-v2-{settings.menu_version}-{location.slug if location else "all"}-{schedule_key}"'
         # Weak comparison is appropriate: generatedAt changes, menu content does not.
         tags = parse_etags(request.headers.get("If-None-Match", ""))
         match = "*" in tags or any(
@@ -65,7 +65,7 @@ class PublicLocationView(PublicReadView):
     serializer_class = s.PublicLocationSerializer
 
     def get(self, request, slug):
-        get_object_or_404(Location, slug=slug, is_published=True)
+        get_object_or_404(public_locations(), slug=slug)
         return Response(self.get_serializer(services.locations_data(slug)[0]).data)
 
 

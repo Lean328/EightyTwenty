@@ -5,7 +5,8 @@ from django.utils import timezone
 
 from apps.cms.models import NavigationItem, Page
 from apps.enquiries.models import CateringPackage
-from apps.locations.models import Location, LocationImage
+from apps.locations.models import LocationImage
+from apps.locations.services import public_locations
 from apps.menu.models import (
     Category,
     LocationMenuItem,
@@ -31,7 +32,7 @@ def aud(cents):
 
 
 def locations_data(slug=None):
-    qs = Location.objects.filter(is_published=True).prefetch_related(
+    qs = public_locations().prefetch_related(
         Prefetch(
             "images", queryset=LocationImage.objects.filter(is_active=True).select_related("asset")
         )

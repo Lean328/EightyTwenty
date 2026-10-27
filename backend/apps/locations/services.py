@@ -1,3 +1,13 @@
+from .models import Location
+
+# Permanently closed cafés stay in BOS/history, even if old CMS data republishes them.
+CLOSED_PUBLIC_LOCATION_SLUGS = frozenset({"akuna"})
+
+
+def public_locations():
+    return Location.objects.filter(is_published=True).exclude(slug__in=CLOSED_PUBLIC_LOCATION_SLUGS)
+
+
 WEEKDAY_KEYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"]  # OpeningHours.weekday 0 = Monday
 
 

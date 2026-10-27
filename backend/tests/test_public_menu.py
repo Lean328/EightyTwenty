@@ -152,3 +152,50 @@ def test_money_conversion_is_exact(value, expected):
 def test_invalid_money_is_rejected(value):
     with pytest.raises(ValueError):
         cents_from_aud(value)
+
+
+def test_closed_akuna_is_hidden_even_if_published_without_losing_bos_history(
+    client, owner_client, branch, dish, booking_data
+):
+    from apps.bookings.models import Booking
+    from apps.locations.models import Location
+
+    from .factories import LocationFactory
+
+    akuna = LocationFactory(slug="akuna", name="Akuna St", is_published=True)
+    history_data = {**booking_data, "location": akuna}
+    history = Booking.objects.create(**history_data)
+    locations = client.get("/api/v1/public/locations").json()
+    assert [row["id"] for row in locations] == [branch.slug]
+    bootstrap = client.get("/api/v1/public/bootstrap")
+    assert [row["id"] for row in bootstrap.json()["LOCATIONS"]] == [branch.slug]
+    assert client.get("/api/v1/public/locations/akuna").status_code == 404
+    assert client.get("/api/v1/public/bootstrap?location=akuna").status_code == 404
+    assert client.get("/api/v1/public/menu?location=akuna").status_code == 404
+    assert (
+        client.get(
+            "/api/v1/public/bookings/availability",
+            {"location": "akuna", "date": booking_data["date"]},
+        ).status_code
+        == 400
+    )
+    response = client.post(
+        "/api/v1/public/bookings", {**booking_data, "location": "akuna"}, format="json"
+    )
+    assert response.status_code == 400
+    assert Booking.objects.count() == 1
+    assert Booking.objects.get(pk=history.pk).location_id == akuna.pk
+    assert Location.objects.get(pk=akuna.pk).is_published is True
+    assert owner_client.get(f"/api/v1/bos/locations/{akuna.slug}").status_code == 200
+    assert owner_client.get(f"/api/v1/bos/bookings/{history.pk}").status_code == 200
+    assert owner_client.get(f"/api/v1/bos/menu-items/{dish.pk}").json()["base_price_cents"] == 1090
+    assert bootstrap.json()["MENU"][0]["price"] == 10.9
+
+
+def test_public_location_policy_invalidates_preclosure_bootstrap_etags(client, branch):
+    from apps.core.models import SiteSettings
+
+    old_etag = f'W/"bootstrap-v1-{SiteSettings.load().menu_version}-all-0"'
+    response = client.get("/api/v1/public/bootstrap", HTTP_IF_NONE_MATCH=old_etag)
+    assert response.status_code == 200
+    assert response["ETag"] != old_etag
