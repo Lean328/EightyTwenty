@@ -1,4 +1,5 @@
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { config } from '@/constants/config';
 import { queryKeys, useRepositories } from '@/repositories';
 import { AppError } from '@/services/errors';
 import { walletPassService } from '@/services/integrations/wallet';
@@ -33,4 +34,9 @@ export function useAddWalletPass() {
     },
     onSuccess: (card) => qc.setQueryData<LoyaltyCard>(queryKeys.loyaltyCard, card),
   });
+}
+
+/** Show "Apple Wallet": iPhone only, when the server issues passes (or the prototype's mock). */
+export function showWalletFor(card: LoyaltyCard | undefined): boolean {
+  return walletPassService.isSupported() && (config.features.walletPasses || !!card?.walletPassAvailable);
 }

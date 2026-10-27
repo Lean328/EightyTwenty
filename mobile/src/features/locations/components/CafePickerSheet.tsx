@@ -10,7 +10,7 @@ import { useNow } from '@/hooks/useNow';
 import { useCartStore } from '@/store/cart';
 import { useUiStore } from '@/store/ui';
 import { colors, sans } from '@/theme';
-import { STATUS_COLORS, useChooseCafe, useLocations } from '../hooks';
+import { STATUS_COLORS, useCafesByDistance, useChooseCafe } from '../hooks';
 
 /** "Choose a café" — every location with open/closed status; coming-soon cafés are disabled. */
 export function CafePickerSheet() {
@@ -18,7 +18,7 @@ export function CafePickerSheet() {
   const close = useUiStore((s) => s.closeCafePicker);
   const insets = useSafeAreaInsets();
   const selectedId = useCartStore((s) => s.context.locationId);
-  const { data: locations = [] } = useLocations();
+  const { locations } = useCafesByDistance();
   const choose = useChooseCafe();
   const now = useNow();
 

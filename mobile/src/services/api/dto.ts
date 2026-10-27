@@ -58,6 +58,9 @@ export interface LocationDTO {
   externalOrderUrl: string | null;
   bookingLabel: string;
   flags: { flagship?: boolean; limitedMenu?: boolean; glutenFree?: boolean };
+  /** Optional (27/10/2026): café position, null until set in BOS. */
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export interface MenuCategoryDTO {
@@ -135,6 +138,8 @@ export interface LoyaltyCardDTO {
   eligibility: string;
   rewardDescription: string;
   walletPassAdded: boolean;
+  /** Optional (added 27/10/2026): the server can issue an Apple Wallet pass. */
+  walletPassAvailable?: boolean;
 }
 
 export interface LoyaltyActivityDTO {

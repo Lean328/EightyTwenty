@@ -30,7 +30,8 @@ export function WalletPassSheet() {
   const stamps = card?.stamps ?? 0;
 
   const onAction = () => {
-    if (added) return setOpen(false);
+    // A real pass can be opened again (re-added after removing it); the mock just closes.
+    if (added && walletPassService.isDemo) return setOpen(false);
     add.mutate(undefined, {
       onSuccess: () => {
         setOpen(false);

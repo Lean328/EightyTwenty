@@ -48,9 +48,9 @@ Rà soát ngày 27/10/2026 (nhánh `feat/mobile-app`). Ký hiệu: ✅ đã xong
 
 ## ⚠️ Nên làm
 
-- **Apple Wallet** (thẻ thành viên, đang ẩn): muốn có thì cần Pass Type ID + chứng chỉ ký pass trên tài khoản Apple Developer của khách, rồi backend phát hành file `.pkpass`.
+- **Apple Wallet**: code đã xong (backend ký `.pkpass` + tự cập nhật thẻ). Còn thiếu Pass Type ID + chứng chỉ trên tài khoản Apple Developer, đặt lên Render (docs/OPERATIONS.md); có rồi thì nút tự hiện trong app.
 - **Email trên production**: dùng Brevo (giá trị trong `backend/.env.production`, dán vào Render). Tài khoản Brevo bật Authorised IPs: phải thêm IP của Render, nếu không Brevo trả 401 và "Forgot password" cùng email báo quán không gửi được.
-- **"Use my location"** (đang ẩn): cần điền toạ độ (lat/lng) cho các quán trong BOS và thêm `expo-location` để sắp quán gần nhất lên đầu.
+- ✅ **"Use my location"**: đã có toạ độ 9 quán trên production; app xin quyền vị trí khi khách bật và xếp quán gần nhất lên đầu.
 - **Ảnh Keep Cups** (offer): upload trong BOS → App offers.
 - **Ảnh chụp màn hình App Store**: iPhone 6.9" (1320×2868) là bắt buộc. Chụp từ simulator hoặc máy thật với tài khoản demo.
 - **Android / Google Play**: push Android cần development build + FCM. Chưa làm.

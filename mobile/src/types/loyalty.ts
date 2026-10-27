@@ -11,6 +11,8 @@ export interface LoyaltyCard {
   rewardDescription: string;
   /** Whether the Wallet pass has been added on this account. */
   walletPassAdded: boolean;
+  /** The server can issue an Apple Wallet pass (its certificates are set up). */
+  walletPassAvailable?: boolean;
 }
 
 export type LoyaltyActivityType = 'earn' | 'redeem';

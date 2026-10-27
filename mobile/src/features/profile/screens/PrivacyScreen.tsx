@@ -9,7 +9,9 @@ import { useSignOut } from '@/features/auth/hooks';
 import { useBottomSpace } from '@/hooks/useBottomSpace';
 import { useRepositories } from '@/repositories';
 import { errorMessage } from '@/services/errors';
+import { useLocations } from '@/features/locations/hooks';
 import { biometrics } from '@/services/integrations/biometrics';
+import { geo } from '@/services/integrations/geo';
 import { openUrl } from '@/services/integrations/links';
 import { showToast } from '@/store/ui';
 import { colors, sans } from '@/theme';
@@ -56,6 +58,29 @@ export function PrivacyScreen() {
     if (prefs) update.mutate({ security: { ...prefs.security, biometricSignIn: on } });
   };
 
+  // "Use my location": on only once the phone allows it (asked when the customer turns it on).
+  const { data: locations = [] } = useLocations();
+  const canSortByDistance = config.features.nearestCafe || locations.some((l) => l.coords);
+  const [located, setLocated] = useState(false);
+  useEffect(() => {
+    void geo.granted().then(setLocated, () => undefined);
+  }, []);
+  const toggleLocation = async (on: boolean) => {
+    if (on && !(await geo.request().catch(() => false))) {
+      showToast('Allow location for EightyTwenty in Settings');
+      return;
+    }
+    setLocated(on || located);
+    if (prefs) update.mutate({ security: { ...prefs.security, useLocation: on } });
+  };
+  const valueOf = (key: keyof SecuritySettings) =>
+    key === 'biometricSignIn' ? faceId : key === 'useLocation' ? !!prefs?.security.useLocation && (located || config.dataSource === 'mock') : !!prefs?.security[key];
+  const onToggle = (key: keyof SecuritySettings, on: boolean) => {
+    if (key === 'biometricSignIn') return void toggleFaceId(on);
+    if (key === 'useLocation' && config.dataSource !== 'mock') return void toggleLocation(on);
+    if (prefs) update.mutate({ security: { ...prefs.security, [key]: on } });
+  };
+
   const closeAccount = async () => {
     const sure = await confirmAction(
       'Close your account?',
@@ -77,15 +102,8 @@ export function PrivacyScreen() {
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottom }]}>
         {prefs ? (
           <ToggleGroup>
-            {ROWS.filter((r) => r.key !== 'useLocation' || config.features.nearestCafe).map((r, i) => (
-              <ToggleRow
-                key={r.key}
-                first={i === 0}
-                title={r.title}
-                description={r.description}
-                value={r.key === 'biometricSignIn' ? faceId : prefs.security[r.key]}
-                onChange={(on) => (r.key === 'biometricSignIn' ? void toggleFaceId(on) : update.mutate({ security: { ...prefs.security, [r.key]: on } }))}
-              />
+            {ROWS.filter((r) => r.key !== 'useLocation' || canSortByDistance).map((r, i) => (
+              <ToggleRow key={r.key} first={i === 0} title={r.title} description={r.description} value={valueOf(r.key)} onChange={(on) => onToggle(r.key, on)} />
             ))}
           </ToggleGroup>
         ) : null}

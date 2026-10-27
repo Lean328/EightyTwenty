@@ -93,7 +93,9 @@ export function locationFromDto(dto: D.LocationDTO): Location {
       weeklyHours![i as Weekday] = dto.weeklyHours![k] ?? null;
     });
   }
+  const coords = dto.latitude != null && dto.longitude != null ? { latitude: dto.latitude, longitude: dto.longitude } : null;
   return {
+    coords,
     id: dto.id,
     name: dto.name,
     subtitle: dto.subtitle,

@@ -48,4 +48,6 @@ export interface Location {
     limitedMenu?: boolean;
     glutenFree?: boolean;
   };
+  /** Where the café is, for "Use my location"; null until set in BOS. */
+  coords?: { latitude: number; longitude: number } | null;
 }

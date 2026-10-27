@@ -4,11 +4,9 @@ import { config } from '@/constants/config';
 /**
  * Apple Wallet boundary — storing and presenting the loyalty pass (separate from Apple Pay).
  *
- * STATUS: MOCK. The "Add" action in the Wallet sheet records the pass as added via the
- * loyalty repository; no .pkpass is generated or installed.
- * Production requires: an Apple Pass Type ID + signing certificate on the backend, a
- * signed .pkpass per member (GET /me/loyalty/wallet-pass), the PassKit web service for
- * stamp updates, and either opening the .pkpass URL or a native PassKit module.
+ * Real passes come from the backend (apps/loyalty/wallet.py): GET /me/loyalty/wallet-pass
+ * returns a short-lived .pkpass link; opening it shows iOS's "Add to Apple Wallet" sheet, and the
+ * pass updates itself through Apple's web service. The mock only records the pass as added.
  * Google Wallet would need a separate Loyalty Class/Object integration.
  */
 export interface WalletPassService {
@@ -19,7 +17,7 @@ export interface WalletPassService {
 }
 
 export const walletPassService: WalletPassService = {
-  isDemo: true,
+  isDemo: config.dataSource === 'mock',
   isSupported() {
     return Platform.OS === 'ios' || Platform.OS === 'web';
   },

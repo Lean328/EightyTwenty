@@ -11,7 +11,6 @@ import { Icon } from '@/components/ui/Icon';
 import { TextAction } from '@/components/ui/Links';
 import { Text } from '@/components/ui/Text';
 import { Touchable } from '@/components/ui/Touchable';
-import { config } from '@/constants/config';
 import { isRewardReady, stampsToGo } from '@/domain/loyalty';
 import { useMenuStore } from '@/features/menu/menuStore';
 import { useBottomSpace } from '@/hooks/useBottomSpace';
@@ -22,7 +21,7 @@ import { useUiStore } from '@/store/ui';
 import { colors, eyebrow, fontFamilies, inkA, sans, serif, shadows } from '@/theme';
 import { formatActivityTime } from '@/utils/datetime';
 import { StampGrid } from '../components/StampGrid';
-import { useLoyaltyActivity, useLoyaltyCard } from '../hooks';
+import { showWalletFor, useLoyaltyActivity, useLoyaltyCard } from '../hooks';
 
 const LOGO_BROWN = require('../../../../assets/branding/logo-stacked-brown.webp');
 const LOGO_WHITE = require('../../../../assets/branding/logo-stacked-white.webp');
@@ -98,7 +97,7 @@ export function LoyaltyScreen() {
           <View style={styles.actions}>
             <View style={[styles.notch, { left: -26 }]} />
             <View style={[styles.notch, { right: -26 }]} />
-            {config.features.walletPasses ? (
+            {showWalletFor(card) ? (
               <Touchable onPress={() => setWalletOpen(true)} pressedOpacity={0.85} accessibilityLabel={card?.walletPassAdded ? 'Apple Wallet, pass added' : 'Add to Apple Wallet'} style={styles.wallet}>
                 <View style={styles.walletIcon}>
                   <View style={[styles.wb, { height: 4, borderTopLeftRadius: 2, borderTopRightRadius: 2, backgroundColor: colors.sand }]} />

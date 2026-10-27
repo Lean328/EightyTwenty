@@ -7,13 +7,13 @@ import { Button } from '@/components/ui/Button';
 import { ErrorState } from '@/components/ui/Feedback';
 import { Text } from '@/components/ui/Text';
 import { Touchable } from '@/components/ui/Touchable';
-import { locationStatus } from '@/domain/hours';
+import { isComingSoon, locationStatus } from '@/domain/hours';
 import { useBottomSpace } from '@/hooks/useBottomSpace';
 import { useNow } from '@/hooks/useNow';
 import { useGoToTab } from '@/navigation/tabNavigation';
 import { errorMessage } from '@/services/errors';
 import { colors, eyebrow, sans, serif } from '@/theme';
-import { STATUS_COLORS, useChooseCafe, useLocations } from '../hooks';
+import { STATUS_COLORS, useCafesByDistance, useChooseCafe } from '../hooks';
 
 /** The prototype features Phillip (100% gluten free) at the top of "Our cafés". */
 const FEATURED_ID = 'phillip';
@@ -23,9 +23,10 @@ export function CafesScreen() {
   const goToTab = useGoToTab();
   const choose = useChooseCafe();
   const bottom = useBottomSpace(132);
-  const { data: locations = [], isError, error, refetch } = useLocations();
-  const featured = locations.find((l) => l.id === FEATURED_ID);
-  const others = locations.filter((l) => l.id !== FEATURED_ID);
+  const { locations, here, isError, error, refetch } = useCafesByDistance();
+  // "Use my location" on: the nearest open café takes the featured spot.
+  const featured = (here ? locations.find((l) => !isComingSoon(l)) : undefined) ?? locations.find((l) => l.id === FEATURED_ID);
+  const others = locations.filter((l) => l.id !== featured?.id);
   const fStatus = featured ? locationStatus(featured, now) : null;
 
   return (

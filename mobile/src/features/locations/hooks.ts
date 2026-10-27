@@ -1,8 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useCallback } from 'react';
+import { useCallback, useMemo } from 'react';
 import { isComingSoon, locationStatus, type LocationStatus } from '@/domain/hours';
 import { useNow } from '@/hooks/useNow';
+import { usePreferences } from '@/features/profile/hooks';
 import { queryKeys, useRepositories } from '@/repositories';
+import { geo, nearestFirst } from '@/services/integrations/geo';
 import { useCartStore } from '@/store/cart';
 import { showToast } from '@/store/ui';
 import { colors } from '@/theme';
@@ -11,6 +13,20 @@ import type { CustomerPreferences, Location } from '@/types';
 export function useLocations() {
   const repos = useRepositories();
   return useQuery({ queryKey: queryKeys.locations, queryFn: () => repos.locations.getLocations(), staleTime: 10 * 60_000 });
+}
+
+/**
+ * Cafés nearest first when "Use my location" is on and the phone allows it; otherwise the
+ * usual order. `here` is null until a position is known.
+ */
+export function useCafesByDistance() {
+  const result = useLocations();
+  const { data: prefs } = usePreferences();
+  const on = !!prefs?.security.useLocation;
+  const position = useQuery({ queryKey: ['device-position'], queryFn: () => geo.position(), enabled: on, staleTime: 5 * 60_000, retry: false });
+  const here = on ? (position.data ?? null) : null;
+  const locations = useMemo(() => nearestFirst(result.data ?? [], here), [result.data, here]);
+  return { ...result, locations, here };
 }
 
 export function useLocation(id: string | undefined) {
