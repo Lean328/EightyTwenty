@@ -60,7 +60,8 @@ export function usePlaceOrder() {
           token = (await paymentProvider.requestApplePay({ amount: req.expectedTotal, label: 'EightyTwenty' })).token;
         }
         if (req.expectedTotal > 0 && req.payment.choice === 'new_card') {
-          if (!newCard) throw new AppError('VALIDATION', 'Add your card details.');
+          if (!newCard && paymentProvider.cardEntryInApp) throw new AppError('VALIDATION', 'Add your card details.');
+          // Square opens its own card sheet here; the demo provider reads the in-app fields.
           token = (await paymentProvider.tokenizeCard(newCard)).token;
         }
         const order = await repos.orders.createOrder({ ...req, payment: { ...req.payment, token } }, { idempotencyKey });

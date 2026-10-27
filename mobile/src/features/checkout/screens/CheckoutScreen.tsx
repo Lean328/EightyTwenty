@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { StyleSheet, View } from 'react-native';
 import Animated, { useAnimatedStyle, useDerivedValue, withTiming } from 'react-native-reanimated';
 import { KeyboardAwareScrollView } from '@/components/layout/KeyboardAwareScrollView';
@@ -19,7 +19,7 @@ import { useSelectedLocation } from '@/features/locations/hooks';
 import { usePlaceOrder } from '@/features/orders/hooks';
 import { usePaymentMethods, useProfile, useUpdateProfile } from '@/features/profile/hooks';
 import { useNow } from '@/hooks/useNow';
-import { errorMessage } from '@/services/errors';
+import { errorMessage, isAppError } from '@/services/errors';
 import { paymentProvider, type DemoCardInput } from '@/services/integrations/payments';
 import { useCartStore } from '@/store/cart';
 import { useUiStore } from '@/store/ui';
@@ -50,11 +50,13 @@ export function CheckoutScreen() {
 
   const contact = { name: contactEdits.name ?? profile?.name ?? '', phone: contactEdits.phone ?? profile?.phone ?? '' };
 
-  // Never leave a removed saved card selected.
+  // Never leave a removed saved card (or Apple Pay on a phone without it) selected.
   const card = cards[0];
-  const payment: PaymentChoice = checkout.payment === 'saved_card' && !card ? 'apple_pay' : checkout.payment;
+  const applePay = useApplePayAvailable();
+  const fallback: PaymentChoice = applePay ? 'apple_pay' : 'new_card';
+  const payment: PaymentChoice = (checkout.payment === 'saved_card' && !card) || (checkout.payment === 'apple_pay' && !applePay) ? fallback : checkout.payment;
   const options: { value: PaymentChoice; name: string; sub: string }[] = [
-    { value: 'apple_pay', name: 'Apple Pay', sub: 'Fastest · confirm with Face ID' },
+    ...(applePay ? [{ value: 'apple_pay' as const, name: 'Apple Pay', sub: 'Fastest · confirm with Face ID' }] : []),
     ...(card ? [{ value: 'saved_card' as const, name: `${card.brand} ·· ${card.last4}`, sub: 'Saved card · 2.95% surcharge' }] : []),
     { value: 'new_card', name: 'New card', sub: 'Visa, Mastercard, Amex, JCB · 2.95% surcharge' },
   ];
@@ -101,7 +103,8 @@ export function CheckoutScreen() {
       useCartStore.getState().clear();
       router.replace(`/orders/${order.id}`);
     } catch (e) {
-      setError(errorMessage(e));
+      // Closing the card or Apple Pay sheet is not an error.
+      setError(isAppError(e) && e.code === 'CANCELLED' ? '' : errorMessage(e));
     }
   };
 
@@ -164,7 +167,7 @@ export function CheckoutScreen() {
                   </Touchable>
                 );
               })}
-              {payment === 'new_card' ? <NewCardFields value={newCard} onChange={(c) => (setNewCard(c), setError(''))} /> : null}
+              {payment === 'new_card' && paymentProvider.cardEntryInApp ? <NewCardFields value={newCard} onChange={(c) => (setNewCard(c), setError(''))} /> : null}
             </Reveal>
           ) : (
             <Touchable onPress={() => setPayOpen(true)} accessibilityLabel={`Payment, ${current.name}. Change`} style={styles.payClosed}>
@@ -275,6 +278,22 @@ function NewCardFields({ value, onChange }: { value: DemoCardInput; onChange: (c
       </View>
     </View>
   );
+}
+
+/** Apple Pay is offered only where the provider can take it (Square: iPhone with a card in Wallet). */
+function useApplePayAvailable() {
+  const [available, setAvailable] = useState(paymentProvider.isDemo);
+  useEffect(() => {
+    let live = true;
+    void paymentProvider.isApplePayAvailable().then(
+      (ok) => live && setAvailable(ok),
+      () => undefined,
+    );
+    return () => {
+      live = false;
+    };
+  }, []);
+  return available;
 }
 
 function Amount({ label, value }: { label: string; value: string }) {

@@ -16,6 +16,8 @@ export type AppErrorCode =
   | 'PAYMENT_DECLINED'
   | 'NOT_IMPLEMENTED'
   | 'SERVER'
+  /** The customer closed a payment sheet: nothing to show. */
+  | 'CANCELLED'
   | 'UNKNOWN';
 
 export class AppError extends Error {

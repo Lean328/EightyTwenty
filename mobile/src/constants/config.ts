@@ -39,6 +39,15 @@ export const config = {
     baseUrl: resolveDevApiUrl((process.env.EXPO_PUBLIC_API_BASE_URL ?? '').replace(/\/+$/, ''), Platform.OS, __DEV__ ? Constants.expoConfig?.hostUri : null),
     timeoutMs: readNumber(process.env.EXPO_PUBLIC_API_TIMEOUT_MS, 15000),
   },
+  /**
+   * Square In-App Payments (card entry + Apple Pay). Both IDs are public by design; the access
+   * token that moves money lives only on the backend. Empty application ID = no card payments
+   * in a release build (dev builds and Expo Go use the demo provider).
+   */
+  square: {
+    applicationId: process.env.EXPO_PUBLIC_SQUARE_APPLICATION_ID ?? '',
+    applePayMerchantId: process.env.EXPO_PUBLIC_APPLE_PAY_MERCHANT_ID ?? '',
+  },
   /** Customer website (privacy policy, terms). */
   websiteUrl: (process.env.EXPO_PUBLIC_WEBSITE_URL || 'https://eightytwenty.pages.dev').replace(/\/+$/, ''),
   mock: {

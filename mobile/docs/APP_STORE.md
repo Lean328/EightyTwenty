@@ -18,14 +18,14 @@ Rà soát ngày 27/10/2026 (nhánh `feat/mobile-app`). Ký hiệu: ✅ đã xong
 
 ## ⛔ Chặn — phải xong trước khi nộp
 
-1. **Thanh toán.**
-   - Hiện tại: production chưa nối cổng thanh toán nên mọi đơn có tiền đều bị từ chối (501 "Card and Apple Pay payments aren’t available in the app yet. Please order at the café."). Checkout vẫn hiện Apple Pay và form nhập thẻ **demo** của bản prototype.
-   - Apple sẽ từ chối app có tính năng chính không chạy (guideline 2.1). Không được phát hành form nhập thẻ giả.
-   - Cần khách chọn một trong ba hướng:
-     - (a) **Square**: theo nội dung app của khách ("eGift cards… through Square"). Cần tài khoản Square của khách (Application ID, Location ID, access token đặt trên server) và Apple Pay Merchant ID.
-     - (b) **Stripe**: có thư viện chính thức cho Expo, kèm Apple Pay.
-     - (c) **Bản 1.0 "trả tiền tại quầy"**: tạm bỏ thanh toán online, đơn vào BOS với trạng thái chưa thanh toán.
-   - Code: `backend/apps/orders/payments.py` (chỗ duy nhất gọi cổng) và `mobile/src/services/integrations/payments.ts`. Lưu thẻ (`POST /me/payment-methods`) và mua/gửi eGift cũng đang trả 501, sẽ chạy khi có cổng.
+1. **Thanh toán: đã chọn Square (27/10/2026), code đã xong, đang chờ thông tin của khách.**
+   - Đã có:
+     - Backend giữ tiền lúc đặt, trừ khi quán nhận, trả lại khi quán từ chối.
+     - App dùng màn nhập thẻ và Apple Pay của Square; form thẻ demo không còn xuất hiện trong bản build Square.
+     - Chi tiết, danh sách thông tin cần xin khách và các bước thử Sandbox: [`docs/SQUARE_SETUP.md`](../../docs/SQUARE_SETUP.md).
+   - Còn chặn: Application ID / access token / Location ID của Square, Merchant ID + chứng chỉ Apple Pay, rồi thử Sandbox trên iPhone thật bằng bản build EAS (Expo Go không chạy Square).
+   - Bản phát hành **thiếu** `EXPO_PUBLIC_SQUARE_APPLICATION_ID` thì app báo "Card payments aren't available"; đừng nộp bản như vậy.
+   - eGift vẫn 501 khi dùng Square (chờ khách quyết định có dùng Square Gift Cards không); lưu thẻ vẫn 501.
    - Mua đồ ăn/đồ uống dùng ở quán là hàng hoá vật lý nên **không** phải dùng In-App Purchase của Apple.
 2. **Deploy backend của nhánh này lên production** (merge `feat/mobile-app` → `main`, Render tự deploy và chạy migration).
    - Production hiện **chưa có** `DELETE /me` (xoá tài khoản, Apple bắt buộc), `POST /me/password`, `url` trong feed thông báo, gửi offer từ BOS.
