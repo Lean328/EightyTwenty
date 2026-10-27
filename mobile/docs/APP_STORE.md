@@ -14,7 +14,8 @@ Rà soát ngày 27/10/2026 (nhánh `feat/mobile-app`). Ký hiệu: ✅ đã xong
 - ✅ Không có đăng nhập Google/Facebook, nên không bắt buộc "Sign in with Apple".
 - ✅ Push trên iPhone đã chạy thật. Bấm push, bấm dòng trong màn Notifications hoặc bấm đơn trong Activity đều mở màn trạng thái đơn. Home có viên "Preparing · <quán> · Track" khi có đơn đang làm.
 - ✅ Face ID: bật "Sign in with Face ID" thì mở app phải quét Face ID. Có nút "Use password instead" để đăng xuất.
-- ✅ QA tự động (`make qa`): backend 379 test, app 142 test (gồm test bắt các lỗi chỉ xảy ra trên điện thoại, render mọi màn), bundle iOS/Android build được. `make api-smoke` gọi đủ 50 API của app, 0 lỗi.
+- ✅ QA tự động (`make qa`): backend 389 test, app 148 test (gồm test bắt các lỗi chỉ xảy ra trên điện thoại, render mọi màn), bundle iOS/Android build được. `make api-smoke` gọi đủ 50 API của app, 0 lỗi. GitHub CI chạy cả app (`.github/workflows/mobile.yml`) lẫn backend.
+- ✅ Nút Apple Wallet và công tắc "Use my location" bị **ẩn** khi chạy với API thật (chế độ mock của khách vẫn hiện), vì cả hai chưa dùng được. Bật lại bằng `EXPO_PUBLIC_WALLET_PASSES=true` / `EXPO_PUBLIC_NEAREST_CAFE=true` khi đã làm xong.
 
 ## ⛔ Chặn — phải xong trước khi nộp
 
@@ -44,9 +45,9 @@ Rà soát ngày 27/10/2026 (nhánh `feat/mobile-app`). Ký hiệu: ✅ đã xong
 
 ## ⚠️ Nên làm
 
-- **Apple Wallet** (thẻ thành viên): chưa phát hành pass (cần Pass Type ID + chứng chỉ ký trên server). Bấm "Add to Apple Wallet" hiện "Wallet passes aren't available yet". Nên ẩn nút hoặc làm luôn trước khi nộp.
+- **Apple Wallet** (thẻ thành viên, đang ẩn): muốn có thì cần Pass Type ID + chứng chỉ ký pass trên tài khoản Apple Developer của khách, rồi backend phát hành file `.pkpass`.
 - **Email trên production** (Resend: `EMAIL_PROVIDER_API_KEY` + domain gửi đã xác minh): thiếu thì "Forgot password" và email báo quán không gửi được.
-- **"Use my location"**: các quán chưa có toạ độ (lat/lng) nên công tắc chưa có tác dụng. Điền toạ độ trong BOS, hoặc ẩn công tắc.
+- **"Use my location"** (đang ẩn): cần điền toạ độ (lat/lng) cho các quán trong BOS và thêm `expo-location` để sắp quán gần nhất lên đầu.
 - **Ảnh Keep Cups** (offer): upload trong BOS → App offers.
 - **Ảnh chụp màn hình App Store**: iPhone 6.9" (1320×2868) là bắt buộc. Chụp từ simulator hoặc máy thật với tài khoản demo.
 - **Android / Google Play**: push Android cần development build + FCM. Chưa làm.
