@@ -1,71 +1,53 @@
-# Đưa app lên App Store — checklist
+# Đưa app lên TestFlight và App Store
 
-Rà soát ngày 27/10/2026 (nhánh `feat/mobile-app`). Ký hiệu: ✅ đã xong và đã kiểm · ⛔ chặn, phải xong trước khi nộp · ⚠️ nên làm, rủi ro bị Apple từ chối hoặc khách gặp lỗi.
+Cập nhật 27/10/2026 (`main`). Ký hiệu: ✅ xong và đã kiểm · ⛔ chặn bản công khai trên App Store · ⚠️ nên làm. Nội dung để điền App Store Connect: [`APP_STORE_LISTING.md`](APP_STORE_LISTING.md).
 
-## Đã sẵn sàng
+## Tóm tắt
 
-- ✅ Cấu hình build: `eas.json` profile `production` gắn API production (`https://eightytwenty-api.onrender.com/api/v1/app`). Bản phát hành **không** dùng `mobile/.env` vì file này bị gitignore nên EAS không tải lên. Số build tự tăng trên EAS (`appVersionSource: remote`).
-- ✅ `app.json`:
-  - bundle id `au.com.eightytwentyfood.app`, iPhone only.
-  - `ITSAppUsesNonExemptEncryption = false`, nên không phải khai báo xuất khẩu mã hoá mỗi lần nộp.
-  - Lời giải thích quyền Face ID, plugin push.
-  - Icon 1024×1024 RGB, không có kênh trong suốt (Apple yêu cầu).
-- ✅ Xoá tài khoản ngay trong app (Apple guideline 5.1.1(v)): Privacy & security → Close my account.
-- ✅ Không có đăng nhập Google/Facebook, nên không bắt buộc "Sign in with Apple".
-- ✅ Push trên iPhone đã chạy thật. Bấm push, bấm dòng trong màn Notifications hoặc bấm đơn trong Activity đều mở màn trạng thái đơn. Home có viên "Preparing · <quán> · Track" khi có đơn đang làm.
-- ✅ Face ID: bật "Sign in with Face ID" thì mở app phải quét Face ID. Có nút "Use password instead" để đăng xuất.
-- ✅ QA tự động (`make qa`): backend 389 test, app 148 test (gồm test bắt các lỗi chỉ xảy ra trên điện thoại, render mọi màn), bundle iOS/Android build được. `make api-smoke` gọi đủ 50 API của app, 0 lỗi. GitHub CI chạy cả app (`.github/workflows/mobile.yml`) lẫn backend.
-- ✅ Các phần chưa dùng được bị **ẩn** khi chạy với API thật (chế độ mock của khách vẫn hiện):
-  - nút Apple Wallet;
-  - công tắc "Use my location";
-  - gửi eGift (banner "Send a gift card" ở Home và form ở màn Gift cards — màn này vẫn hiện số dư + lịch sử, kèm dòng "Gift cards are available at any EightyTwenty café…");
-  - "Add a card" (lưu thẻ) ở Payment methods.
+- **TestFlight (test nội bộ): làm được ngay.** Mọi thứ chạy với API production, trừ trả tiền bằng thẻ/Apple Pay (app báo "Card payments aren't available" vì chưa có Square). Đặt món trả bằng gift card vẫn chạy.
+- **App Store (công khai): còn chặn bởi Square** và vài việc nhập liệu (tài khoản demo, ảnh chụp màn hình).
 
-  Bật lại bằng `EXPO_PUBLIC_WALLET_PASSES` / `EXPO_PUBLIC_NEAREST_CAFE` / `EXPO_PUBLIC_GIFT_CARD_SALES` / `EXPO_PUBLIC_SAVED_CARDS` = `true` khi đã làm xong.
+## Đã xong
 
-## ⛔ Chặn — phải xong trước khi nộp
+- ✅ **Build**: `eas.json` profile `production` gắn API production (`https://eightytwenty-api.onrender.com/api/v1/app`). Bản phát hành **không** dùng `mobile/.env` (gitignore, EAS không tải lên). Số build tự tăng trên EAS (`appVersionSource: remote`). Project EAS `@my-an-lien/eightytwenty`.
+- ✅ **`app.json`**: tên `EightyTwenty`, bundle id `au.com.eightytwentyfood.app`, chỉ iPhone, `ITSAppUsesNonExemptEncryption = false`, câu xin quyền Face ID và vị trí, plugin push, icon 1024×1024 không trong suốt.
+- ✅ **Backend production** có đủ API của app: xoá tài khoản, đổi mật khẩu, feed có link, Wallet, toạ độ quán, nhắc lịch đặt bàn (job), Square (chưa bật).
+- ✅ **Xoá tài khoản trong app** (guideline 5.1.1(v)): Privacy & security → Close my account. Không có đăng nhập Google/Facebook nên không bắt buộc Sign in with Apple.
+- ✅ **Push** chạy thật trên iPhone; bấm push / dòng Notifications / đơn trong Activity đều mở trạng thái đơn; Home có viên "Track" khi có đơn đang làm.
+- ✅ **Face ID**: bật thì mở app phải quét; có "Use password instead".
+- ✅ **Apple Wallet** chạy trên production và đã thử trên iPhone (27/10): thêm thẻ (trang trong app, có "Back to the app"), thẻ có dải dấu, tự cập nhật khi tích dấu ở BOS. Pass Type ID `pass.au.com.eightytwentyfood.loyalty`, chứng chỉ **hết hạn 26/11/2027** (gia hạn: `docs/OPERATIONS.md`).
+- ✅ **"Use my location"**: toạ độ 9 quán trên production, quán gần nhất lên đầu, vị trí chỉ dùng trên máy.
+- ✅ **Privacy policy + Terms of use** đã đăng: `https://eightytwenty.pages.dev/privacy`, `/terms` (trang CMS, sửa trong BOS → Website → Pages). Nội dung do dev soạn — khách cần đọc duyệt.
+- ✅ **Email** gửi qua Brevo trên production.
+- ✅ **Ảnh Keep Cups** cho offer đã lên Supabase Storage và gán vào offer (27/10). Đổi ảnh: BOS → App offers → Upload a new photo.
+- ✅ **Tài khoản demo** cho Apple review trên production: `eightytwenty-review@gmail.com` (6 dấu, $25 gift card). Mật khẩu đã bị đổi trong BOS — điền mật khẩu mới vào cuối `backend/.env.production`.
+- ✅ **QA**: `make qa` (backend + app, bundle iOS/Android), `make api-smoke`, GitHub CI chạy backend (Postgres 17) và app.
+- ✅ **Đang ẩn** khi chạy API thật (mock của khách vẫn hiện): gửi eGift, "Add a card" (lưu thẻ). Bật bằng `EXPO_PUBLIC_GIFT_CARD_SALES` / `EXPO_PUBLIC_SAVED_CARDS` = `true` khi server làm xong.
 
-1. **Thanh toán: đã chọn Square (27/10/2026), code đã xong, đang chờ thông tin của khách.**
-   - Đã có:
-     - Backend giữ tiền lúc đặt, trừ khi quán nhận, trả lại khi quán từ chối.
-     - App dùng màn nhập thẻ và Apple Pay của Square; form thẻ demo không còn xuất hiện trong bản build Square.
-     - Chi tiết, danh sách thông tin cần xin khách và các bước thử Sandbox: [`docs/SQUARE_SETUP.md`](../../docs/SQUARE_SETUP.md).
-   - Còn chặn: Application ID / access token / Location ID của Square, Merchant ID + chứng chỉ Apple Pay, rồi thử Sandbox trên iPhone thật bằng bản build EAS (Expo Go không chạy Square).
-   - Bản phát hành **thiếu** `EXPO_PUBLIC_SQUARE_APPLICATION_ID` thì app báo "Card payments aren't available"; đừng nộp bản như vậy.
-   - eGift vẫn 501 khi dùng Square (chờ khách quyết định có dùng Square Gift Cards không); lưu thẻ vẫn 501.
-   - Mua đồ ăn/đồ uống dùng ở quán là hàng hoá vật lý nên **không** phải dùng In-App Purchase của Apple.
-2. ✅ **Đã deploy backend lên production** (27/10/2026, `main` = `acb5da8`, CI xanh gồm Postgres 17): production có `DELETE /me` (xoá tài khoản), `POST /me/password`, `url` trong feed thông báo, gửi offer từ BOS, ô Square location ID. Migration `notifications/0005`, `locations/0007` đã chạy. Production vẫn để `PAYMENT_PROVIDER` trống (đơn có tiền → 501) cho tới khi bật Square.
-3. **Tài khoản Apple Developer** của khách (nên là tài khoản tổ chức; tên người bán hiển thị trên App Store), app record trên App Store Connect với bundle id `au.com.eightytwentyfood.app`. Lần chạy `make ios-build` đầu tiên sẽ hỏi đăng nhập Apple để tạo certificate, provisioning profile và push key (APNs).
-4. **Tài khoản demo cho Apple review** trên production: email + mật khẩu, có sẵn vài đơn và dấu thẻ cà phê, ghi vào mục App Review Information. Phải tạo trên production nên cần chủ dự án làm hoặc cho phép.
-5. **Privacy policy + App Privacy.**
-   - Link Privacy policy trong app mở `https://eightytwenty.pages.dev/privacy`. Đây là bản chữ của website, cần thêm phần của app:
-     - Tài khoản, SĐT, địa chỉ giao hàng, lịch sử đơn.
-     - Push token.
-     - Face ID chỉ xử lý trên máy.
-     - Xoá tài khoản.
-   - Trên App Store Connect, phần App Privacy khai: Contact Info (tên, email, SĐT, địa chỉ), Purchases, User ID, Device ID (push token). Không tracking, không quảng cáo.
-6. **Trang Terms of use**: link trong app mở `/terms` nhưng chưa có trang này (CMS page `terms` trả 404 nên website hiện trang trống). Tạo page `terms` trong BOS → Website → Pages với nội dung khách gửi. Hoặc tạm dùng EULA chuẩn của Apple.
+## ⛔ Còn chặn bản công khai
+
+1. **Thanh toán Square** — code đã xong, chờ thông tin khách (`docs/SQUARE_SETUP.md`): Application ID, access token, Location ID, Merchant ID + chứng chỉ Apple Pay; điền `EXPO_PUBLIC_SQUARE_APPLICATION_ID` / `EXPO_PUBLIC_APPLE_PAY_MERCHANT_ID` vào `eas.json`, bật `PAYMENT_PROVIDER=square` trên Render, thử Sandbox bằng bản TestFlight (Expo Go không chạy Square). Đặt món mà không trả được tiền dễ bị Apple từ chối (guideline 2.1).
+2. **Mật khẩu tài khoản demo** để điền App Review Information.
+3. **Ảnh chụp màn hình** iPhone 6.9" (1320×2868 hoặc 1290×2796), 3–10 ảnh, chụp từ bản TestFlight bằng tài khoản demo (thứ tự gợi ý trong `APP_STORE_LISTING.md`).
+4. **Điền App Store Connect** theo `APP_STORE_LISTING.md` (mô tả, từ khoá, App Privacy, ghi chú cho người duyệt).
 
 ## ⚠️ Nên làm
 
-- **Apple Wallet**: đã chạy trên production (27/10/2026): Pass Type ID `pass.au.com.eightytwentyfood.loyalty`, chứng chỉ hết hạn 26/11/2027 (gia hạn: docs/OPERATIONS.md). Server trả `walletPassAvailable: true` nên nút tự hiện trong app. Đã thử trên iPhone (27/10): thêm thẻ, quay về app, thẻ tự đổi số dấu khi tích dấu ở BOS.
-- **Email trên production**: dùng Brevo (giá trị trong `backend/.env.production`, dán vào Render). Tài khoản Brevo bật Authorised IPs: phải thêm IP của Render, nếu không Brevo trả 401 và "Forgot password" cùng email báo quán không gửi được.
-- ✅ **"Use my location"**: đã có toạ độ 9 quán trên production; app xin quyền vị trí khi khách bật và xếp quán gần nhất lên đầu.
-- **Ảnh Keep Cups** (offer): upload trong BOS → App offers.
-- **Ảnh chụp màn hình App Store**: iPhone 6.9" (1320×2868) là bắt buộc. Chụp từ simulator hoặc máy thật với tài khoản demo.
-- **Android / Google Play**: push Android cần development build + FCM. Chưa làm.
-- Nhắc lịch đặt bàn (job) chưa có. Đây không phải điều kiện review.
+- **Bật job định kỳ** (GitHub Actions, `docs/OPERATIONS.md`): nhắc lịch đặt bàn + gửi lại email lỗi. Có 9 email lỗi cũ (21–26/10) sẽ được gửi lại khi bật.
+- Báo các quán có thể có đơn thử từ Apple trong lúc duyệt.
+- **Android / Google Play**: chưa làm (push Android cần FCM).
 
-## Build và nộp
+## Lên TestFlight
 
-```bash
-make ios-build
-```
+Chạy từ thư mục gốc repo, trong terminal (cần đăng nhập tương tác):
 
-```bash
-make ios-submit
-```
+1. Đăng nhập Expo bằng tài khoản `my-an-lien`: `npx eas-cli login` (trong `mobile/`).
+2. `make ios-build` — build trên máy chủ EAS (~15–20 phút). Lần đầu EAS hỏi:
+   - đăng nhập **Apple ID** của tài khoản developer (team `988D5VKVXS`, có mã 2 bước) → chọn team;
+   - cho phép EAS **tạo bundle id** `au.com.eightytwentyfood.app`, **Distribution Certificate**, **Provisioning Profile** → Yes;
+   - **Push Notifications key** (APNs) → Yes (không có key thì push trên bản build không chạy).
+3. `make ios-submit` — tải bản build mới nhất lên App Store Connect. Nếu chưa có app trên App Store Connect, EAS tạo luôn (hỏi tên app, ngôn ngữ, SKU — dùng `EightyTwenty`, English (Australia), `eightytwenty-ios`). Tên app trên App Store phải là duy nhất toàn cầu; nếu "EightyTwenty" đã có người dùng thì đặt ví dụ "EightyTwenty Café".
+   - Muốn tự tạo trước: App Store Connect → Apps → **+** → New App → chọn bundle id (chỉ có trong danh sách sau khi bundle id đã được đăng ký, tức sau bước 2).
+4. Chờ Apple xử lý bản build (5–30 phút, có email). App Store Connect → app → **TestFlight** → **Internal Testing** → tạo nhóm, thêm người test (phải là thành viên team trên App Store Connect) → họ cài app **TestFlight** trên iPhone và nhận lời mời. Test nội bộ không cần Apple duyệt; test ngoài (External) cần một lần Beta Review.
 
-`ios-build` build trên EAS (khoảng 15–20 phút). `ios-submit` tải bản build mới nhất lên App Store Connect; vào TestFlight thử trước rồi mới gửi duyệt. Cả hai cần `npx eas-cli login` bằng tài khoản Expo `my-an-lien`.
-
-Thử nhanh trên máy thật trước khi build: `make run` + `make mobile` (Expo Go, server dev) hoặc `make mobile-prod` (Expo Go, API production).
+Bản build mới sau này: chỉ cần `make ios-build` rồi `make ios-submit` (số build tự tăng). Thử nhanh không cần build: `make mobile-prod` (Expo Go, API production).

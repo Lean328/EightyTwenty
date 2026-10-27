@@ -5,6 +5,7 @@ from apps.core.admin_base import RECORD_FIELDS, OperationsAdmin, OperationsInlin
 from apps.core.admin_forms import ValidatedAdminForm
 from apps.core.services import audit
 from apps.core.templatetags.bos_admin import status_badge
+from apps.media.admin import ImageUploadForm, attach_upload, preview
 from apps.notifications.services import notify
 
 from .models import ContentBlock, Faq, NavigationItem, Offer, Page
@@ -19,6 +20,10 @@ class ContentBlockForm(ValidatedAdminForm):
 
 class NavigationForm(ValidatedAdminForm):
     serializer_class = NavigationSerializer
+
+
+class OfferForm(ImageUploadForm):
+    upload_folder = "offers"
 
 
 class ContentBlockInline(OperationsInline):
@@ -80,6 +85,7 @@ class NavigationAdmin(OperationsAdmin):
 
 @admin.register(Offer)
 class OfferAdmin(OperationsAdmin):
+    form = OfferForm
     list_display = ("name", "tag", "sort_order", "is_active")
     list_filter = ("is_active",)
     search_fields = ("name", "line")
@@ -90,11 +96,26 @@ class OfferAdmin(OperationsAdmin):
         "(pushed to phones only for customers who turned on Offers & news)."
     )
     fieldsets = [
-        ("Offer", {"fields": ("name", "slug", "tag", "line", "fine", "image")}),
+        ("Offer", {"fields": ("name", "slug", "tag", "line", "fine")}),
+        ("Photo", {"fields": ("photo", "upload", "image")}),
         ("Visibility", {"fields": ("sort_order", "is_active")}),
         RECORD_FIELDS,
     ]
     actions = ("send_to_app",)
+
+    @admin.display(description="Current photo")
+    def photo(self, obj):
+        return preview(obj.image)
+
+    def get_readonly_fields(self, request, obj=None):
+        return (*super().get_readonly_fields(request, obj), "photo")
+
+    def save_model(self, request, obj, form, change):
+        # A new upload is encoded to WebP and stored in Supabase Storage (media/services.py).
+        asset = attach_upload(request, form, obj.name)
+        if asset:
+            obj.image = asset
+        super().save_model(request, obj, form, change)
 
     @admin.action(description="Send to the app (notifications + push)")
     def send_to_app(self, request, queryset):

@@ -221,3 +221,28 @@ def test_alt_text_defaults_to_the_house_style(admin_client, storage):
         {"upload": photo(), "alt_text": "", "is_active": "on", "_save": "Save"},
     )
     assert MediaAsset.objects.latest("created_at").alt_text == "Dish – EightyTwenty"
+
+
+def test_app_offer_upload_goes_to_storage(admin_client, storage):
+    from apps.cms.models import Offer
+
+    offer = Offer.objects.create(name="Keep Cups", slug="keep-cups-test", line="Two on us.")
+    url = reverse("admin:cms_offer_change", args=[offer.pk])
+    page = admin_client.get(url).content.decode()
+    assert 'enctype="multipart/form-data"' in page and 'name="upload"' in page
+    data = {
+        "name": offer.name,
+        "slug": offer.slug,
+        "tag": "",
+        "line": offer.line,
+        "fine": "",
+        "sort_order": "0",
+        "is_active": "on",
+        "upload": photo(fmt="PNG"),
+        "_save": "Save",
+    }
+    response = admin_client.post(url, data)
+    assert response.status_code == 302, response.context["adminform"].form.errors
+    offer.refresh_from_db()
+    assert offer.image.alt_text == "Keep Cups – EightyTwenty"
+    assert all(path.startswith("offers/") for path in storage) and len(storage) == 3
