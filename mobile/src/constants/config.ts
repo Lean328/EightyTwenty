@@ -54,10 +54,14 @@ export const config = {
    * rejection) until switched on here.
    *  - walletPasses: Apple Wallet pass — needs a Pass Type ID + signing on the backend.
    *  - nearestCafe: "Use my location" — needs café coordinates in BOS and expo-location.
+   *  - giftCardSales: sending an eGift — needs a payment provider and Square issuing the card.
+   *  - savedCards: saving a card for later — needs Square's Cards API on the backend.
    */
   features: {
     walletPasses: dataSource === 'mock' || readBool(process.env.EXPO_PUBLIC_WALLET_PASSES, false),
     nearestCafe: dataSource === 'mock' || readBool(process.env.EXPO_PUBLIC_NEAREST_CAFE, false),
+    giftCardSales: dataSource === 'mock' || readBool(process.env.EXPO_PUBLIC_GIFT_CARD_SALES, false),
+    savedCards: dataSource === 'mock' || readBool(process.env.EXPO_PUBLIC_SAVED_CARDS, false),
   },
   /** Customer website (privacy policy, terms). */
   websiteUrl: (process.env.EXPO_PUBLIC_WEBSITE_URL || 'https://eightytwenty.pages.dev').replace(/\/+$/, ''),

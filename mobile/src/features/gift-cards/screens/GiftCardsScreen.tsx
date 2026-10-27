@@ -11,6 +11,7 @@ import { Chip } from '@/components/ui/Chip';
 import { Text } from '@/components/ui/Text';
 import { TextField } from '@/components/ui/TextField';
 import { GIFT_CARD_AMOUNTS } from '@/constants/business';
+import { config } from '@/constants/config';
 import { useBottomSpace } from '@/hooks/useBottomSpace';
 import { useNow } from '@/hooks/useNow';
 import { errorMessage } from '@/services/errors';
@@ -75,7 +76,10 @@ export function GiftCardsScreen() {
           <Text style={[sans(12, 400, 1.4), styles.cardMeta]}>Card ·· {card?.last4} · redeemable at any EightyTwenty café</Text>
         </View>
 
-        {sent ? (
+        {!config.features.giftCardSales ? (
+          // Balance and history only until eGift cards can be bought in the app.
+          <Text style={[sans(13, 400, 1.5), styles.inStore]}>Gift cards are available at any EightyTwenty café and can be used here and in store.</Text>
+        ) : sent ? (
           <Rise style={styles.sent}>
             <AnimatedCheck size={64} color={colors.success} />
             <Text accessibilityRole="header" style={[serif(32, 400, 1.05, -0.015), styles.sentTitle]}>
@@ -158,6 +162,7 @@ const styles = StyleSheet.create({
   balance: { marginTop: 8, color: colors.creamText },
   cardMeta: { marginTop: 14, color: creamA(0.75) },
   section: { paddingTop: 28, paddingHorizontal: 20 },
+  inStore: { paddingTop: 18, paddingHorizontal: 20, color: colors.textSecondary },
   lede: { marginTop: 6, color: colors.textSecondary },
   amounts: { flexDirection: 'row', gap: 8, marginTop: 14 },
   amount: { flex: 1, paddingHorizontal: 0 },

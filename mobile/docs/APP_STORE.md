@@ -15,7 +15,13 @@ Rà soát ngày 27/10/2026 (nhánh `feat/mobile-app`). Ký hiệu: ✅ đã xong
 - ✅ Push trên iPhone đã chạy thật. Bấm push, bấm dòng trong màn Notifications hoặc bấm đơn trong Activity đều mở màn trạng thái đơn. Home có viên "Preparing · <quán> · Track" khi có đơn đang làm.
 - ✅ Face ID: bật "Sign in with Face ID" thì mở app phải quét Face ID. Có nút "Use password instead" để đăng xuất.
 - ✅ QA tự động (`make qa`): backend 389 test, app 148 test (gồm test bắt các lỗi chỉ xảy ra trên điện thoại, render mọi màn), bundle iOS/Android build được. `make api-smoke` gọi đủ 50 API của app, 0 lỗi. GitHub CI chạy cả app (`.github/workflows/mobile.yml`) lẫn backend.
-- ✅ Nút Apple Wallet và công tắc "Use my location" bị **ẩn** khi chạy với API thật (chế độ mock của khách vẫn hiện), vì cả hai chưa dùng được. Bật lại bằng `EXPO_PUBLIC_WALLET_PASSES=true` / `EXPO_PUBLIC_NEAREST_CAFE=true` khi đã làm xong.
+- ✅ Các phần chưa dùng được bị **ẩn** khi chạy với API thật (chế độ mock của khách vẫn hiện):
+  - nút Apple Wallet;
+  - công tắc "Use my location";
+  - gửi eGift (banner "Send a gift card" ở Home và form ở màn Gift cards — màn này vẫn hiện số dư + lịch sử, kèm dòng "Gift cards are available at any EightyTwenty café…");
+  - "Add a card" (lưu thẻ) ở Payment methods.
+
+  Bật lại bằng `EXPO_PUBLIC_WALLET_PASSES` / `EXPO_PUBLIC_NEAREST_CAFE` / `EXPO_PUBLIC_GIFT_CARD_SALES` / `EXPO_PUBLIC_SAVED_CARDS` = `true` khi đã làm xong.
 
 ## ⛔ Chặn — phải xong trước khi nộp
 

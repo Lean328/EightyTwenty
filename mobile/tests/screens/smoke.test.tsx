@@ -33,6 +33,7 @@ import { PrivacyScreen } from '@/features/profile/screens/PrivacyScreen';
 import { ProfileScreen } from '@/features/profile/screens/ProfileScreen';
 import { ReserveScreen } from '@/features/reservations/screens/ReserveScreen';
 import { AppChrome } from '@/navigation/AppChrome';
+import { config } from '@/constants/config';
 import { RepositoryProvider, type Repositories } from '@/repositories';
 import { sessionContext } from '@/repositories/createRepositories';
 import { biometrics } from '@/services/integrations/biometrics';
@@ -167,6 +168,21 @@ describe('every screen renders on the native code path', () => {
     await show(ActivityScreen);
     await fireEvent.press(screen.getByText('Track'));
     expect(router.push).toHaveBeenLastCalledWith(`/orders/${order.id}`);
+  });
+
+  it('the real API hides eGift sales and saved cards (no payment provider for them yet)', async () => {
+    const features = config.features as { giftCardSales: boolean; savedCards: boolean };
+    jest.replaceProperty(features, 'giftCardSales', false);
+    jest.replaceProperty(features, 'savedCards', false);
+    const gift = await show(GiftCardsScreen);
+    expect(screen.queryByText('Send a gift card')).toBeNull();
+    expect(screen.getByText(/available at any EightyTwenty café/)).toBeTruthy();
+    await gift.unmount();
+    const cards = await show(PaymentMethodsScreen);
+    expect(screen.queryByText('Add a card')).toBeNull();
+    await cards.unmount();
+    await show(HomeScreen);
+    expect(screen.queryByLabelText(/Send a gift card/)).toBeNull();
   });
 
   it('Face ID lock: covers the app until Face ID succeeds, only when turned on', async () => {

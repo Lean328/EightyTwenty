@@ -102,7 +102,7 @@ export function HomeScreen() {
           </Rise>
         ) : null}
 
-        <GiftCardBanner />
+        {config.features.giftCardSales ? <GiftCardBanner /> : null}
 
         <View style={styles.band}>
           <View style={styles.gutter}>

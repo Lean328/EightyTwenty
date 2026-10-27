@@ -84,8 +84,9 @@ export function PaymentMethodsScreen() {
             />
           </View>
         ))}
-        {!cards.length ? <Text style={[sans(13, 400, 1.45), styles.none]}>No saved cards — add one for a faster checkout.</Text> : null}
-        {open ? (
+        {!cards.length && config.features.savedCards ? <Text style={[sans(13, 400, 1.45), styles.none]}>No saved cards — add one for a faster checkout.</Text> : null}
+        {/* Saving a card needs Square's Cards API: until then cards are entered at checkout. */}
+        {!config.features.savedCards ? null : open ? (
           <Reveal style={styles.form}>
             <TextField value={number} onChangeText={(t) => (setNumber(t), setError(false))} placeholder="Card number" accessibilityLabel="Card number" keyboardType="number-pad" autoComplete="cc-number" background={colors.cream} />
             <TextField value={expiry} onChangeText={(t) => (setExpiry(t), setError(false))} placeholder="MM / YY" accessibilityLabel="Expiry" autoComplete="cc-exp" background={colors.cream} />
