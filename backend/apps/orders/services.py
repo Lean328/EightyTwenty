@@ -221,8 +221,35 @@ def create_order(user, data, idempotency_key="", request_hash=""):
     reference = ""
     if totals["total"] > 0:
         reference = payments.charge(
-            totals["total"], payment.get("token"), f"EightyTwenty order at {location.name}"
+            totals["total"],
+            payment.get("token"),
+            f"EightyTwenty app order at {location.name}",
+            idempotency_key=idempotency_key,
+            location=location,
         )
+    try:
+        return save_order(
+            user,
+            data,
+            location,
+            priced,
+            card,
+            gift,
+            totals,
+            reference,
+            idempotency_key,
+            request_hash,
+        )
+    except Exception:
+        # Nothing was saved, so release the authorisation instead of leaving it to lapse.
+        payments.refund(reference, totals["total"])
+        raise
+
+
+def save_order(
+    user, data, location, priced, card, gift, totals, reference, idempotency_key, request_hash
+):
+    payment = data["payment"]
     redeemed = totals["reward"] > 0
     _, earned = loyalty.stamps_after_order(card.stamps, totals["coffee_count"], redeemed)
     timing = data["timing"]
@@ -330,6 +357,9 @@ def after_status_change(order, previous):
     if order.status in CLOSED and previous not in CLOSED:
         loyalty.reverse_order(order)
         payments.refund(order.payment_reference, order.total_cents)
+    elif previous == "received":
+        # The café accepted the order: take the money the order authorised.
+        payments.capture(order.payment_reference)
     if text := status_message(order):
         notify(order.customer, "order", text, f"/orders/{order.pk}")
 

@@ -112,8 +112,9 @@ class LocationAdmin(OperationsAdmin):
         (
             "Mobile app",
             {
-                "fields": ("area", "headline"),
-                "description": "Short card label and the line on the app's Home featured card.",
+                "fields": ("area", "headline", "square_location_id"),
+                "description": "Short card label and the line on the app's Home featured card; "
+                "the Square location that receives this café's app payments.",
             },
         ),
         RECORD_FIELDS,

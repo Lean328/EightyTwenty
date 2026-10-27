@@ -16572,6 +16572,12 @@ components:
         wait_text:
           type: string
           maxLength: 120
+        square_location_id:
+          type: string
+          description: This café's location ID in Square (Square Dashboard → Locations).
+            App card and Apple Pay payments for orders here go to it; empty = the
+            default location.
+          maxLength: 64
         booking_label:
           type: string
           maxLength: 120
@@ -16863,6 +16869,12 @@ components:
         wait_text:
           type: string
           maxLength: 120
+        square_location_id:
+          type: string
+          description: This café's location ID in Square (Square Dashboard → Locations).
+            App card and Apple Pay payments for orders here go to it; empty = the
+            default location.
+          maxLength: 64
         booking_label:
           type: string
           maxLength: 120
@@ -18870,6 +18882,12 @@ components:
         wait_text:
           type: string
           maxLength: 120
+        square_location_id:
+          type: string
+          description: This café's location ID in Square (Square Dashboard → Locations).
+            App card and Apple Pay payments for orders here go to it; empty = the
+            default location.
+          maxLength: 64
         booking_label:
           type: string
           maxLength: 120

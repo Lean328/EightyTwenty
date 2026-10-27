@@ -31,6 +31,14 @@ class Location(ManagedModel):
     )
     note = models.TextField(blank=True)
     wait_text = models.CharField(max_length=120, blank=True)
+    square_location_id = models.CharField(
+        max_length=64,
+        blank=True,
+        default="",
+        db_default="",
+        help_text="This café's location ID in Square (Square Dashboard → Locations). App card "
+        "and Apple Pay payments for orders here go to it; empty = the default location.",
+    )
     booking_label = models.CharField(max_length=120, blank=True)
     external_order_url = models.URLField(blank=True)
     status = models.CharField(

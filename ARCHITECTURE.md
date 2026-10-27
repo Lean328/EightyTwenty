@@ -470,7 +470,7 @@ Có file `backend/.env.example` liệt kê đủ các biến này (không có gi
 ## 14. Câu hỏi mở (cần khách hàng trả lời — chưa được giả định)
 
 1. **POS/TapTouch:** chi nhánh đang dùng TapTouch (`lifeintouch.net`) cho POS & order. BOS sẽ **thay thế** TapTouch hay **tích hợp** (TapTouch có API không)? Ảnh hưởng toàn bộ Phase 2.
-2. **Cổng thanh toán:** Stripe / Square / Tyro / giữ TapTouch? Có cần Apple Pay / Google Pay? Phụ phí thẻ 2.95% còn áp dụng?
+2. **Cổng thanh toán:** ~~Stripe / Square / Tyro / giữ TapTouch?~~ **Đã chốt Square cho app điện thoại (27/10/2026)**: thẻ + Apple Pay qua Square In-App Payments SDK, server gọi Square Payments API (`apps/orders/payments.py`, `docs/SQUARE_SETUP.md`). Còn mở: eGift qua Square Gift Cards, lưu thẻ (Cards API), phụ phí thẻ 2.95% còn áp dụng?
 3. **Giá & menu theo chi nhánh:** có khác nhau không, hay chỉ khác còn/hết món? (Mô hình đã hỗ trợ override.)
 4. **Delivery:** tự giao (phí 10% như `ORDER_RULES`?) hay qua Uber Eats/DoorDash?
 5. **Booking:** chi nhánh nào nhận đặt bàn? Sức chứa? Tự xác nhận hay nhân viên duyệt?
@@ -519,7 +519,7 @@ Website nằm ở `website/` (không phải `web/`), không đổi cấu hình V
 
 - Khách gửi giao diện + code app Expo (`EightyTwentyMobile`, do dev khác nối API). App đã code sẵn theo hợp đồng riêng (`docs/API_CONTRACTS.md` của app: camelCase, cents, lỗi `{error:{code: VALIDATION|PRICE_CHANGED|…}}`, refresh token xoay vòng, Idempotency-Key). Backend làm **API riêng cho app** ở `/api/v1/app/...` (app `apps/mobile`: chỉ views/serializers/presenters/errors, không model), khớp từng path trong `endpoints.ts`; API website/BOS giữ nguyên. Tài liệu publish: `/api/docs/app/` (hướng dẫn `apps/mobile/guide.md` + docstring từng endpoint).
 - Domain mới: `apps/orders` (Order, OrderLine; tính giá phía server = port `computeTotals` của app, integer cents, half-up ở bước phí giao + phụ phí thẻ; trạng thái received→confirmed→preparing→ready→completed | declined, nhân viên được nhảy bước; decline hoàn gift card + stamp), `apps/loyalty` (LoyaltyCard 9 stamp → ly thứ 10 miễn phí, LoyaltyActivity, GiftCard, GiftCardActivity), `AppNotification` (feed trong app), `cms.Offer`/`cms.Faq`, `accounts.SavedAddress` + field app trên CustomerProfile (preferences JSON, favourites, seen-at, closure). Thêm field: `Location.area/headline`, `Category.short_name`, `Booking.seating`, `Enquiry.customer`. `apps/menu/catalog.py` dùng chung cho menu app và tính giá order.
-- **Thanh toán chưa chọn (mục 14 vẫn mở)**: `apps/orders/payments.py` là chỗ duy nhất thay khi chọn cổng. Mặc định trả 501; `PAYMENT_PROVIDER=demo` nhận token demo, không thu tiền.
+- **Thanh toán = Square (27/10/2026)**: `apps/orders/payments.py` là chỗ duy nhất gọi cổng. `PAYMENT_PROVIDER` rỗng → 501; `demo` → token demo, không thu tiền; `square` → authorize khi đặt đơn, capture khi quán nhận, cancel/refund khi từ chối.
 - Booking từ app là *yêu cầu* (quy trình hiện tại của quán): lưu vào BOS + email hộp thư quán, không cần BookingRule bật; rule kiểm tra theo app (giờ mở, trước giờ đóng 30 phút, ≥12 giờ, từ ngày mai).
 - Đổi mật khẩu: mật khẩu tối thiểu 10 ký tự (validator Django) — app đang cho 6, server trả 422 rõ ràng. Link reset của app mở trang `/account/reset-password` trên server.
 

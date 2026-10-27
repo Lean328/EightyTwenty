@@ -936,6 +936,12 @@ class GiftSendView(AppView):
         if values["amountCents"] not in s.GIFT_AMOUNTS:
             raise invalid("Choose $25, $50, $75 or $100.", amountCents="invalid")
         name = values["recipientName"].strip()
+        if payments.provider() == "square":
+            # Paying works, but issuing and emailing the eGift card in Square is not built yet:
+            # never take money for a card nobody receives.
+            raise AppError(
+                "NOT_IMPLEMENTED", "Sending eGift cards isn’t available in the app yet.", 501
+            )
         reference = payments.charge(
             values["amountCents"], values["paymentToken"], f"EightyTwenty eGift card for {name}"
         )

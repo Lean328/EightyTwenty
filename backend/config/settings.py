@@ -254,14 +254,20 @@ TURNSTILE_SECRET_KEY = env("TURNSTILE_SECRET_KEY", default="")
 TURNSTILE_ENABLED = env.bool("TURNSTILE_ENABLED", default=False)
 TURNSTILE_ALLOWED_HOSTNAMES = env.list("TURNSTILE_ALLOWED_HOSTNAMES", default=[])
 JOB_TOKEN = env("JOB_TOKEN", default="")
-# Mobile app payments. No provider has been chosen yet: empty = card/Apple Pay charges answer
-# 501 NOT_IMPLEMENTED (orders fully covered by a gift card still go through). "demo" accepts
-# the app's demo_… tokens and charges nothing — only for testing the app end to end.
 # Expo push notifications for the customer app (no key needed; optional access token).
 PUSH_ENABLED = env.bool("PUSH_ENABLED", default=True)
 EXPO_PUSH_URL = env("EXPO_PUSH_URL", default="https://exp.host/--/api/v2/push/send")
 EXPO_ACCESS_TOKEN = env("EXPO_ACCESS_TOKEN", default="")
+# Mobile app payments (apps/orders/payments.py): empty = card/Apple Pay charges answer 501
+# NOT_IMPLEMENTED (orders fully covered by a gift card still go through); "demo" accepts the
+# app's demo_… tokens and charges nothing (test servers only); "square" = Square Payments API
+# with the access token below (sandbox or production) and the café's Square location
+# (Location.square_location_id, else SQUARE_LOCATION_ID).
 PAYMENT_PROVIDER = env("PAYMENT_PROVIDER", default="")
+SQUARE_ACCESS_TOKEN = env("SQUARE_ACCESS_TOKEN", default="")
+SQUARE_ENVIRONMENT = env("SQUARE_ENVIRONMENT", default="sandbox")
+SQUARE_LOCATION_ID = env("SQUARE_LOCATION_ID", default="")
+SQUARE_VERSION = env("SQUARE_VERSION", default="2026-08-19")
 DOCS_ENABLED = env.bool("DOCS_ENABLED", default=True)
 DATA_UPLOAD_MAX_MEMORY_SIZE = 1024 * 1024
 SECURE_CONTENT_TYPE_NOSNIFF = True
@@ -294,6 +300,7 @@ if TESTING:
     JOB_TOKEN = "test-job-secret-not-for-production"
     SUPABASE_URL = SUPABASE_SERVICE_ROLE_KEY = SUPABASE_PUBLIC_MEDIA_BASE = ""
     EMAIL_PROVIDER_API_KEY = TURNSTILE_SECRET_KEY = PAYMENT_PROVIDER = EXPO_ACCESS_TOKEN = ""
+    SQUARE_ACCESS_TOKEN = SQUARE_LOCATION_ID = ""
     PUSH_ENABLED = False
     # backend/.env points at the shared Supabase database, so anything that is not a local
     # PostgreSQL (CI, docker compose) becomes an in-memory SQLite database.

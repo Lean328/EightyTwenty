@@ -10,6 +10,8 @@ Push cho app: `PUSH_ENABLED` (mặc định `True`) bật gửi qua Expo Push AP
 
 `PAYMENT_PROVIDER` (app điện thoại): để trống (mặc định, production) → đơn có tiền phải trả và gửi eGift trả `501 NOT_IMPLEMENTED` vì chưa chọn cổng thanh toán; đơn được gift card trả hết vẫn chạy. `PAYMENT_PROVIDER=demo` chỉ dùng trên server test: nhận token `demo_…` của app, **không thu tiền** — đừng bật ở nơi khách thật đặt đơn (quán sẽ nhận đơn chưa trả tiền). Chi tiết: trang `/api/docs/app/`, mục 3.8.
 
+Square (chủ dự án chọn 27/10/2026, xem `docs/SQUARE_SETUP.md`): `PAYMENT_PROVIDER=square` + `SQUARE_ACCESS_TOKEN` (bí mật, chỉ đặt trên Render) + `SQUARE_ENVIRONMENT` (`sandbox` khi thử, `production` khi bán thật) + `SQUARE_LOCATION_ID` (location mặc định; từng quán ghi đè ở BOS → Locations → Mobile app → Square location ID). Đơn app chỉ **giữ tiền** (authorize) lúc đặt, **trừ tiền** khi quán nhận đơn, **trả lại** khi quán từ chối/hủy (hủy khoản giữ hoặc refund). Lỗi refund không chặn thao tác của quán — xem log Render và hoàn tay trong Square Dashboard.
+
 `TRUSTED_PROXY_COUNT=0` mặc định lấy REMOTE_ADDR (dùng cho local). `render.yaml` đặt sẵn `TRUSTED_PROXY_COUNT=1` vì sau proxy Render, REMOTE_ADDR là IP proxy — để 0 thì mọi khách dùng chung một bucket rate limit (cả site chỉ 10 form/giờ). Sau lần deploy đầu, gửi thử vài form từ hai mạng khác nhau để xác nhận rate limit tính riêng từng IP. Không lấy tùy ý phần tử đầu X-Forwarded-For vì header có thể giả mạo. Throttle lưu DB, chia sẻ giữa worker, fixed window; đây không phải lớp chống DDoS ở edge.
 
 ## Supabase
