@@ -11,6 +11,7 @@ import { Icon } from '@/components/ui/Icon';
 import { TextAction } from '@/components/ui/Links';
 import { Text } from '@/components/ui/Text';
 import { Touchable } from '@/components/ui/Touchable';
+import { config } from '@/constants/config';
 import { isRewardReady, stampsToGo } from '@/domain/loyalty';
 import { useMenuStore } from '@/features/menu/menuStore';
 import { useBottomSpace } from '@/hooks/useBottomSpace';
@@ -97,14 +98,16 @@ export function LoyaltyScreen() {
           <View style={styles.actions}>
             <View style={[styles.notch, { left: -26 }]} />
             <View style={[styles.notch, { right: -26 }]} />
-            <Touchable onPress={() => setWalletOpen(true)} pressedOpacity={0.85} accessibilityLabel={card?.walletPassAdded ? 'Apple Wallet, pass added' : 'Add to Apple Wallet'} style={styles.wallet}>
-              <View style={styles.walletIcon}>
-                <View style={[styles.wb, { height: 4, borderTopLeftRadius: 2, borderTopRightRadius: 2, backgroundColor: colors.sand }]} />
-                <View style={[styles.wb, { height: 4, backgroundColor: colors.caramel }]} />
-                <View style={[styles.wb, { height: 6, borderBottomLeftRadius: 3, borderBottomRightRadius: 3, backgroundColor: colors.espresso }]} />
-              </View>
-              <Text style={[sans(14, 600), { color: colors.ink }]}>Apple Wallet</Text>
-            </Touchable>
+            {config.features.walletPasses ? (
+              <Touchable onPress={() => setWalletOpen(true)} pressedOpacity={0.85} accessibilityLabel={card?.walletPassAdded ? 'Apple Wallet, pass added' : 'Add to Apple Wallet'} style={styles.wallet}>
+                <View style={styles.walletIcon}>
+                  <View style={[styles.wb, { height: 4, borderTopLeftRadius: 2, borderTopRightRadius: 2, backgroundColor: colors.sand }]} />
+                  <View style={[styles.wb, { height: 4, backgroundColor: colors.caramel }]} />
+                  <View style={[styles.wb, { height: 6, borderBottomLeftRadius: 3, borderBottomRightRadius: 3, backgroundColor: colors.espresso }]} />
+                </View>
+                <Text style={[sans(14, 600), { color: colors.ink }]}>Apple Wallet</Text>
+              </Touchable>
+            ) : null}
             <Touchable onPress={() => setMemberCardOpen(true)} pressedOpacity={0.85} style={styles.show}>
               <Icon name="barcode" size={18} strokeWidth={1.8} color={colors.espresso} />
               <Text style={[sans(14, 600), { color: colors.espresso }]}>Show card</Text>

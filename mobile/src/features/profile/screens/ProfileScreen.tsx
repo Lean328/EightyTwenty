@@ -7,6 +7,7 @@ import { Icon } from '@/components/ui/Icon';
 import { ArrowLink } from '@/components/ui/Links';
 import { Text } from '@/components/ui/Text';
 import { Touchable } from '@/components/ui/Touchable';
+import { config } from '@/constants/config';
 import { useSignOut } from '@/features/auth/hooks';
 import { useCateringEnquiries } from '@/features/catering/hooks';
 import { useGiftCard } from '@/features/gift-cards/hooks';
@@ -83,7 +84,7 @@ export function ProfileScreen() {
         <SettingsGroup title="Payment & wallet">
           <SettingsRow icon="card" label="Payment methods" detail={'Apple Pay' + (cards[0] ? ` · ${cards[0].brand} ·· ${cards[0].last4}` : '')} onPress={() => router.push('/account/payment-methods')} />
           <SettingsRow icon="gift" label="Gift cards" detail={formatMoney(gift?.balance ?? 0)} onPress={() => router.push('/account/gift-cards')} />
-          <SettingsRow icon="wallet" label="Apple Wallet" detail={card?.walletPassAdded ? 'Pass added' : 'Not added'} onPress={() => setWalletOpen(true)} />
+          {config.features.walletPasses ? <SettingsRow icon="wallet" label="Apple Wallet" detail={card?.walletPassAdded ? 'Pass added' : 'Not added'} onPress={() => setWalletOpen(true)} /> : null}
         </SettingsGroup>
         <SettingsGroup title="Preferences">
           <SettingsRow icon="pin" label="Home café" detail={location?.name} onPress={() => openCafePicker()} />

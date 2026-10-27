@@ -48,6 +48,17 @@ export const config = {
     applicationId: process.env.EXPO_PUBLIC_SQUARE_APPLICATION_ID ?? '',
     applePayMerchantId: process.env.EXPO_PUBLIC_APPLE_PAY_MERCHANT_ID ?? '',
   },
+  /**
+   * Prototype features that need something not connected yet. The client's mock mode keeps
+   * them; against the real API they stay hidden (a button that does nothing is an App Store
+   * rejection) until switched on here.
+   *  - walletPasses: Apple Wallet pass — needs a Pass Type ID + signing on the backend.
+   *  - nearestCafe: "Use my location" — needs café coordinates in BOS and expo-location.
+   */
+  features: {
+    walletPasses: dataSource === 'mock' || readBool(process.env.EXPO_PUBLIC_WALLET_PASSES, false),
+    nearestCafe: dataSource === 'mock' || readBool(process.env.EXPO_PUBLIC_NEAREST_CAFE, false),
+  },
   /** Customer website (privacy policy, terms). */
   websiteUrl: (process.env.EXPO_PUBLIC_WEBSITE_URL || 'https://eightytwenty.pages.dev').replace(/\/+$/, ''),
   mock: {

@@ -77,7 +77,7 @@ export function PrivacyScreen() {
       <ScrollView contentContainerStyle={[styles.content, { paddingBottom: bottom }]}>
         {prefs ? (
           <ToggleGroup>
-            {ROWS.map((r, i) => (
+            {ROWS.filter((r) => r.key !== 'useLocation' || config.features.nearestCafe).map((r, i) => (
               <ToggleRow
                 key={r.key}
                 first={i === 0}
