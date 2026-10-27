@@ -28,10 +28,7 @@ Rà soát ngày 27/10/2026 (nhánh `feat/mobile-app`). Ký hiệu: ✅ đã xong
    - Bản phát hành **thiếu** `EXPO_PUBLIC_SQUARE_APPLICATION_ID` thì app báo "Card payments aren't available"; đừng nộp bản như vậy.
    - eGift vẫn 501 khi dùng Square (chờ khách quyết định có dùng Square Gift Cards không); lưu thẻ vẫn 501.
    - Mua đồ ăn/đồ uống dùng ở quán là hàng hoá vật lý nên **không** phải dùng In-App Purchase của Apple.
-2. **Deploy backend của nhánh này lên production** (merge `feat/mobile-app` → `main`, Render tự deploy và chạy migration).
-   - Production hiện **chưa có** `DELETE /me` (xoá tài khoản, Apple bắt buộc), `POST /me/password`, `url` trong feed thông báo, gửi offer từ BOS.
-   - Migration mới: `notifications/0005_appnotification_url` (chỉ thêm cột).
-   - Nhánh merge sạch với `main` (đã thử `git merge-tree`).
+2. ✅ **Đã deploy backend lên production** (27/10/2026, `main` = `acb5da8`, CI xanh gồm Postgres 17): production có `DELETE /me` (xoá tài khoản), `POST /me/password`, `url` trong feed thông báo, gửi offer từ BOS, ô Square location ID. Migration `notifications/0005`, `locations/0007` đã chạy. Production vẫn để `PAYMENT_PROVIDER` trống (đơn có tiền → 501) cho tới khi bật Square.
 3. **Tài khoản Apple Developer** của khách (nên là tài khoản tổ chức; tên người bán hiển thị trên App Store), app record trên App Store Connect với bundle id `au.com.eightytwentyfood.app`. Lần chạy `make ios-build` đầu tiên sẽ hỏi đăng nhập Apple để tạo certificate, provisioning profile và push key (APNs).
 4. **Tài khoản demo cho Apple review** trên production: email + mật khẩu, có sẵn vài đơn và dấu thẻ cà phê, ghi vào mục App Review Information. Phải tạo trên production nên cần chủ dự án làm hoặc cho phép.
 5. **Privacy policy + App Privacy.**
