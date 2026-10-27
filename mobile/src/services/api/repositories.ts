@@ -205,9 +205,9 @@ export class HttpLoyaltyRepository implements LoyaltyRepository {
     const res = await this.http.get<D.PageDTO<D.LoyaltyActivityDTO>>(endpoints.me.loyaltyActivity, { query: { cursor: page.cursor, limit: page.limit } });
     return { items: res.items.map(M.loyaltyActivityFromDto), nextCursor: res.nextCursor };
   }
-  async getWalletPassUrl(): Promise<string | null> {
+  async getWalletPassUrl(returnUrl?: string): Promise<string | null> {
     try {
-      return (await this.http.get<{ url: string }>(endpoints.me.walletPass)).url;
+      return (await this.http.get<{ url: string }>(endpoints.me.walletPass, { query: { return: returnUrl } })).url;
     } catch (e) {
       if (e instanceof AppError && e.code === 'NOT_FOUND') return null;
       throw e;

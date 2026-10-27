@@ -48,7 +48,7 @@ Rà soát ngày 27/10/2026 (nhánh `feat/mobile-app`). Ký hiệu: ✅ đã xong
 
 ## ⚠️ Nên làm
 
-- **Apple Wallet**: code đã xong (backend ký `.pkpass` + tự cập nhật thẻ). Còn thiếu Pass Type ID + chứng chỉ trên tài khoản Apple Developer, đặt lên Render (docs/OPERATIONS.md); có rồi thì nút tự hiện trong app.
+- **Apple Wallet**: đã chạy trên production (27/10/2026): Pass Type ID `pass.au.com.eightytwentyfood.loyalty`, chứng chỉ hết hạn 26/11/2027 (gia hạn: docs/OPERATIONS.md). Server trả `walletPassAvailable: true` nên nút tự hiện trong app. Còn thử trên iPhone: thêm thẻ vào Wallet và thẻ tự đổi số dấu khi tích dấu ở quầy.
 - **Email trên production**: dùng Brevo (giá trị trong `backend/.env.production`, dán vào Render). Tài khoản Brevo bật Authorised IPs: phải thêm IP của Render, nếu không Brevo trả 401 và "Forgot password" cùng email báo quán không gửi được.
 - ✅ **"Use my location"**: đã có toạ độ 9 quán trên production; app xin quyền vị trí khi khách bật và xếp quán gần nhất lên đầu.
 - **Ảnh Keep Cups** (offer): upload trong BOS → App offers.

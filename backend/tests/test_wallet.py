@@ -78,9 +78,10 @@ def app(customer):
 
 
 def download(app):
-    url = app.get(f"{BASE}/me/loyalty/wallet-pass").json()["url"]
-    assert url.startswith("http://testserver/api/v1/app/wallet/pass?ticket=")
-    return APIClient().get(url.removeprefix("http://testserver"))
+    links = app.get(f"{BASE}/me/loyalty/wallet-pass").json()
+    assert links["url"].startswith("http://testserver/api/v1/app/wallet/add?ticket=")
+    assert links["passUrl"].startswith("http://testserver/api/v1/app/wallet/pass?ticket=")
+    return APIClient().get(links["passUrl"].removeprefix("http://testserver"))
 
 
 def test_no_certificates_no_wallet_button(app):
@@ -98,6 +99,7 @@ def test_the_pass_is_a_signed_coffee_card(app, customer, configured):
     archive = zipfile.ZipFile(io.BytesIO(response.content))
     names = set(archive.namelist())
     assert {"pass.json", "manifest.json", "signature", "icon.png", "logo@2x.png"} <= names
+    assert {"strip.png", "strip@2x.png", "strip@3x.png"} <= names  # the stamps, drawn
     manifest = json.loads(archive.read("manifest.json"))
     for name, digest in manifest.items():
         assert hashlib.sha1(archive.read(name)).hexdigest() == digest
@@ -114,8 +116,39 @@ def test_the_pass_is_a_signed_coffee_card(app, customer, configured):
         "altText": card.member_number,
     }
     assert data["storeCard"]["headerFields"][0]["value"] == "6/9"
-    assert data["storeCard"]["primaryFields"][0]["value"] == "3 more until your free coffee"
-    assert data["storeCard"]["secondaryFields"][0]["value"] == "Sophie Nguyen"
+    member, reward = data["storeCard"]["secondaryFields"]
+    assert member["value"] == "Sophie Nguyen" and reward["value"] == "3 more to go"
+
+
+def test_add_page_hands_the_pass_to_wallet_then_returns_to_the_app(app, configured):
+    back = "exp://192.168.1.5:8081/--/loyalty?added=1"
+    url = app.get(f"{BASE}/me/loyalty/wallet-pass", {"return": back}).json()["url"]
+    page = APIClient().get(url.removeprefix("http://testserver"))
+    assert page.status_code == 200 and page["Content-Type"].startswith("text/html")
+    html = page.content.decode()
+    assert "/api/v1/app/wallet/pass?ticket=" in html and "Back to the app" in html
+    assert 'href="exp://192.168.1.5:8081/--/loyalty?added=1"' in html
+    # Only app links go back; anything else is dropped. A bad ticket explains itself.
+    evil = app.get(f"{BASE}/me/loyalty/wallet-pass", {"return": "https://evil.example"}).json()
+    assert "evil" not in evil["url"]
+    assert "expired" in APIClient().get(f"{BASE}/wallet/add?ticket=nope").content.decode()
+
+
+def test_card_updates_survive_garbage_collection(customer, configured):
+    """The receiver is held strongly: on production (DEBUG off) a weak one was collected."""
+    import gc
+    import weakref
+
+    from django.db.models.signals import post_save
+
+    held = [r for r in post_save.receivers if r[0][0] == "wallet_card_changed"]
+    assert len(held) == 1 and not isinstance(held[0][1], weakref.ReferenceType)
+    gc.collect()
+    wallet_pass = wallet.pass_for(card_for(customer))
+    card = LoyaltyCard.objects.get(user=customer)
+    card.stamps = 2
+    card.save()
+    assert WalletPass.objects.get(pk=wallet_pass.pk).version == wallet_pass.version + 1
 
 
 def test_a_stale_or_forged_ticket_is_refused(configured, db):

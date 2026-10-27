@@ -1,0 +1,82 @@
+{% load static %}<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="robots" content="noindex">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#4B2E26">
+  <title>Coffee card | EightyTwenty</title>
+  <style>
+    :root { --bg: #F4EFE6; --card: #FDFBF7; --ink: #33251F; --muted: #76655B; --line: #E4DACB;
+            --espresso: #4B2E26; --sand: #D6B48C; --on-espresso: #F7F0E4; }
+    @media (prefers-color-scheme: dark) {
+      :root { --bg: #17110E; --card: #221915; --ink: #F3ECE2; --muted: #B5A597; --line: #3A2C25;
+              --espresso: #D6B48C; --on-espresso: #221915; }
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body { background: var(--bg); color: var(--ink); display: flex; align-items: center; justify-content: center;
+           min-height: 100vh; min-height: 100dvh;
+           font: 15px/1.55 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+           padding: max(24px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom)); }
+    main { width: 100%; max-width: 420px; background: var(--card); border: 1px solid var(--line);
+           border-radius: 22px; padding: 32px 24px 24px; text-align: center; }
+    .mark { width: 72px; height: 72px; display: block; border-radius: 50%; margin: 0 auto 18px; background: #fff; }
+    h1 { font: 500 23px/1.25 Georgia, "Times New Roman", serif; margin: 0 0 8px; }
+    p { margin: 0 0 6px; color: var(--muted); }
+    .rule { width: 36px; height: 2px; background: var(--sand); border: 0; margin: 14px auto 16px; border-radius: 2px; }
+    .actions { display: grid; gap: 10px; margin-top: 22px; }
+    .button { display: flex; align-items: center; justify-content: center; min-height: 48px; border-radius: 999px;
+              font: 600 15px/1 -apple-system, BlinkMacSystemFont, sans-serif; text-decoration: none;
+              border: 1px solid var(--line); color: var(--ink); background: transparent; }
+    .button.primary { background: var(--espresso); border-color: var(--espresso); color: var(--on-espresso); }
+    .hint { font-size: 12.5px; margin-top: 14px; }
+    [hidden] { display: none !important; }
+  </style>
+</head>
+<body>
+  <main>
+    <img class="mark" src="{% static 'bos/img/logo-mark.png' %}" alt="EightyTwenty">
+    {% if pass_url %}
+      <section id="adding">
+        <h1>Adding your coffee card</h1>
+        <hr class="rule">
+        <p>Tap <strong>Add</strong> when Apple Wallet asks.</p>
+      </section>
+      <section id="after" hidden>
+        <h1>Your coffee card is ready</h1>
+        <hr class="rule">
+        <p>If you tapped Add, it’s now in Apple Wallet and updates by itself every time you collect a stamp.</p>
+      </section>
+      <div class="actions">
+        {% if return_url %}<a id="back" class="button primary" href="{{ return_url }}" hidden>Back to the app</a>{% endif %}
+        <a id="again" class="button" href="{{ pass_url }}">Add to Apple Wallet again</a>
+      </div>
+      <p class="hint">{% if return_url %}You can also tap Done to close this page.{% else %}You can close this page.{% endif %}</p>
+      <script>
+        // Hand the card to Wallet straight away; once its sheet closes, show the way back
+        // instead of a blank page.
+        var shown = false;
+        function showAfter() {
+          if (shown) return;
+          shown = true;
+          document.getElementById('adding').hidden = true;
+          document.getElementById('after').hidden = false;
+          var back = document.getElementById('back');
+          if (back) back.hidden = false;
+        }
+        setTimeout(function () { location.href = {{ pass_url_json|safe }}; }, 350);
+        document.addEventListener('visibilitychange', function () { if (!document.hidden) setTimeout(showAfter, 300); });
+        window.addEventListener('focus', function () { setTimeout(showAfter, 300); });
+        setTimeout(showAfter, 4000);
+      </script>
+    {% else %}
+      <h1>This link has expired</h1>
+      <hr class="rule">
+      <p>Open your coffee card in the EightyTwenty app and tap Add to Apple Wallet again.</p>
+      {% if return_url %}<div class="actions"><a class="button primary" href="{{ return_url }}">Back to the app</a></div>{% endif %}
+    {% endif %}
+  </main>
+</body>
+</html>

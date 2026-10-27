@@ -50,6 +50,7 @@ from . import examples as X
 from . import presenters as p
 from . import serializers as s
 from .errors import AppError, app_exception_handler, invalid, not_found
+from .wallet_views import RETURN_URL, pass_links
 
 AUTH, ACCOUNT, CATALOGUE, ORDERS, REWARDS, BOOKINGS, FEED = (
     "App · Auth",
@@ -846,23 +847,28 @@ class WalletPassView(AppView):
     @doc(
         REWARDS,
         "Apple Wallet pass URL (404 until passes are issued)",
+        parameters=[OpenApiParameter("return", str, required=False)],
         responses={200: s.WalletPassOut},
         errors=(404,),
     )
     def get(self, request):
         """
-        A link to the customer's coffee card as an Apple Wallet pass (`.pkpass`, valid for 10
-        minutes): the app opens it and iOS shows "Add to Apple Wallet". The pass updates by itself
-        when stamps change. Answers `404` "Wallet passes aren’t available yet." until the server has
-        its Wallet certificates (`walletPassAvailable` on the coffee card says which).
+        Links to the customer's coffee card in Apple Wallet, valid for 10 minutes. `url` is a
+        small page to open in an in-app browser sheet: it hands the pass to Wallet ("Add to Apple
+        Wallet"), then shows "Back to the app", which opens `return` (optional query parameter:
+        an `eightytwenty://` or `exp://` link) so the app can close the sheet. `passUrl` is the
+        `.pkpass` itself. The pass updates by itself when stamps change. Answers `404` "Wallet
+        passes aren’t available yet." until the server has its Wallet certificates
+        (`walletPassAvailable` on the coffee card says which).
         """
         if not wallet.ready():
             raise not_found("Wallet passes aren’t available yet.")
         wallet_pass = wallet.pass_for(loyalty.card_for(request.user))
-        url = request.build_absolute_uri(
-            f"/api/v1/app/wallet/pass?ticket={wallet.download_ticket(wallet_pass)}"
+        return_url = request.query_params.get("return", "")
+        page, pass_url = pass_links(
+            request, wallet_pass, return_url if RETURN_URL.match(return_url) else ""
         )
-        return out(s.WalletPassOut, {"url": url})
+        return out(s.WalletPassOut, {"url": page, "passUrl": pass_url})
 
 
 class WalletPassAddedView(AppView):

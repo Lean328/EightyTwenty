@@ -4,11 +4,15 @@ Apple's pass web service (iPhones register, ask what changed, fetch the new pass
 calls authenticate with "ApplePass <authenticationToken>" from the pass, not a JWT.
 """
 
+import json
+import re
 import secrets
 import uuid
+from urllib.parse import urlencode
 
 from django.conf import settings
 from django.http import HttpResponse
+from django.shortcuts import render
 from django.utils.http import http_date
 from drf_spectacular.utils import extend_schema
 from rest_framework import permissions
@@ -58,6 +62,46 @@ def _uuid(value):
     except ValueError:
         return False
     return True
+
+
+RETURN_URL = re.compile(r"^(exps?|eightytwenty)://[^\s\"'<>]{0,300}$")
+
+
+def pass_links(request, wallet_pass, return_url=""):
+    """(the "adding your card" page, the .pkpass itself) for one short-lived ticket."""
+    ticket = wallet.download_ticket(wallet_pass)
+    pass_url = request.build_absolute_uri(f"/api/v1/app/wallet/pass?ticket={ticket}")
+    query = {"ticket": ticket}
+    if return_url:
+        query["return"] = return_url
+    return request.build_absolute_uri(f"/api/v1/app/wallet/add?{urlencode(query)}"), pass_url
+
+
+class AddPageView(AppleView):
+    """GET wallet/add?ticket=…&return=… — opened in an in-app browser sheet: hands the pass to
+    Wallet, then offers "Back to the app" (the app's own link) instead of a blank page."""
+
+    def get(self, request):
+        ticket = request.query_params.get("ticket", "")
+        return_url = request.query_params.get("return", "")
+        if not RETURN_URL.match(return_url):
+            return_url = ""
+        pass_url = ""
+        if wallet.pass_from_ticket(ticket):
+            pass_url = request.build_absolute_uri(
+                f"/api/v1/app/wallet/pass?{urlencode({'ticket': ticket})}"
+            )
+        response = render(
+            request._request,
+            "wallet/add.html",
+            {
+                "pass_url": pass_url,
+                "pass_url_json": json.dumps(pass_url),
+                "return_url": return_url,
+            },
+        )
+        response["Cache-Control"] = "no-store"
+        return response
 
 
 class PassDownloadView(AppleView):

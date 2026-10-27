@@ -2117,11 +2117,19 @@ paths:
     get:
       operationId: v1_app_me_loyalty_wallet_pass_retrieve
       description: |-
-        A link to the customer's coffee card as an Apple Wallet pass (`.pkpass`, valid for 10
-        minutes): the app opens it and iOS shows "Add to Apple Wallet". The pass updates by itself
-        when stamps change. Answers `404` "Wallet passes aren’t available yet." until the server has
-        its Wallet certificates (`walletPassAvailable` on the coffee card says which).
+        Links to the customer's coffee card in Apple Wallet, valid for 10 minutes. `url` is a
+        small page to open in an in-app browser sheet: it hands the pass to Wallet ("Add to Apple
+        Wallet"), then shows "Back to the app", which opens `return` (optional query parameter:
+        an `eightytwenty://` or `exp://` link) so the app can close the sheet. `passUrl` is the
+        `.pkpass` itself. The pass updates by itself when stamps change. Answers `404` "Wallet
+        passes aren’t available yet." until the server has its Wallet certificates
+        (`walletPassAvailable` on the coffee card says which).
       summary: Apple Wallet pass URL (404 until passes are issued)
+      parameters:
+      - in: query
+        name: return
+        schema:
+          type: string
       tags:
       - App · Loyalty & gift cards
       security:
@@ -22440,6 +22448,8 @@ components:
       type: object
       properties:
         url:
+          type: string
+        passUrl:
           type: string
       required:
       - url

@@ -75,7 +75,7 @@ export class MockLoyaltyRepository extends MockRepository implements LoyaltyRepo
   }
 
   /** TODO(backend): return a signed .pkpass URL (Apple Pass Type ID certificate required). */
-  async getWalletPassUrl(): Promise<string | null> {
+  async getWalletPassUrl(_returnUrl?: string): Promise<string | null> {
     await this.me();
     return null;
   }

@@ -480,6 +480,7 @@ class LoyaltyPageOut(serializers.Serializer):
 
 class WalletPassOut(serializers.Serializer):
     url = serializers.CharField()
+    passUrl = serializers.CharField(required=False)
 
 
 class ReservationOut(serializers.Serializer):

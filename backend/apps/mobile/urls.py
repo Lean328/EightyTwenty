@@ -54,6 +54,7 @@ urlpatterns = [
     path("content/offers", v.OffersView.as_view()),
     path("content/faqs", v.FaqsView.as_view()),
     # Apple Wallet: the pass download, then Apple's pass web service (webServiceURL = …/wallet).
+    path("wallet/add", w.AddPageView.as_view()),
     path("wallet/pass", w.PassDownloadView.as_view()),
     path(
         "wallet/v1/devices/<str:device>/registrations/<str:pass_type>/<str:serial>",

@@ -1,4 +1,5 @@
 import { Image } from 'expo-image';
+import { usePathname } from 'expo-router';
 import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BottomSheet } from '@/components/layout/BottomSheet';
@@ -16,7 +17,7 @@ const WORDMARK = require('../../../../assets/branding/wordmark-white.webp');
 
 /**
  * Apple Wallet "Add pass" sheet styled like the iOS add-pass card.
- * MOCK: "Add" records the pass as added; no real .pkpass is installed (see services/integrations/wallet.ts).
+ * MOCK: "Add" records the pass as added. Real API: "Add" opens the server's add-to-Wallet page (see services/integrations/wallet.ts).
  */
 export function WalletPassSheet() {
   const open = useUiStore((s) => s.walletOpen);
@@ -29,17 +30,18 @@ export function WalletPassSheet() {
   const per = card?.stampsPerReward ?? 9;
   const stamps = card?.stamps ?? 0;
 
-  const onAction = () => {
-    // A real pass can be opened again (re-added after removing it); the mock just closes.
-    if (added && walletPassService.isDemo) return setOpen(false);
-    add.mutate(undefined, {
-      onSuccess: () => {
+  const pathname = usePathname();
+  const addToWallet = () =>
+    add.mutate(pathname, {
+      onSuccess: (next) => {
         setOpen(false);
-        showToast(walletPassService.isDemo ? 'Wallet preview — no pass was installed' : 'Added to Apple Wallet');
+        if (walletPassService.isDemo) showToast('Wallet preview — no pass was installed');
+        else if (next.walletPassAdded) showToast('Your coffee card is in Apple Wallet');
       },
       onError: (e) => showToast(errorMessage(e)),
     });
-  };
+  // Once the card is in Wallet, "Done" just closes; "Add again" (below) re-adds a removed pass.
+  const onAction = () => (added ? setOpen(false) : addToWallet());
 
   return (
     <BottomSheet visible={open} onClose={() => setOpen(false)} accessibilityLabel="Apple Wallet pass" backgroundColor={colors.walletSheet} backdropColor="rgba(0,0,0,0.5)">
@@ -78,6 +80,11 @@ export function WalletPassSheet() {
           {added ? 'In your Wallet — it updates automatically as you collect stamps.' : 'Your coffee card appears in Wallet and updates automatically as you collect stamps.'}
         </Text>
         {walletPassService.isDemo ? <Text style={[styles.sys, styles.foot]}>Preview — Apple Wallet passes aren’t issued yet.</Text> : null}
+        {added && !walletPassService.isDemo ? (
+          <Touchable onPress={addToWallet} pressedScale={0.97} disabled={add.isPending} style={styles.again}>
+            <Text style={[styles.sys, { fontSize: 14, fontWeight: '600', color: colors.iosBlue, opacity: add.isPending ? 0.5 : 1 }]}>Add to Apple Wallet again</Text>
+          </Touchable>
+        ) : null}
       </View>
     </BottomSheet>
   );
@@ -95,5 +102,6 @@ const styles = StyleSheet.create({
   cells: { flexDirection: 'row', gap: 4, marginTop: 14 },
   cell: { flex: 1, aspectRatio: 1, borderRadius: 999, borderWidth: 1 },
   barcode: { marginTop: 16, paddingVertical: 10, paddingHorizontal: 14, borderRadius: 8, backgroundColor: colors.creamText },
+  again: { marginTop: 14, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   foot: { marginTop: 16, marginHorizontal: 4, fontSize: 12, lineHeight: 18, color: 'rgba(255,255,255,0.6)' },
 });

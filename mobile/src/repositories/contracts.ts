@@ -121,8 +121,11 @@ export interface PaymentRepository {
 export interface LoyaltyRepository {
   getCard(): Promise<LoyaltyCard>;
   getActivity(page?: PageRequest): Promise<Page<LoyaltyActivity>>;
-  /** URL of a signed .pkpass for this member, or null when Wallet passes aren't issued yet. */
-  getWalletPassUrl(): Promise<string | null>;
+  /**
+   * URL of the "add your coffee card to Apple Wallet" page for this member, or null when Wallet
+   * passes aren't issued yet. `returnUrl` is where the page's "Back to the app" button goes.
+   */
+  getWalletPassUrl(returnUrl?: string): Promise<string | null>;
   markWalletPassAdded(): Promise<LoyaltyCard>;
 }
 

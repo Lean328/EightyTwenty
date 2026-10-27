@@ -51,6 +51,7 @@ jest.mock('expo-router', () => {
     useLocalSearchParams: () => params,
     useFocusEffect: (effect: () => void | (() => void)) => useEffect(effect, [effect]),
     useIsFocused: () => true,
+    usePathname: () => '/loyalty',
     Link: ({ children }: { children: ReactNode }) => children,
   };
 });

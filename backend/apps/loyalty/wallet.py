@@ -26,8 +26,10 @@ from django.conf import settings
 from django.core import signing
 from django.db import close_old_connections, transaction
 from django.db.models import F
+from django.utils import timezone
 
 from .models import STAMPS_PER_REWARD, LoyaltyCard, WalletPass, WalletRegistration
+from .wallet_art import strips
 
 logger = logging.getLogger(__name__)
 
@@ -127,25 +129,20 @@ def pass_json(wallet_pass):
                     "changeMessage": "Your EightyTwenty coffee card now has %@ stamps.",
                 }
             ],
-            "primaryFields": [
+            # The stamps themselves are drawn on the strip image (wallet_art.py).
+            "secondaryFields": [
+                {"key": "member", "label": "MEMBER", "value": user.get_full_name() or user.email},
                 {
                     "key": "reward",
-                    "label": "COFFEE CARD",
-                    "value": "Free coffee ready"
-                    if ready_now
-                    else f"{away} more until your free coffee",
+                    "label": "FREE COFFEE",
+                    "value": "Ready to enjoy" if ready_now else f"{away} more to go",
+                    "textAlignment": "PKTextAlignmentRight",
                     **(
-                        {"changeMessage": "%@ — show your card at the counter."}
+                        {"changeMessage": "Your free coffee is ready — show your card."}
                         if ready_now
                         else {}
                     ),
-                }
-            ],
-            "secondaryFields": [
-                {"key": "member", "label": "MEMBER", "value": user.get_full_name() or user.email},
-            ],
-            "auxiliaryFields": [
-                {"key": "number", "label": "MEMBER NO.", "value": card.member_number},
+                },
             ],
             "backFields": [
                 {
@@ -165,6 +162,7 @@ def pass_json(wallet_pass):
                     "label": "Website",
                     "value": settings.CLIENT_BASE_URL or "https://eightytwenty.pages.dev",
                 },
+                {"key": "number", "label": "Member number", "value": card.member_number},
                 {
                     "key": "terms",
                     "label": "Terms",
@@ -192,6 +190,7 @@ def build_pkpass(wallet_pass):
     files = {"pass.json": json.dumps(pass_json(wallet_pass), indent=2).encode()}
     for asset in sorted(ASSETS.glob("*.png")):
         files[asset.name] = asset.read_bytes()
+    files.update(strips(min(wallet_pass.card.stamps, STAMPS_PER_REWARD), STAMPS_PER_REWARD))
     manifest = json.dumps(
         {name: hashlib.sha1(data).hexdigest() for name, data in files.items()}, indent=2
     ).encode()
@@ -240,7 +239,10 @@ def sign(manifest):
 
 def card_changed(card_id):
     """A coffee card was saved: newer pass version, then tell the iPhones holding it."""
-    if not WalletPass.objects.filter(card_id=card_id).update(version=F("version") + 1):
+    changed = WalletPass.objects.filter(card_id=card_id).update(
+        version=F("version") + 1, updated_at=timezone.now()
+    )
+    if not changed:
         return
     if not ready():
         return  # stays pending; goes out once Wallet is configured and the card changes again
@@ -304,11 +306,16 @@ def push_pending():
     return sent, failed
 
 
+def on_card_saved(sender, instance, created, **kwargs):
+    if not created:
+        card_changed(instance.pk)
+
+
 def connect_signals():
     from django.db.models.signals import post_save
 
-    def on_card_saved(sender, instance, created, **kwargs):
-        if not created:
-            card_changed(instance.pk)
-
-    post_save.connect(on_card_saved, sender=LoyaltyCard, dispatch_uid="wallet_card_changed")
+    # weak=False: a weakly held receiver can be garbage collected (it was on production, where
+    # DEBUG is off and nothing else keeps a reference), and then cards silently stop updating.
+    post_save.connect(
+        on_card_saved, sender=LoyaltyCard, weak=False, dispatch_uid="wallet_card_changed"
+    )

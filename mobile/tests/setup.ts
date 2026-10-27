@@ -27,6 +27,11 @@ jest.mock('expo-notifications', () => ({
   setNotificationChannelAsync: jest.fn(async () => null),
   getExpoPushTokenAsync: jest.fn(async () => ({ data: 'ExponentPushToken[test]' })),
 }));
+jest.mock('expo-web-browser', () => ({
+  openBrowserAsync: jest.fn(async () => ({ type: 'cancel' })),
+  dismissBrowser: jest.fn(),
+  WebBrowserPresentationStyle: { PAGE_SHEET: 'pageSheet' },
+}));
 jest.mock('expo-location', () => ({
   Accuracy: { Balanced: 3 },
   getForegroundPermissionsAsync: jest.fn(async () => ({ granted: false })),
