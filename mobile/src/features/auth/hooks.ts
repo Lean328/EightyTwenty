@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRepositories, type SignInRequest, type SignUpRequest } from '@/repositories';
+import { biometrics } from '@/services/integrations/biometrics';
 import { pushToken } from '@/services/integrations/push';
 import { useCartStore } from '@/store/cart';
 import { useSessionStore } from '@/store/session';
@@ -42,6 +43,8 @@ export function useSignOut() {
     pushToken.set(null);
     if (session) await repos.auth.signOut(session).catch(() => undefined);
     await useSessionStore.getState().signOut();
+    // The next person to sign in on this phone chooses Face ID for themselves.
+    await biometrics.setLockOn(false).catch(() => undefined);
     qc.clear();
     useCartStore.getState().reset();
     useUiStore.setState({ item: null, cafePicker: null, orderSettingsOpen: false, walletOpen: false, memberCardOpen: false, avatarOpen: false, newStamps: 0 });

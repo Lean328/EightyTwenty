@@ -173,6 +173,23 @@ case "$TARGET" in
     rm -rf "$out"
     ;;
 
+  ios-build)
+    # Release build on EAS with the production API (mobile/eas.json). The first run asks for
+    # the Apple Developer account and creates the certificate, profile and push key.
+    require_node_modules
+    log_step "iOS release build on EAS (production API, about 15-20 minutes)"
+    log_info "Checklist before submitting: mobile/docs/APP_STORE.md"
+    cd "$MB"
+    npx eas-cli build --platform ios --profile production
+    ;;
+
+  ios-submit)
+    # Uploads the latest EAS iOS build to App Store Connect (then TestFlight / review).
+    require_node_modules
+    cd "$MB"
+    npx eas-cli submit --platform ios --latest
+    ;;
+
   lan-ip)
     lan_ip || true; echo
     ;;

@@ -27,6 +27,11 @@ jest.mock('expo-notifications', () => ({
   setNotificationChannelAsync: jest.fn(async () => null),
   getExpoPushTokenAsync: jest.fn(async () => ({ data: 'ExponentPushToken[test]' })),
 }));
+jest.mock('expo-local-authentication', () => ({
+  hasHardwareAsync: jest.fn(async () => true),
+  isEnrolledAsync: jest.fn(async () => true),
+  authenticateAsync: jest.fn(async () => ({ success: true })),
+}));
 jest.mock('expo-secure-store', () => {
   const store = new Map<string, string>();
   return {

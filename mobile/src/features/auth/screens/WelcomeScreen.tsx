@@ -44,7 +44,7 @@ export function WelcomeScreen() {
 }
 
 /** "EIGHTY / twenty" wordmark set in Newsreader with the red slash. */
-function Wordmark() {
+export function Wordmark() {
   return (
     <View style={styles.wordmark} accessibilityRole="header" accessibilityLabel="EightyTwenty">
       <Text style={[serif(24, 400, undefined, 0.22), styles.upper]}>Eighty</Text>

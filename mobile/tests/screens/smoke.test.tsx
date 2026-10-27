@@ -5,9 +5,10 @@
  * phone before anyone taps through it.
  */
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, render, screen } from '@testing-library/react-native';
+import { act, fireEvent, render, screen } from '@testing-library/react-native';
 import type { ComponentType, ReactNode } from 'react';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { BiometricLock } from '@/features/auth/components/BiometricLock';
 import { WelcomeScreen } from '@/features/auth/screens/WelcomeScreen';
 import { CartScreen } from '@/features/cart/screens/CartScreen';
 import { CateringScreen } from '@/features/catering/screens/CateringScreen';
@@ -34,6 +35,7 @@ import { ReserveScreen } from '@/features/reservations/screens/ReserveScreen';
 import { AppChrome } from '@/navigation/AppChrome';
 import { RepositoryProvider, type Repositories } from '@/repositories';
 import { sessionContext } from '@/repositories/createRepositories';
+import { biometrics } from '@/services/integrations/biometrics';
 import { createMockRepositories, resetMockDatabase } from '@/services/mock';
 import { DEMO_EMAIL } from '@/services/mock/fixtures/demoCustomer';
 import { useCartStore } from '@/store/cart';
@@ -151,6 +153,35 @@ describe('every screen renders on the native code path', () => {
     expect(screen.getByText(plain.name)).toBeTruthy();
     await show(CheckoutScreen);
     expect(screen.getAllByText('Checkout', { exact: false }).length).toBeGreaterThan(0);
+  });
+
+  it('an order in progress is reachable from Home and from Activity', async () => {
+    const { router } = jest.requireMock<{ router: { push: jest.Mock } }>('expo-router');
+    const order = { ...(await repos.orders.getOrderHistory()).items[0]!, status: 'preparing' as const, createdAt: new Date().toISOString() };
+    jest.spyOn(repos.orders, 'getOrderHistory').mockResolvedValue({ items: [order], nextCursor: null });
+    const home = await show(HomeScreen);
+    await fireEvent.press(screen.getByLabelText(`Order ${order.number}, Preparing. Track your order`));
+    expect(router.push).toHaveBeenLastCalledWith(`/orders/${order.id}`);
+    await home.unmount();
+    params.segment = 'orders';
+    await show(ActivityScreen);
+    await fireEvent.press(screen.getByText('Track'));
+    expect(router.push).toHaveBeenLastCalledWith(`/orders/${order.id}`);
+  });
+
+  it('Face ID lock: covers the app until Face ID succeeds, only when turned on', async () => {
+    const auth = jest.requireMock<{ authenticateAsync: jest.Mock }>('expo-local-authentication').authenticateAsync;
+    await show(BiometricLock);
+    expect(screen.queryByText('Unlock with Face ID')).toBeNull();
+    expect(auth).not.toHaveBeenCalled();
+
+    await biometrics.setLockOn(true);
+    auth.mockResolvedValueOnce({ success: false });
+    await show(BiometricLock);
+    expect(screen.getByText('Unlock with Face ID')).toBeTruthy();
+    await fireEvent.press(screen.getByText('Unlock with Face ID'));
+    expect(screen.queryByText('Unlock with Face ID')).toBeNull();
+    await biometrics.setLockOn(false);
   });
 
   it('Menu inside the app chrome, with every global sheet open', async () => {

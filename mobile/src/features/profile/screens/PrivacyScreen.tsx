@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { Screen } from '@/components/layout/Screen';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
@@ -9,6 +9,7 @@ import { useSignOut } from '@/features/auth/hooks';
 import { useBottomSpace } from '@/hooks/useBottomSpace';
 import { useRepositories } from '@/repositories';
 import { errorMessage } from '@/services/errors';
+import { biometrics } from '@/services/integrations/biometrics';
 import { openUrl } from '@/services/integrations/links';
 import { showToast } from '@/store/ui';
 import { colors, sans } from '@/theme';
@@ -25,9 +26,10 @@ const ROWS: { key: keyof SecuritySettings; title: string; description: string }[
 ];
 
 /**
- * Privacy & security. Toggles are stored preferences (biometric sign-in and location-based
- * sorting are not wired to the device yet); password change, account deletion and the
- * legal pages use the live API / website.
+ * Privacy & security. "Sign in with Face ID" is this phone's own switch (Face ID unlocks the
+ * app when it opens: BiometricLock); the other toggles are stored preferences (location-based
+ * sorting is not wired yet). Password change, account deletion and the legal pages use the
+ * live API / website.
  */
 export function PrivacyScreen() {
   const bottom = useBottomSpace(132);
@@ -36,6 +38,23 @@ export function PrivacyScreen() {
   const update = useUpdatePreferences();
   const signOut = useSignOut();
   const [passwordOpen, setPasswordOpen] = useState(false);
+  const [faceId, setFaceId] = useState(false);
+  useEffect(() => {
+    void biometrics.isLockOn().then(setFaceId, () => undefined);
+  }, []);
+
+  const toggleFaceId = async (on: boolean) => {
+    if (on) {
+      if (!(await biometrics.available().catch(() => false))) {
+        showToast('Set up Face ID on this iPhone first');
+        return;
+      }
+      if (!(await biometrics.authenticate('Turn on Face ID for EightyTwenty').catch(() => false))) return;
+    }
+    await biometrics.setLockOn(on);
+    setFaceId(on);
+    if (prefs) update.mutate({ security: { ...prefs.security, biometricSignIn: on } });
+  };
 
   const closeAccount = async () => {
     const sure = await confirmAction(
@@ -59,7 +78,14 @@ export function PrivacyScreen() {
         {prefs ? (
           <ToggleGroup>
             {ROWS.map((r, i) => (
-              <ToggleRow key={r.key} first={i === 0} title={r.title} description={r.description} value={prefs.security[r.key]} onChange={(on) => update.mutate({ security: { ...prefs.security, [r.key]: on } })} />
+              <ToggleRow
+                key={r.key}
+                first={i === 0}
+                title={r.title}
+                description={r.description}
+                value={r.key === 'biometricSignIn' ? faceId : prefs.security[r.key]}
+                onChange={(on) => (r.key === 'biometricSignIn' ? void toggleFaceId(on) : update.mutate({ security: { ...prefs.security, [r.key]: on } }))}
+              />
             ))}
           </ToggleGroup>
         ) : null}

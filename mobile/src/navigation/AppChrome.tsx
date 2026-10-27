@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { StyleSheet, View } from 'react-native';
 import { TabBar, useTabBarHeight } from '@/components/layout/TabBar';
 import { PaidOverlay } from '@/components/shared/PaidOverlay';
+import { BiometricLock } from '@/features/auth/components/BiometricLock';
 import { ToastHost } from '@/components/shared/ToastHost';
 import { MiniCart } from '@/features/cart/components/MiniCart';
 import { OrderSettingsSheet } from '@/features/cart/components/OrderSettingsSheet';
@@ -72,6 +73,7 @@ export function AppChrome({ state, navigation, children }: AppChromeProps) {
       <AvatarSheet />
       <PaidOverlay />
       <ToastHost />
+      <BiometricLock />
     </View>
   );
 }

@@ -24,7 +24,7 @@ MOBILE := $(BASH) scripts/mobile.sh
 	migrate makemigrations showmigrations shell superuser openapi messages \
 	test test-pg test-web lint format ci qa pg-up pg-down \
 	mobile mobile-clear mobile-prod mobile-mock mobile-tunnel mobile-web mobile-install \
-	mobile-check mobile-test mobile-typecheck mobile-lint mobile-doctor mobile-bundle api-smoke
+	ios-build ios-submit mobile-check mobile-test mobile-typecheck mobile-lint mobile-doctor mobile-bundle api-smoke
 
 help: ## Show this list.
 	@$(DEV) help
@@ -60,6 +60,12 @@ mobile-tunnel: ## Expo Go over a tunnel when the Wi-Fi blocks the phone (product
 
 mobile-web: ## The app in a desktop browser on http://localhost:8082.
 	@$(MOBILE) web
+
+ios-build: ## iOS release build on EAS with the production API (mobile/eas.json).
+	@$(MOBILE) ios-build
+
+ios-submit: ## Upload the latest EAS iOS build to App Store Connect.
+	@$(MOBILE) ios-submit
 
 mobile-install: ## npm install in mobile/.
 	@$(MOBILE) install

@@ -11,7 +11,10 @@
     "backgroundColor": "#F5F0E8",
     "ios": {
       "supportsTablet": false,
-      "bundleIdentifier": "au.com.eightytwentyfood.app"
+      "bundleIdentifier": "au.com.eightytwentyfood.app",
+      "config": {
+        "usesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "au.com.eightytwentyfood.app",
@@ -49,7 +52,13 @@
           "defaultChannel": "default"
         }
       ],
-      "@react-native-community/datetimepicker"
+      "@react-native-community/datetimepicker",
+      [
+        "expo-local-authentication",
+        {
+          "faceIDPermission": "Unlock EightyTwenty with Face ID instead of your password."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

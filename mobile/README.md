@@ -183,6 +183,7 @@ docs/                     architecture, backend handoff, API contracts, data mod
 
 | Document | For |
 |---|---|
+| [docs/APP_STORE.md](docs/APP_STORE.md) | App Store release checklist: what is ready, what blocks submission, `make ios-build` / `make ios-submit` |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) | How the app is put together; how to add screens, endpoints and features |
 | [docs/BACKEND_HANDOFF.md](docs/BACKEND_HANDOFF.md) | What the backend must provide, business rules it owns, open questions |
 | [docs/API_CONTRACTS.md](docs/API_CONTRACTS.md) | Proposed REST contracts for every repository method |
