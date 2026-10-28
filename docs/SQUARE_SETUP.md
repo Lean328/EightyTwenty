@@ -6,6 +6,42 @@ Chủ dự án chọn Square ngày 27/10/2026, theo nội dung app của khách 
 - những gì code đã có,
 - các bước bật lên và cách thử.
 
+## 0. Cách xin khách (đã chốt 28/10/2026): khách mời mình vào team Square
+
+App vẫn build và phát hành dưới tài khoản Apple Developer của chủ dự án (team `988D5VKVXS`); chỉ Square là của khách. Thay vì khách tự lấy từng mã rồi gửi, khách **mời chủ dự án vào team Square của họ** — không phải gửi token qua chat, và bước chứng chỉ Apple Pay (phải giữ nguyên hộp thoại Square trong lúc tạo chứng chỉ bên Apple) do mình tự làm.
+
+**Khách chỉ cần:**
+
+1. Có tài khoản **Square Úc** của EightyTwenty, đã xác minh doanh nghiệp và bật nhận thanh toán online.
+2. Square Dashboard → **Team** → mời email của chủ dự án, cho quyền dùng **Developer Console**.
+3. Trả lời 4 câu nghiệp vụ (trong tin nhắn bên dưới; chi tiết ở mục 1, câu 6–9).
+
+**Sau đó mình tự làm** (Developer Console của khách, chế độ **Production**):
+
+1. Tạo application `EightyTwenty`.
+2. Lấy **Application ID** (`sq0idp-…`) → `mobile/eas.json` (`EXPO_PUBLIC_SQUARE_APPLICATION_ID`), build lại app.
+3. Lấy **Access token** (`EAAA…`) → Render: `SQUARE_ACCESS_TOKEN`, `SQUARE_ENVIRONMENT=production`; lưu bản sao vào `D:\Data\projects\eightytwenty-secrets\square\` (ngoài repo).
+4. Lấy **Location ID từng quán** → BOS → Locations → Mobile app → Square location ID (và một mã mặc định cho `SQUARE_LOCATION_ID` trên Render).
+5. **Apple Pay**: application → Apple Pay → Production → Add certificate → tải CSR → (giữ nguyên hộp thoại) Apple Developer → Merchant ID `merchant.au.com.eightytwentyfood` → Create Certificate bằng CSR đó → tải `.cer` → upload vào đúng hộp thoại Square. Merchant ID giữ nguyên.
+6. Đặt một đơn thật nhỏ, quán nhận, rồi hoàn trong Square Dashboard để kiểm tra trọn vòng; xoá `EMAIL_REDIRECT_TO` trên Render trước khi phát hành.
+
+**Tin nhắn gửi khách** (thay `[your email]`):
+
+> Hi, to switch on card and Apple Pay payments in the EightyTwenty app we need access to your Square account. The easiest way:
+>
+> 1. Make sure EightyTwenty has a verified Square account (Australia) with online payments enabled.
+> 2. In Square Dashboard → Team, invite **[your email]** as a team member with access to the Developer Console. We'll set up the app connection and Apple Pay from there, so no passwords or keys need to be sent around.
+>
+> A few quick decisions from you:
+> - Payment flow: the card is authorised when the customer orders, charged when the café accepts the order, and released if the café declines. Is that OK?
+> - Should we keep the 2.95% card surcharge (Apple Pay has none)?
+> - What name should appear on customers' card statements?
+> - For the first release, do you need eGift cards sold in the app, or saved cards for next time? (Both can be added later.)
+>
+> Thanks!
+
+Nếu khách không muốn mời vào team: xin các mã ở mục 1 bên dưới, và làm bước Apple Pay cùng lúc với khách (chia sẻ màn hình).
+
 ## 1. Cần xin khách
 
 Access token là **bí mật**: nhờ khách gửi qua kênh an toàn (ví dụ trình quản lý mật khẩu, link chia sẻ một lần), không gửi qua email/chat thường, và không đưa vào app hay vào git.
