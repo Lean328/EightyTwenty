@@ -170,7 +170,9 @@ def customer_summary(user):
         },
         "email": user.email,
         "card": card,
-        "stamps": [i < (card.stamps if card else 0) for i in range(STAMPS_PER_REWARD)],
+        "stamps": [i < (card.stamps % STAMPS_PER_REWARD if card else 0) for i in range(STAMPS_PER_REWARD)],
+        "reward_count": card.stamps // STAMPS_PER_REWARD if card else 0,
+        "stamp_progress": card.stamps % STAMPS_PER_REWARD if card else 0,
         "gift": gift,
         "gift_balance": ui.aud(gift.balance_cents if gift else 0),
         "profile": ui.facts(
@@ -525,7 +527,7 @@ class CustomerAdmin(UserAdmin):
     @admin.display(description="Coffee card")
     def stamps(self, obj):
         card = getattr(obj, "loyalty_card", None)
-        return f"{card.stamps}/{STAMPS_PER_REWARD}" if card else "—"
+        return f"{card.stamps // STAMPS_PER_REWARD} rewards · {card.stamps % STAMPS_PER_REWARD}/{STAMPS_PER_REWARD}" if card else "—"
 
     @admin.display(description="Gift card")
     def gift_balance(self, obj):

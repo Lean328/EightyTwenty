@@ -442,6 +442,8 @@ class SavedCardOut(serializers.Serializer):
 
 
 class LoyaltyCardOut(serializers.Serializer):
+    progressStamps = serializers.IntegerField()
+    rewards = serializers.IntegerField()
     stamps = serializers.IntegerField()
     stampsPerReward = serializers.IntegerField()
     memberNumber = serializers.CharField()

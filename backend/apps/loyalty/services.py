@@ -27,10 +27,10 @@ def is_coffee(category_slug, name):
 
 
 def stamps_after_order(stamps, coffee_count, reward_redeemed):
-    """Redeeming resets the card, the free coffee earns nothing, the card caps at 9."""
-    base = 0 if reward_redeemed else stamps
+    """Keep accumulated rewards and remainder; a free coffee earns no stamp."""
+    base = stamps - STAMPS_PER_REWARD if reward_redeemed else stamps
     earned_raw = max(0, coffee_count - (1 if reward_redeemed else 0))
-    after = min(STAMPS_PER_REWARD, base + earned_raw)
+    after = base + earned_raw
     return after, max(0, after - base)
 
 
@@ -65,7 +65,7 @@ def gift_card_for(user, lock=False):
 def apply_order(card, gift, order):
     """Stamps, reward and gift card spend for an accepted order (cards already locked)."""
     if order.reward_redeemed:
-        card.stamps = 0
+        card.stamps -= STAMPS_PER_REWARD
         LoyaltyActivity.objects.create(
             card=card,
             type="redeem",
@@ -73,7 +73,7 @@ def apply_order(card, gift, order):
             location_name=order.location.name,
         )
     if order.stamps_earned:
-        card.stamps = min(STAMPS_PER_REWARD, card.stamps + order.stamps_earned)
+        card.stamps += order.stamps_earned
         LoyaltyActivity.objects.create(
             card=card,
             type="earn",
@@ -99,7 +99,7 @@ def reverse_order(order):
     card = card_for(order.customer, lock=True)
     if order.stamps_earned or order.reward_redeemed:
         restored = STAMPS_PER_REWARD if order.reward_redeemed else 0
-        card.stamps = max(0, min(STAMPS_PER_REWARD, card.stamps - order.stamps_earned + restored))
+        card.stamps = max(0, card.stamps - order.stamps_earned + restored)
         card.save(update_fields=["stamps", "updated_at"])
         if order.stamps_earned:
             LoyaltyActivity.objects.create(
@@ -142,7 +142,7 @@ def record_stamp_change(card, before, location_name="In store"):
             card=card,
             type="redeem",
             description="Free coffee redeemed"
-            if card.stamps == 0
+            if before - card.stamps == STAMPS_PER_REWARD
             else "Stamps adjusted by the team",
             location_name=location_name,
         )
@@ -150,16 +150,14 @@ def record_stamp_change(card, before, location_name="In store"):
 
 @transaction.atomic
 def add_stamp(card, request, location_name="In store"):
-    """One coffee at the counter: +1 stamp, up to the full card."""
+    """One coffee at the counter: +1 stamp, retaining accumulated rewards."""
     card = LoyaltyCard.objects.select_for_update().get(pk=card.pk)
-    if card.stamps >= STAMPS_PER_REWARD:
-        raise DomainError("card_full", "The card is full: redeem the free coffee first.", 409)
     return _set_stamps(card, card.stamps + 1, request, location_name)
 
 
 @transaction.atomic
 def redeem_reward(card, request, location_name="In store"):
-    """The 10th coffee is free: only a full card can be redeemed, and it starts again at 0."""
+    """Redeem one reward, preserving all other rewards and progress."""
     card = LoyaltyCard.objects.select_for_update().get(pk=card.pk)
     if card.stamps < STAMPS_PER_REWARD:
         raise DomainError(
@@ -167,7 +165,7 @@ def redeem_reward(card, request, location_name="In store"):
             f"{card.stamps} of {STAMPS_PER_REWARD} stamps: the free coffee is not earned yet.",
             409,
         )
-    return _set_stamps(card, 0, request, location_name)
+    return _set_stamps(card, card.stamps - STAMPS_PER_REWARD, request, location_name)
 
 
 def _set_stamps(card, stamps, request, location_name):

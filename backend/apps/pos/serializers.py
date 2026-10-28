@@ -529,7 +529,7 @@ class PosCustomerOut(serializers.Serializer):
     phone = serializers.CharField(allow_blank=True)
     email = serializers.CharField()
     stamps = serializers.IntegerField(help_text="0–8 towards the next free coffee.")
-    rewards = serializers.IntegerField(help_text="1 when a free coffee is ready (9 stamps).")
+    rewards = serializers.IntegerField(help_text="Number of earned free coffees available.")
     homeCafe = serializers.CharField(allow_blank=True)
     dietary = serializers.ListField(child=serializers.CharField())
     notes = serializers.CharField(allow_blank=True)

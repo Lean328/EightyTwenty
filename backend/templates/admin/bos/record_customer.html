@@ -9,10 +9,10 @@
         {% if customer.card %}<a class="bos-link" href="{% url 'admin:loyalty_loyaltycard_change' customer.card.pk %}">Open</a>{% endif %}
       </header>
       {% if customer.card %}
-        <div class="bos-stamps" role="img" aria-label="{{ customer.card.stamps }} of {{ customer.stamps|length }} stamps">
+        <div class="bos-stamps" role="img" aria-label="{{ customer.stamp_progress }} of {{ customer.stamps|length }} stamps">
           {% for filled in customer.stamps %}<span class="{% if filled %}is-on{% endif %}">{% icon 'coffee' %}</span>{% endfor %}
         </div>
-        <p class="bos-card-foot">{% if customer.card.stamps >= customer.stamps|length %}The next coffee is free.{% else %}{{ customer.card.stamps }} of {{ customer.stamps|length }} stamps · the 10th coffee is free{% endif %}</p>
+        <p class="bos-card-foot">{{ customer.reward_count }} rewards ready · {{ customer.stamp_progress }} of {{ customer.stamps|length }} stamps</p>
       {% else %}
         <div class="bos-empty bos-empty-sm"><p>The card opens with the first coffee in the app.</p></div>
       {% endif %}

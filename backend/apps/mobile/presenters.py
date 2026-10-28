@@ -229,7 +229,9 @@ def quote(priced, values):
 
 def loyalty_card(card):
     return {
-        "stamps": card.stamps,
+        "stamps": min(card.stamps, STAMPS_PER_REWARD),
+        "progressStamps": card.stamps % STAMPS_PER_REWARD,
+        "rewards": card.stamps // STAMPS_PER_REWARD,
         "stampsPerReward": STAMPS_PER_REWARD,
         "memberNumber": card.member_number,
         "eligibility": ELIGIBILITY,

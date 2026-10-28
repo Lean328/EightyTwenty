@@ -120,7 +120,7 @@ def require_embedded_payment_staff(handler):
         from . import serializers, services
 
         data = self.valid(serializers.PosOrderIn)
-        if data.get("payments"):
+        if data.get("payments") or data.get("serverLoyalty"):
             location = services.location_for(request.user, data["cafe"])
             request.pos_staff = require_staff_permission(request, "pos", location)
         return handler(self, request, *args, **kwargs)
