@@ -5,7 +5,6 @@ from django.shortcuts import redirect
 from django.urls import path, reverse
 from django.utils.html import format_html, format_html_join
 from django.utils.http import url_has_allowed_host_and_scheme
-from django.utils.safestring import mark_safe
 from django.views.decorators.http import require_POST
 
 from apps.core.admin_base import RECORD_FIELDS, OperationsAdmin
@@ -48,21 +47,15 @@ class GiftCardActivityInline(ActivityInline):
 
 
 def stamp_dots(card):
+    rewards, progress = divmod(card.stamps, STAMPS_PER_REWARD)
     dots = format_html_join(
-        "",
-        '<span class="{}"></span>',
-        ((("is-on" if i < card.stamps else ""),) for i in range(STAMPS_PER_REWARD)),
+        "", '<span class="{}"></span>',
+        ((("is-on" if i < progress else ""),) for i in range(STAMPS_PER_REWARD)),
     )
-    ready = card.stamps >= STAMPS_PER_REWARD
     return format_html(
-        '<span class="bos-dots" title="{} of {} stamps">{}</span> <span class="bos-dots-count">'
-        "{}/{}</span>{}",
-        card.stamps,
-        STAMPS_PER_REWARD,
-        dots,
-        card.stamps,
-        STAMPS_PER_REWARD,
-        mark_safe(' <span class="bos-tag bos-tone-good">Free coffee ready</span>') if ready else "",
+        '<span class="bos-dots">{}</span> <span class="bos-dots-count">{}/{}</span> '
+        '<span class="bos-tag bos-tone-good">{} rewards ready</span>',
+        dots, progress, STAMPS_PER_REWARD, rewards,
     )
 
 
@@ -114,14 +107,14 @@ class LoyaltyCardAdmin(OperationsAdmin):
 
     @admin.display(description="At the counter")
     def counter(self, obj):
-        full = obj.stamps >= STAMPS_PER_REWARD
-        url = reverse(f"admin:loyalty_loyaltycard_{'redeem' if full else 'stamp'}", args=[obj.pk])
+        stamp = reverse("admin:loyalty_loyaltycard_stamp", args=[obj.pk])
+        redeem = reverse("admin:loyalty_loyaltycard_redeem", args=[obj.pk])
         return format_html(
-            '<button type="submit" class="bos-btn bos-btn-sm{}" formaction="{}" formmethod="post"'
-            " formnovalidate>{}</button>",
-            " bos-btn-primary" if full else "",
-            url,
-            "Redeem free coffee" if full else "+1 stamp",
+            '<button type="submit" class="bos-btn bos-btn-sm" formaction="{}" '
+            'formmethod="post" formnovalidate>+1 stamp</button> '
+            '<button type="submit" class="bos-btn bos-btn-sm" formaction="{}" '
+            'formmethod="post" formnovalidate {}>Redeem free coffee</button>',
+            stamp, redeem, "" if obj.stamps >= STAMPS_PER_REWARD else "disabled",
         )
 
     def get_fieldsets(self, request, obj=None):
@@ -139,7 +132,7 @@ class LoyaltyCardAdmin(OperationsAdmin):
             form.base_fields["stamps"].label = "Correct the count"
             form.base_fields[
                 "stamps"
-            ].help_text = "Only to fix a mistake (0–9). For a coffee bought, use +1 stamp below."
+            ].help_text = "Total stamp units, including saved rewards: 20 means 2 rewards + 2 stamps. For a coffee bought, use +1 stamp below."
         return form
 
     def get_readonly_fields(self, request, obj=None):
@@ -191,7 +184,7 @@ class LoyaltyCardAdmin(OperationsAdmin):
             else:
                 name = card.user.get_full_name() or card.user.email
                 self.message_user(
-                    request, f"{done} for {name}: {card.stamps} of {STAMPS_PER_REWARD} stamps."
+                    request, f"{done} for {name}: {card.stamps // STAMPS_PER_REWARD} rewards, {card.stamps % STAMPS_PER_REWARD}/{STAMPS_PER_REWARD} stamps."
                 )
             back = request.POST.get("next") or request.META.get("HTTP_REFERER", "")
             if url_has_allowed_host_and_scheme(back, {request.get_host()}, request.is_secure()):

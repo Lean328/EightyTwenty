@@ -239,6 +239,15 @@ def customer_of(customer_id):
 def create_order(request, data):
     user = request.user
     location = location_for(user, data["cafe"])
+
+    managed_loyalty = data.get("serverLoyalty", False)
+    if managed_loyalty:
+        require_staff_permission(request, "pos", location)
+
+    customer = customer_of(data.get("customerId"))
+    if managed_loyalty and data.get("customerId") and customer is None:
+        raise invalid("The selected customer is no longer available.", customerId="invalid")
+
     if data["channel"] != "pos":
         raise invalid("Only till orders can be created here.", channel="invalid")
     if Order.objects.filter(number=data["id"]).exists():
@@ -260,7 +269,7 @@ def create_order(request, data):
     order = Order.objects.create(
         number=data["id"],
         channel="pos",
-        customer=customer_of(data.get("customerId")),
+        customer=customer,
         location=location,
         method=METHOD_FROM_TILL[data["type"]],
         status=status,
@@ -302,9 +311,13 @@ def create_order(request, data):
             adjust=line.get("adjust") or [],
             prep=line.get("prep") or "",
         )
+    if order.pos_loyalty_managed and order.reward_redeemed:
+        order = reserve_pos_order_reward(request, order)
+
     for payment in data.get("payments") or []:
-        record_payment(request, order, payment, save=False)
-    return order
+        order = record_payment(request, order, payment, save=False)
+
+    return settle_pos_order_loyalty(request, order)
 
 
 def till_total_cents(order):
@@ -433,7 +446,7 @@ def record_payment(request, order, data, save=True):
         touch(order, request, "surcharge_cents")
     elif data.get("surcharge"):
         order.save(update_fields=["surcharge_cents"])
-    return order
+    return settle_pos_order_loyalty(request, order)
 
 
 def change_status(request, order, status, text):
@@ -610,6 +623,16 @@ def adjust(request, order, data):
             "A refund, void or cancellation can’t raise the order total.", total="invalid"
         )
 
+    if (
+        order.channel == "pos"
+        and order.pos_loyalty_managed
+        and order.pos_loyalty_processed_at is not None
+        and order.reward_redeemed
+        and change["mode"] in {"refund", "void"}
+        and change["amount"] < refundable
+    ):
+        raise AppError("CONFLICT", "Partial refunds for orders using a reward need manager review.", 409)
+
     validate_pos_loyalty_adjustment(order, data)
     validate_refund_allocations(order, change)
     shift = resolve_cash_shift(request, order.location, change.get("shiftId"))
@@ -626,7 +649,7 @@ def adjust(request, order, data):
             line.qty = qty
             line.save(update_fields=["qty", "updated_at"])
     before = snapshot(order)
-    OrderAdjustment.objects.create(
+    adjustment = OrderAdjustment.objects.create(
         order=order,
         shift=shift,
         key=change["key"],
@@ -640,6 +663,14 @@ def adjust(request, order, data):
         made_at=change.get("at") or "",
         terminal_id=terminal_of(request),
     )
+    if (
+        order.channel == "pos"
+        and order.pos_loyalty_managed
+        and order.pos_loyalty_processed_at is not None
+        and change["mode"] in {"refund", "void"}
+        and status not in {"refunded", "cancelled", "declined"}
+    ):
+        order = reverse_partial_pos_loyalty(request, order, adjustment)
     if order.channel != "app":  # an app order keeps what the app charged (refunded on cancel)
         order.total_cents = total
         touch(order, request, "total_cents")
@@ -652,6 +683,23 @@ def adjust(request, order, data):
     else:
         note_history(order, text)
         touch(order, request, "history")
+    if (
+        order.channel == "pos"
+        and order.pos_loyalty_managed
+        and order.status in {"cancelled", "declined"}
+        and order.pos_reward_reserved_at is not None
+        and order.pos_loyalty_processed_at is None
+
+    ):
+        order = return_unpaid_pos_order_reward(request, order)
+    if (
+        order.channel == "pos"
+        and order.pos_loyalty_managed
+        and order.pos_loyalty_processed_at is not None
+        and order.status in {"refunded", "cancelled"}
+        and refunded_cents(order) >= paid_cents(order)
+    ):
+        order = reverse_fully_refunded_pos_loyalty(request, order)
     audit(request, order, before, f"pos_{change['mode']}")
     return order
 
@@ -894,12 +942,13 @@ def till_balance(card):
     """The app's card (9 stamps = free coffee ready) as the till's stamps + rewards."""
     if card is None:
         return 0, 0
-    return (0, 1) if card.stamps >= STAMPS_PER_REWARD else (card.stamps, 0)
+    rewards, stamps = divmod(card.stamps, STAMPS_PER_REWARD)
+    return stamps, rewards
 
 
 def card_stamps(stamps, rewards):
-    """The till's stamps + rewards on the app's card: a reward waiting = a full card."""
-    return STAMPS_PER_REWARD if rewards > 0 else min(stamps, STAMPS_PER_REWARD - 1)
+    """Encode the till's progress and accumulated rewards as unspent stamp units."""
+    return rewards * STAMPS_PER_REWARD + stamps
 
 
 def update_customer(request, customer, patch):
@@ -1194,13 +1243,11 @@ def apply_loyalty_action(request, customer, data):
     before = card.stamps
 
     if data["action"] == "stamp":
-        if before >= STAMPS_PER_REWARD:
-            raise AppError("CONFLICT", "This card already has a reward ready to redeem.", 409)
         card.stamps = before + 1
     else:
-        if before != STAMPS_PER_REWARD:
+        if before < STAMPS_PER_REWARD:
             raise AppError("CONFLICT", "This card has no reward ready to redeem.", 409)
-        card.stamps = 0
+        card.stamps -= STAMPS_PER_REWARD
 
     card.updated_by = staff
     card.save(update_fields=["stamps", "updated_by", "updated_at"])
@@ -1309,11 +1356,11 @@ def reserve_pos_order_reward(request, order):
 
     User.objects.select_for_update().get(pk=order.customer_id)
     card = loyalty.card_for(order.customer, lock=True)
-    if card.stamps != STAMPS_PER_REWARD:
+    if card.stamps < STAMPS_PER_REWARD:
         raise AppError("CONFLICT", "This customer has no reward available.", 409)
 
     before = card.stamps
-    card.stamps = 0
+    card.stamps -= STAMPS_PER_REWARD
     card.updated_by = staff
     card.save(update_fields=["stamps", "updated_by", "updated_at"])
     loyalty.record_stamp_change(card, before, location_name=order.location.name)
@@ -1345,13 +1392,15 @@ def return_unpaid_pos_order_reward(request, order):
         return order
     if order.status not in {"declined", "cancelled"}:
         raise AppError("CONFLICT", "Cancel the unpaid order before returning its reward.", 409)
-    if order.payments.exists() or order.pos_loyalty_processed_at is not None:
-        raise AppError("CONFLICT", "Paid orders require the refund loyalty flow.", 409)
+    if order.pos_loyalty_processed_at is not None:
+        raise AppError("CONFLICT", "Processed orders require the refund loyalty flow.", 409)
+    if refunded_cents(order) < paid_cents(order):
+        raise AppError("CONFLICT", "Return all payments before restoring the reward.", 409)
 
     User.objects.select_for_update().get(pk=order.customer_id)
     card = loyalty.card_for(order.customer, lock=True)
     before = card.stamps
-    card.stamps = STAMPS_PER_REWARD
+    card.stamps = before + STAMPS_PER_REWARD
     card.updated_by = staff
     card.save(update_fields=["stamps", "updated_by", "updated_at"])
     loyalty.record_stamp_change(card, before, location_name=order.location.name)
@@ -1373,7 +1422,7 @@ def reverse_fully_refunded_pos_loyalty(request, order):
         return order
     if order.pos_loyalty_processed_at is None:
         raise AppError("CONFLICT", "This order's loyalty has not been processed.", 409)
-    if order.status != "refunded" or refunded_cents(order) < paid_cents(order):
+    if order.status not in {"refunded", "cancelled"} or refunded_cents(order) < paid_cents(order):
         raise AppError("CONFLICT", "Fully refund the order before reversing its loyalty.", 409)
     if not order.customer_id:
         raise invalid("This order has no customer.")
@@ -1391,7 +1440,7 @@ def reverse_fully_refunded_pos_loyalty(request, order):
         row.get("reversed_stamps", 0) for row in order.pos_loyalty_lines.values()
     )
     remaining_earned = max(0, order.stamps_earned - already_reversed)
-    card.stamps = max(0, min(STAMPS_PER_REWARD, before - remaining_earned + restored))
+    card.stamps = max(0, before - remaining_earned + restored)
 
     if card.stamps != before:
         card.updated_by = staff
@@ -1562,3 +1611,12 @@ def validate_pos_loyalty_adjustment(order, data):
         available = max(0, lines[key].qty - previously_refunded.get(key, 0))
         if qty > available:
             raise AppError("CONFLICT", "More item units were returned than remain available.", 409)
+
+def settle_pos_order_loyalty(request, order):
+    if not order.pos_loyalty_managed or not order.customer_id:
+        return order
+    if order.pos_loyalty_processed_at is not None:
+        return order
+    if paid_cents(order) < till_total_cents(order):
+        return order
+    return award_pos_order_loyalty(request, order)

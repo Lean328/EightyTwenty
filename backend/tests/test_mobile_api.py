@@ -897,17 +897,20 @@ def test_anonymizing_a_customer_removes_app_personal_data(app, customer, cafe, m
     assert not AppNotification.objects.filter(user=customer).exists()
 
 
-def test_admin_rejects_more_than_nine_stamps_with_a_form_error(customer):
+def test_admin_accepts_accumulated_rewards_and_rejects_negative_stamps(customer):
     card = LoyaltyCard.objects.create(user=customer, stamps=3)
     web = Client()
     web.force_login(UserFactory(is_staff=True, is_superuser=True, role="owner"))
     url = reverse("admin:loyalty_loyaltycard_change", args=[card.pk])
     inline = {"activity-TOTAL_FORMS": 0, "activity-INITIAL_FORMS": 0}
     response = web.post(url, {"stamps": 12, **inline})
-    assert response.status_code == 200  # form redisplayed with an error, not a crash
+    assert response.status_code == 302
     card.refresh_from_db()
-    assert card.stamps == 3
-    assert "Ensure this value is less than or equal to 9" in response.content.decode()
+    assert card.stamps == 12
+    invalid = web.post(url, {"stamps": -1, **inline})
+    assert invalid.status_code == 200
+    card.refresh_from_db()
+    assert card.stamps == 12
     assert web.post(url, {"stamps": 9, **inline}).status_code == 302
     card.refresh_from_db()
     assert card.stamps == 9

@@ -556,6 +556,14 @@ class CustomerView(PosView):
 
 
 class CustomerLoyaltyView(PosView):
+    def get(self, request, customer_id):
+        from .staff_sessions import require_staff_permission
+
+        require_staff_permission(request, "loyalty.stamp")
+        customer = services.customer_for(customer_id)
+        data = p.customer(customer)
+        return Response({"id": data["id"], "stamps": data["stamps"], "rewards": data["rewards"]})
+
     @doc(
         GUESTS,
         "Set a customer's coffee card",
@@ -570,8 +578,7 @@ class CustomerLoyaltyView(PosView):
         """
         `LoyaltyService.setBalance`: the card after a stamp at the counter, a free coffee redeemed
         or a refund. This is the **same card as the app** (9 stamps → the 10th coffee is free):
-        `rewards ≥ 1` = a full card (free coffee ready), otherwise `stamps` (0–8). A card holds one
-        free coffee at a time, so the till never sees `rewards` above 1. The customer sees the
+        `rewards ≥ 1` = a full card (free coffee ready), otherwise `stamps` (0–8). Rewards accumulate; `stamps` is the remainder towards the next reward. The customer sees the
         change in the app's card history and feed.
         """
         data = self.valid(s.PosLoyaltyIn)
