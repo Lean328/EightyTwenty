@@ -26,7 +26,7 @@ Cập nhật 27/10/2026 (`main`). Ký hiệu: ✅ xong và đã kiểm · ⛔ ch
 
 ## ⛔ Còn chặn bản công khai
 
-1. **Thanh toán Square** — code đã xong, chờ thông tin khách (`docs/SQUARE_SETUP.md`): Application ID, access token, Location ID, Merchant ID + chứng chỉ Apple Pay; điền `EXPO_PUBLIC_SQUARE_APPLICATION_ID` / `EXPO_PUBLIC_APPLE_PAY_MERCHANT_ID` vào `eas.json`, bật `PAYMENT_PROVIDER=square` trên Render, thử Sandbox bằng bản TestFlight (Expo Go không chạy Square). **Trước đó phải gắn lại SDK Square vào bản iOS** (đang tạm bỏ từ 27/10/2026 vì Apple từ chối build 6: ITMS-90035/90205/90206 — nested `Frameworks` + file `setup` chưa ký, bước dọn của plugin không chạy): xóa entry trong `mobile/react-native.config.js`, thêm lại `"react-native-square-in-app-payments"` vào `plugins` của `app.json`, build rồi xác nhận App Store Connect nhận bản tải lên. Đặt món mà không trả được tiền dễ bị Apple từ chối (guideline 2.1).
+1. **Thanh toán Square** — code xong; **đang thử Sandbox** (28/10/2026) bằng tài khoản Square developer cá nhân của chủ dự án: SDK Square đã gắn lại vào bản iOS (sửa lỗi build 6 bằng `plugins/withSquareSetupAfterEmbed.js`), `eas.json` có Application ID sandbox, Render bật `PAYMENT_PROVIDER=square` + sandbox. Chạy ổn thì xin tài khoản Square + Apple Pay của khách và thay mã (`docs/SQUARE_SETUP.md`). Expo Go không chạy Square — thử bằng TestFlight. Đặt món mà không trả được tiền dễ bị Apple từ chối (guideline 2.1).
 2. **Mật khẩu tài khoản demo** để điền App Review Information.
 3. **Ảnh chụp màn hình** iPhone 6.9" (1320×2868 hoặc 1290×2796), 3–10 ảnh, chụp từ bản TestFlight bằng tài khoản demo (thứ tự gợi ý trong `APP_STORE_LISTING.md`).
 4. **Điền App Store Connect** theo `APP_STORE_LISTING.md` (mô tả, từ khoá, App Privacy, ghi chú cho người duyệt).

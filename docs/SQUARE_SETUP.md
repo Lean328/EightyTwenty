@@ -74,8 +74,10 @@ Access token là **bí mật**: nhờ khách gửi qua kênh an toàn (ví dụ 
    - `SQUARE_LOCATION_ID=<sandbox location>`
 
    App chưa phát hành nên chưa có khách thật đặt đơn; nhớ chuyển sang production trước khi phát hành.
-2. Trong `mobile/eas.json`, profile `preview`: thêm `EXPO_PUBLIC_SQUARE_APPLICATION_ID=<sandbox app id>` và `EXPO_PUBLIC_APPLE_PAY_MERCHANT_ID=<merchant id>`.
-3. Đăng ký iPhone thử (`npx eas-cli device:create`), rồi build `npx eas-cli build -p ios --profile preview` và cài bằng QR.
+2. `mobile/eas.json` (khối `base`): `EXPO_PUBLIC_SQUARE_APPLICATION_ID=<sandbox app id>`, thêm `EXPO_PUBLIC_APPLE_PAY_MERCHANT_ID=<merchant id>` khi có Apple Pay.
+3. `make ios-build` rồi `make ios-submit`, cài qua TestFlight.
+
+**Đang thử (28/10/2026)** bằng tài khoản Square developer cá nhân của chủ dự án (chưa phải tài khoản khách): sandbox test account `EightyTwentyTest` (Úc, AUD, location `LB0YQ3ZBC2WYJ`), Application ID sandbox đã nằm trong `eas.json`; access token + location ở `D:\Data\projects\eightytwenty-secrets\square\sandbox.env` (ngoài repo) và trên Render. Đã thử trực tiếp với Square: giữ 5,50 AUD → `APPROVED`, huỷ → `CANCELED`. Chưa có Apple Pay. Khi có tài khoản khách: thay Application ID / token / location, build lại app, làm lại chứng chỉ Apple Pay với tài khoản Square của khách.
 4. Thử các trường hợp, với số thẻ thử trong [tài liệu Sandbox của Square](https://developer.squareup.com/docs/devtools/sandbox/payments):
    - Đặt đơn bằng thẻ: Square Sandbox Dashboard hiện khoản **Authorized**.
    - BOS bấm Accept: khoản chuyển sang **Completed**.
@@ -86,5 +88,7 @@ Access token là **bí mật**: nhờ khách gửi qua kênh an toàn (ví dụ 
 **Bước 2: chuyển sang thật**
 
 5. Render: đổi sang `SQUARE_ENVIRONMENT=production` cùng access token và location production; điền Square location ID cho từng quán trong BOS.
-6. `mobile/eas.json`, profile `production`: Application ID production + Merchant ID, rồi `make ios-build` và `make ios-submit`. **Trước đó phải gắn lại SDK Square vào bản iOS** (đang tạm bỏ từ 27/10/2026 vì Apple từ chối build 6: ITMS-90035/90205/90206 — nested `Frameworks` + file `setup` chưa ký, bước dọn của plugin không chạy): xóa entry trong `mobile/react-native.config.js`, thêm lại `"react-native-square-in-app-payments"` vào `plugins` của `app.json`, build rồi xác nhận App Store Connect nhận bản tải lên.
+6. `mobile/eas.json`, profile `production`: Application ID production + Merchant ID, rồi `make ios-build` và `make ios-submit`.
+
+**SDK Square trên iOS**: build 6 bị App Store Connect từ chối (ITMS-90035/90205/90206) vì script `setup` của Square (đưa framework lồng ra ngoài, tự xoá, ký lại) chạy *trước* "[CP] Embed Pods Frameworks" nên không làm gì. `mobile/plugins/withSquareSetupAfterEmbed.js` thêm hook `post_integrate` vào Podfile để chuyển bước đó xuống cuối target app. Đừng bỏ plugin này khi còn dùng `react-native-square-in-app-payments`.
 7. Đặt một đơn thật nhỏ, cho quán nhận, sau đó tự hoàn trong Square Dashboard để kiểm tra trọn vòng.
