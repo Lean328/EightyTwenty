@@ -59,6 +59,16 @@ npx wrangler@4 pages deploy /tmp/e82-site/website --project-name eightytwenty --
 
 Wrangler 4.15x mặc định chuyển lệnh Pages sang "Pages trên Workers"; project này đã tạo bằng `pages project create --force` nên `pages deploy` chạy thẳng vào Pages cũ, không cần `--force` nữa. `website/_headers` đặt header bảo mật và cache ảnh. Pages trả `index.html` cho đường dẫn lạ, nên link email `/verify-email` và `/reset-password` mở được site (`website/account.js` xử lý). `config.js` gọi API Render cho mọi host không phải localhost. Đổi domain website thì cập nhật `CLIENT_BASE_URL` trên Render (link trong email xác minh/đặt lại mật khẩu).
 
+## POS web (Cloudflare Workers)
+
+Frontend POS (repo `Lean328/EightyTwenty-POS`, clone ở `D:\Data\projects\EightyTwenty-POS`) chạy ở https://eightytwenty-pos.bnh-digitalteam.workers.dev — Worker static assets `eightytwenty-pos`, tài khoản Cloudflare `bnh.digitalteam@gmail.com` (**khác** tài khoản của website). Không nối Git: deploy từ thư mục clone (build dùng `.env.cloudflare` → API Render):
+
+```sh
+git pull && npm ci && npm run deploy   # = build:cloudflare + wrangler deploy
+```
+
+`wrangler login` trên máy này đang ở tài khoản `bnh.digitalteam` → trước khi deploy website ở trên, `npx wrangler@4 logout` rồi login lại bằng tài khoản johnthinh2009. Mỗi máy POS mở một lần `…/?terminal=BRADDON-TILL-1` để có mã máy riêng (lưu trong trình duyệt của máy đó). Đăng nhập máy = tài khoản chủ quán trong BOS, nhân viên = Till PIN.
+
 ## Email và job
 
 Tích hợp gửi mail là Resend HTTP API. Cấu hình domain gửi/SPF/DKIM tại nhà cung cấp; EMAIL_FROM dùng domain đã verify. Dev không có key sẽ in mail ra console; test dùng locmem. Production không có key không giả báo email đã gửi: outbox chuyển failed và có thể retry sau khi cấu hình.
