@@ -1,6 +1,7 @@
 import { useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import { ScrollView, StyleSheet, View } from 'react-native';
+import { config } from '@/constants/config';
 import { Rise } from '@/components/layout/Rise';
 import { Screen } from '@/components/layout/Screen';
 import { Button } from '@/components/ui/Button';
@@ -78,10 +79,12 @@ export function OrderStatusScreen() {
             We couldn’t take this one.
           </Text>
           <Text style={[sans(15, 400, 1.5), styles.p]}>{order.locationName} wasn’t able to accept your order today. You haven’t been charged.</Text>
-          <View style={styles.released}>
-            <Text style={[sans(14, 400, 1.4), { color: colors.textSecondary }]}>Released to your card</Text>
-            <Text style={[sans(14, 600, 1.4), { color: colors.ink }]}>{formatMoney(order.totals.total)}</Text>
-          </View>
+          {config.features.showPrices ? (
+            <View style={styles.released}>
+              <Text style={[sans(14, 400, 1.4), { color: colors.textSecondary }]}>Released to your card</Text>
+              <Text style={[sans(14, 600, 1.4), { color: colors.ink }]}>{formatMoney(order.totals.total)}</Text>
+            </View>
+          ) : null}
           <Button label="Order from another café" onPress={() => goToTab('menu')} height={54} radius={14} fontSize={15} style={styles.mt20} />
           <Button label="Back to home" onPress={home} variant="outline" height={50} radius={14} style={[styles.mt8, { borderWidth: 0 }]} />
         </View>
@@ -133,7 +136,7 @@ export function OrderStatusScreen() {
           </Fact>
           <Fact label="Paid">
             <Text style={[sans(14, 400, 1.45), { color: colors.ink }]}>
-              {order.paymentLabel} · {formatMoney(order.totals.total)}
+              {config.features.showPrices ? `${order.paymentLabel} · ${formatMoney(order.totals.total)}` : order.paymentLabel}
             </Text>
           </Fact>
         </View>
@@ -156,7 +159,7 @@ export function OrderStatusScreen() {
             <View key={i} style={styles.line}>
               <Text style={[sans(13, 400, 1.4), { color: colors.textSecondary }]}>{l.qty}×</Text>
               <Text style={[sans(13, 400, 1.4), styles.flexInk]}>{l.name}</Text>
-              <Text style={[sans(13, 400, 1.4), { color: colors.ink }]}>{formatMoney(l.unitPrice * l.qty)}</Text>
+              {config.features.showPrices ? <Text style={[sans(13, 400, 1.4), { color: colors.ink }]}>{formatMoney(l.unitPrice * l.qty)}</Text> : null}
             </View>
           ))}
         </View>

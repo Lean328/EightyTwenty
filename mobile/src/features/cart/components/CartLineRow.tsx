@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { memo } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { config } from '@/constants/config';
 import { PopText } from '@/components/ui/Feedback';
 import { Icon } from '@/components/ui/Icon';
 import { TextAction } from '@/components/ui/Links';
@@ -26,7 +27,7 @@ export const CartLineRow = memo(function CartLineRow({ line, canEdit, onChangeQt
       <View style={styles.body}>
         <View style={styles.top}>
           <Text style={[sans(15, 600, 1.3), styles.name]}>{line.name}</Text>
-          <Text style={[sans(14, 600), { color: colors.ink }]}>{formatMoney(line.unitPrice * line.qty)}</Text>
+          {config.features.showPrices ? <Text style={[sans(14, 600), { color: colors.ink }]}>{formatMoney(line.unitPrice * line.qty)}</Text> : null}
         </View>
         {line.modifiersLabel ? <Text style={[sans(12, 400, 1.4), styles.meta]}>{line.modifiersLabel}</Text> : null}
         {line.note ? <Text style={[sansItalic(12, 1.4), styles.meta]}>“{line.note}”</Text> : null}

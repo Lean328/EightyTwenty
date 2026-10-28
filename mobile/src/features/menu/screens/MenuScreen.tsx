@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef } from 'react';
 import { FlatList, StyleSheet, View, type ListRenderItem } from 'react-native';
+import { config } from '@/constants/config';
 import { Rise } from '@/components/layout/Rise';
 import { Screen } from '@/components/layout/Screen';
 import { ErrorState, Skeleton } from '@/components/ui/Feedback';
@@ -89,7 +90,7 @@ export function MenuScreen() {
         />
       </View>
       <View style={styles.panel}>
-        <QuickActions cateringFrom={`From ${formatMoneyCompact(lowestPackagePrice(packages))} pp`} />
+        <QuickActions cateringFrom={config.features.showPrices ? `From ${formatMoneyCompact(lowestPackagePrice(packages))} pp` : 'For your team'} />
         <View style={styles.catHeading}>
           <Text accessibilityRole="header" style={[serif(26, 400, 1, -0.014), { color: colors.ink }]}>
             {category?.name ?? ''}

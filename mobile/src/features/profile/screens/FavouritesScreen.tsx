@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { useMemo } from 'react';
 import { FlatList, StyleSheet, View } from 'react-native';
+import { config } from '@/constants/config';
 import { ScaleIn } from '@/components/layout/Rise';
 import { Screen } from '@/components/layout/Screen';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
@@ -46,7 +47,7 @@ export function FavouritesScreen() {
               </Touchable>
               <Touchable onPress={() => openItem(item)} style={styles.text}>
                 <Text style={[sans(15, 600, 1.3), { color: colors.ink }]}>{item.name}</Text>
-                <Text style={[sans(14, 600), styles.price]}>{formatMoney(item.price)}</Text>
+                {config.features.showPrices ? <Text style={[sans(14, 600), styles.price]}>{formatMoney(item.price)}</Text> : null}
               </Touchable>
               {qty > 0 ? (
                 <ScaleIn style={styles.stepper}>

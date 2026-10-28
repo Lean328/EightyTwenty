@@ -174,11 +174,15 @@ export function CateringScreen() {
                   </Animated.View>
                 </View>
                 <View style={styles.priceRow}>
-                  <View style={styles.price}>
-                    <Text style={[sans(13), { color: colors.textWarmMuted }]}>From</Text>
-                    <Text style={[sans(28), { color: colors.espressoText }]}>{pkg.priceLabel}</Text>
-                    <Text style={[sans(13), { color: colors.textWarmMuted }]}>{pkg.unit}</Text>
-                  </View>
+                  {config.features.showPrices ? (
+                    <View style={styles.price}>
+                      <Text style={[sans(13), { color: colors.textWarmMuted }]}>From</Text>
+                      <Text style={[sans(28), { color: colors.espressoText }]}>{pkg.priceLabel}</Text>
+                      <Text style={[sans(13), { color: colors.textWarmMuted }]}>{pkg.unit}</Text>
+                    </View>
+                  ) : (
+                    <View />
+                  )}
                   <Touchable onPress={() => setIncluded((v) => !v)} pressedOpacity={0.75} pressedScale={1} accessibilityState={{ expanded: included }} style={styles.incl}>
                     <Text style={[sans(13, 500), { color: colors.espresso }]}>{included ? 'Hide details' : 'What’s included'}</Text>
                     <Chevron open={included} />
@@ -267,7 +271,7 @@ export function CateringScreen() {
                   <SelectField tone="espresso" value={pkg?.id ?? ''} options={packages.map((p) => ({ value: p.id, label: p.name }))} onChange={(id) => setTab(Math.max(0, packages.findIndex((p) => p.id === id)))} accessibilityLabel="Catering menu" title="Catering menu" background={colors.sandstoneCard} />
                 </Field>
               </View>
-              {estimate ? (
+              {estimate && config.features.showPrices ? (
                 <Text style={[sans(12, 400, 1.45), styles.estimate]}>
                   <Text style={[sans(12, 500, 1.45), { color: colors.espressoText }]}>{estimate}</Text> · an estimate from the listed per-person price, not a quote. Catering is quoted per event.
                 </Text>

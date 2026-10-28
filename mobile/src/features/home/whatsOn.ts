@@ -1,4 +1,5 @@
 import type { Href } from 'expo-router';
+import { config } from '@/constants/config';
 import { isComingSoon } from '@/domain/hours';
 import { lowestPackagePrice } from '@/domain/catering';
 import type { CateringPackage, ImageSource, Location, Offer } from '@/types';
@@ -29,7 +30,9 @@ export function buildWhatsOn(offers: Offer[], locations: Location[], packages: C
   if (packages.length) {
     const from = formatMoneyCompact(lowestPackagePrice(packages));
     const names = packages.map((p) => p.name).join(', ').replace(/, ([^,]*)$/, ' & $1');
-    items.push({ key: 'catering', image: packages[0]!.image, tag: 'Catering', title: names, brief: `From ${from} per person`, sub: `Packages from ${from} per person.`, href: '/catering' });
+    const brief = config.features.showPrices ? `From ${from} per person` : 'Catering for your team';
+    const sub = config.features.showPrices ? `Packages from ${from} per person.` : 'Packages for meetings and events.';
+    items.push({ key: 'catering', image: packages[0]!.image, tag: 'Catering', title: names, brief, sub, href: '/catering' });
   }
   const kingston = locations.find((l) => l.id === 'kingston');
   if (kingston) {

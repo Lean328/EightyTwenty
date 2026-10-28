@@ -62,6 +62,12 @@ export const config = {
     nearestCafe: dataSource === 'mock' || readBool(process.env.EXPO_PUBLIC_NEAREST_CAFE, false),
     giftCardSales: dataSource === 'mock' || readBool(process.env.EXPO_PUBLIC_GIFT_CARD_SALES, false),
     savedCards: dataSource === 'mock' || readBool(process.env.EXPO_PUBLIC_SAVED_CARDS, false),
+    /**
+     * Client request (28/10/2026): no prices and no in-app ordering until the POS is paid for.
+     * UI only — the cart stays, the API is unchanged. Turn back on with these two variables.
+     */
+    showPrices: readBool(process.env.EXPO_PUBLIC_SHOW_PRICES, false),
+    ordering: readBool(process.env.EXPO_PUBLIC_ORDERING, false),
   },
   /** Customer website (privacy policy, terms). */
   websiteUrl: (process.env.EXPO_PUBLIC_WEBSITE_URL || 'https://eightytwenty.pages.dev').replace(/\/+$/, ''),

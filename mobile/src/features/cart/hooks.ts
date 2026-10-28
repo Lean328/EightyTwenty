@@ -1,5 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import { LOYALTY_RULES } from '@/constants/business';
+import { config } from '@/constants/config';
 import { quantityOfItem } from '@/domain/cart';
 import { computeTotals, defaultSelections, hasMissingRequired, itemCountOf, subtotalOf, type CartTotals } from '@/domain/pricing';
 import { useGiftCard } from '@/features/gift-cards/hooks';
@@ -89,7 +90,7 @@ export function useMiniCartSummary(locationName: string) {
   const count = itemCountOf(lines);
   return {
     count,
-    label: `${count === 1 ? '1 item' : `${count} items`} · ${formatMoney(subtotalOf(lines))}`,
+    label: `${count === 1 ? '1 item' : `${count} items`}${config.features.showPrices ? ` · ${formatMoney(subtotalOf(lines))}` : ''}`,
     sub: `${method} · ${locationName}`,
   };
 }

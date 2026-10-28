@@ -2,6 +2,7 @@ import { Image } from 'expo-image';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { config } from '@/constants/config';
 import { BottomSheet } from '@/components/layout/BottomSheet';
 import { Button } from '@/components/ui/Button';
 import { PopText } from '@/components/ui/Feedback';
@@ -60,7 +61,7 @@ function ItemSheetBody({ item, lineKey, initial, onClose }: { item: MenuItem; li
     onClose();
   };
 
-  const addLabel = missing ? 'Choose ' + missing.name.toLowerCase().replace(/^choose /, '') : `${lineKey ? 'Update order' : 'Add to order'} — ${formatMoney(unit * qty)}`;
+  const addLabel = missing ? 'Choose ' + missing.name.toLowerCase().replace(/^choose /, '') : `${lineKey ? 'Update order' : 'Add to order'}${config.features.showPrices ? ` — ${formatMoney(unit * qty)}` : ''}`;
 
   return (
     <View style={styles.body}>
@@ -77,7 +78,7 @@ function ItemSheetBody({ item, lineKey, initial, onClose }: { item: MenuItem; li
             <Text accessibilityRole="header" style={[sans(21, 600, 1.25, -0.01), styles.name]}>
               {item.name}
             </Text>
-            <Text style={[sans(16, 600, 1.2), { color: colors.ink }]}>{formatMoney(item.price)}</Text>
+            {config.features.showPrices ? <Text style={[sans(16, 600, 1.2), { color: colors.ink }]}>{formatMoney(item.price)}</Text> : null}
           </View>
           {item.description ? <Text style={[sans(14, 400, 1.5), styles.desc]}>{item.description}</Text> : null}
           {diets.length ? (
@@ -151,7 +152,7 @@ function ModifierGroupView({ group, selected, onToggle }: { group: ModifierGroup
               onPress={() => onToggle(o.name)}
               accessibilityRole={single ? 'radio' : 'checkbox'}
               accessibilityState={{ checked: on }}
-              accessibilityLabel={o.price ? `${o.name}, plus ${formatMoney(o.price)}` : o.name}
+              accessibilityLabel={o.price && config.features.showPrices ? `${o.name}, plus ${formatMoney(o.price)}` : o.name}
               style={[styles.option, i > 0 && styles.optionSep]}
             >
               <View style={[styles.mark, { borderRadius: single ? 10 : 6, borderColor: on ? colors.ink : inkA(0.28), backgroundColor: on && !single ? colors.ink : 'transparent' }]}>
@@ -159,7 +160,7 @@ function ModifierGroupView({ group, selected, onToggle }: { group: ModifierGroup
                 {on && !single ? <Icon name="check" size={12} strokeWidth={3} color={colors.ivory} /> : null}
               </View>
               <Text style={[sans(14, 400, 1.3), styles.optionLabel]}>{o.name}</Text>
-              {o.price ? <Text style={[sans(13), { color: colors.textSecondary }]}>+{formatMoney(o.price)}</Text> : null}
+              {o.price && config.features.showPrices ? <Text style={[sans(13), { color: colors.textSecondary }]}>+{formatMoney(o.price)}</Text> : null}
             </Touchable>
           );
         })}

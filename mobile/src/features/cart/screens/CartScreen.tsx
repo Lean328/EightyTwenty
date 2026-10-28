@@ -1,6 +1,7 @@
 import { router } from 'expo-router';
 import { useCallback } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
+import { config } from '@/constants/config';
 import { Rise } from '@/components/layout/Rise';
 import { Screen } from '@/components/layout/Screen';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
@@ -73,19 +74,21 @@ export function CartScreen() {
           <Text style={[sans(13, 500, 1.4), styles.flex]}>{earnLine(isRewardReady(totals.stamps, totals.stampsPerReward), totals.coffeeCount, stampsToGo(totals.stamps, totals.stampsPerReward))}</Text>
         </Rise>
         <View style={styles.totals}>
-          <Row label="Subtotal" value={formatMoney(totals.subtotal)} />
-          {method === 'Delivery' ? <Row label="Delivery (10%)" value={'+' + formatMoney(totals.delivery)} /> : null}
-          <Text style={[sans(12, 400, 1.4), styles.next]}>Gift card, coffee reward and payment come next.</Text>
+          {config.features.showPrices ? <Row label="Subtotal" value={formatMoney(totals.subtotal)} /> : null}
+          {config.features.showPrices && method === 'Delivery' ? <Row label="Delivery (10%)" value={'+' + formatMoney(totals.delivery)} /> : null}
+          <Text style={[sans(12, 400, 1.4), styles.next]}>{config.features.ordering ? 'Gift card, coffee reward and payment come next.' : 'Ordering in the app is coming soon.'}</Text>
         </View>
       </ScrollView>
-      <StickyFooter>
-        <Button onPress={() => router.push('/checkout')} height={56} radius={14} accessibilityLabel={`Go to checkout, ${formatMoney(totals.subtotal)}`}>
-          <View style={styles.cta}>
-            <Text style={[sans(15, 600), { color: colors.ivory }]}>Go to checkout</Text>
-            <Text style={[sans(15, 600), { color: colors.ivory }]}>{formatMoney(totals.subtotal)}</Text>
-          </View>
-        </Button>
-      </StickyFooter>
+      {config.features.ordering ? (
+        <StickyFooter>
+          <Button onPress={() => router.push('/checkout')} height={56} radius={14} accessibilityLabel={config.features.showPrices ? `Go to checkout, ${formatMoney(totals.subtotal)}` : 'Go to checkout'}>
+            <View style={styles.cta}>
+              <Text style={[sans(15, 600), { color: colors.ivory }]}>Go to checkout</Text>
+              {config.features.showPrices ? <Text style={[sans(15, 600), { color: colors.ivory }]}>{formatMoney(totals.subtotal)}</Text> : null}
+            </View>
+          </Button>
+        </StickyFooter>
+      ) : null}
     </Screen>
   );
 }

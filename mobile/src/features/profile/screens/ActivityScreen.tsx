@@ -2,6 +2,7 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
 import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
+import { config } from '@/constants/config';
 import { FadeIn, Reveal } from '@/components/layout/Rise';
 import { Screen } from '@/components/layout/Screen';
 import { ScreenHeader } from '@/components/layout/ScreenHeader';
@@ -119,7 +120,7 @@ function OrdersSegment() {
                   {o.locationName} · {formatActivityTime(o.createdAt, now)}
                 </Text>
               </View>
-              <Text style={[sans(14, 600), { color: colors.ink }]}>{formatMoney(o.totals.total)}</Text>
+              {config.features.showPrices ? <Text style={[sans(14, 600), { color: colors.ink }]}>{formatMoney(o.totals.total)}</Text> : null}
             </Touchable>
             <View style={styles.orderBottom}>
               <StatusChip label={`${STATUS_LABEL[o.status]} · ${o.method}`} tone={tone} />
@@ -150,7 +151,7 @@ function OrdersSegment() {
                       {l.name}
                       {l.modifiersLabel ? <Text style={{ color: colors.textSecondary }}> · {l.modifiersLabel}</Text> : null}
                     </Text>
-                    <Text style={sans(13, 400, 1.4)}>{formatMoney(l.unitPrice * l.qty)}</Text>
+                    {config.features.showPrices ? <Text style={sans(13, 400, 1.4)}>{formatMoney(l.unitPrice * l.qty)}</Text> : null}
                   </View>
                 ))}
                 <Text style={[sans(12, 400, 1.4), { color: colors.textMuted }]}>Order {o.number}</Text>

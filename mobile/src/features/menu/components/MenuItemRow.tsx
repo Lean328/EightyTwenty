@@ -1,6 +1,7 @@
 import { Image } from 'expo-image';
 import { memo, useMemo } from 'react';
 import { StyleSheet, View } from 'react-native';
+import { config } from '@/constants/config';
 import { Icon } from '@/components/ui/Icon';
 import { Text } from '@/components/ui/Text';
 import { Touchable } from '@/components/ui/Touchable';
@@ -41,7 +42,7 @@ export const MenuItemRow = memo(function MenuItemRow({ item, quantity, dietary, 
           </Text>
         ) : null}
         <View style={styles.priceRow}>
-          <Text style={[sans(15, 600), { color: colors.ink }]}>{formatMoney(item.price)}</Text>
+          {config.features.showPrices ? <Text style={[sans(15, 600), { color: colors.ink }]}>{formatMoney(item.price)}</Text> : null}
           {diets.length ? <Text style={[eyebrow(10, 0.1), { color: colors.caramelDeep, flexShrink: 1 }]}>{diets.map((d) => d.label).join(' · ')}</Text> : null}
         </View>
       </Touchable>
