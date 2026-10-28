@@ -158,7 +158,7 @@
 .bos-admin .bos-editor-panels .form-row .flex-container:not(.checkbox-row) > :is(input, textarea, .related-widget-wrapper) { margin-left: 0; max-width: 100%; }
 .bos-admin .bos-editor-panels .form-row .help { margin-left: 0; padding-left: 0; }
 .bos-admin .help, .bos-admin .helptext { font-size: 0.75rem; line-height: 1.6; }
-.bos-admin .submit-row { border-radius: 8px; padding: 0.8rem 1rem; background: var(--bos-surface); box-shadow: 0 -3px 12px rgb(42 26 19 / 4%); }
+.bos-admin .submit-row { border-radius: 8px; padding: 0.8rem 1rem; background: var(--bos-surface); box-shadow: 0 -3px 12px rgb(42 26 19 / 4%); overflow: visible; }
 .bos-admin .submit-row input, .bos-admin .submit-row a, .bos-admin .submit-row button { border-radius: 6px; }
 .bos-admin .change-form .object-tools { margin-bottom: 1rem; }
 .bos-admin.change-form #content:has(.bos-record) > h1 { font: 500 0.8125rem var(--font-family-primary); color: var(--bos-muted); min-height: 2.5rem; margin-bottom: 0.5rem; }

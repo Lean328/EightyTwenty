@@ -3,7 +3,10 @@ App orders: server-side pricing (port of the app's src/domain/pricing.ts), valid
 order the app documents (docs/API_CONTRACTS.md §9.1), side effects and the status lifecycle.
 """
 
+from django.conf import settings
 from django.db import transaction
+from django.template.loader import render_to_string
+from django.urls import reverse
 from django.utils import timezone
 
 from apps.core.exceptions import DomainError
@@ -300,28 +303,85 @@ def save_order(
     return order, True
 
 
+def money(cents):
+    return f"${cents / 100:,.2f}"
+
+
 def email_cafe(order):
     location = order.location
-    when = order.scheduled_time.strftime("%H:%M") if order.scheduled_time else "As soon as possible"
-    lines = "\n".join(
-        f"- {line.qty} × {line.name}"
-        + (f" ({line.modifiers_label})" if line.modifiers_label else "")
-        + (f" — note: {line.note}" if line.note else "")
+    method = METHOD_LABELS[order.method]
+    when = (
+        order.scheduled_time.strftime("%I:%M %p").lstrip("0")
+        if order.scheduled_time
+        else "As soon as possible"
+    )
+    lines = [
+        {
+            "qty": line.qty,
+            "name": line.name,
+            "options": line.modifiers_label,
+            "note": line.note,
+            "amount": money(line.unit_price_cents * line.qty),
+        }
         for line in order.lines.all()
+    ]
+    phone = order.contact_phone
+    details = [
+        ("Customer", order.contact_name or "—", ""),
+        ("Phone", phone, "tel:" + phone.replace(" ", "")) if phone else None,
+        ("Deliver to", order.delivery_address, "") if order.delivery_address else None,
+        ("Table", order.table_number, "") if order.table_number else None,
+    ]
+    adjustments = [
+        (label, amount)
+        for label, amount in [
+            ("Subtotal", money(order.subtotal_cents)),
+            ("Delivery", money(order.delivery_cents) if order.delivery_cents else ""),
+            ("Free coffee", "−" + money(order.reward_cents) if order.reward_cents else ""),
+            ("Card surcharge", money(order.surcharge_cents) if order.surcharge_cents else ""),
+            ("Gift card", "−" + money(order.gift_card_cents) if order.gift_card_cents else ""),
+        ]
+        if amount
+    ]
+    held = bool(payments.square_id(order.payment_reference))
+    payment = (
+        f"Paid by {order.payment_label}"
+        + (" — held on the card until you accept the order." if held else ".")
+        if order.payment_label
+        else ""
     )
-    extra = (
-        f"Deliver to: {order.delivery_address}\n"
-        if order.delivery_address
-        else (f"Table: {order.table_number}\n" if order.table_number else "")
+    total = money(order.total_cents)
+    url = settings.BOS_BASE_URL + reverse("admin:orders_order_change", args=[order.pk])
+    text_lines = "\n".join(
+        f"- {row['qty']} × {row['name']}"
+        + (f" ({row['options']})" if row["options"] else "")
+        + (f" — note: {row['note']}" if row["note"] else "")
+        + f"  {row['amount']}"
+        for row in lines
     )
+    text_details = "\n".join(f"{label}: {value}" for label, value, _ in filter(None, details))
+    subject = f"New app order {order.number} — {location.name}"
     enqueue_email(
         location.email or SiteSettings.load().contact_email,
-        f"New app order {order.number} — {location.name}",
-        f"{METHOD_LABELS[order.method]} · {when}\n{extra}"
-        f"Customer: {order.contact_name}, {order.contact_phone}\n\n{lines}\n\n"
-        f"Total ${order.total_cents / 100:.2f} ({order.payment_label}).\n"
-        "Accept and update it in the BOS workspace → Orders.",
+        subject,
+        f"{method} · {when}\n{text_details}\n\n{text_lines}\n\n"
+        f"Total {total}. {payment}\n\nOpen the order in BOS: {url}",
         f"order-{order.pk}-new",
+        html=render_to_string(
+            "email/order_new.html",
+            {
+                "subject": subject,
+                "order": order,
+                "method": method,
+                "when": when,
+                "details": list(filter(None, details)),
+                "lines": lines,
+                "adjustments": adjustments,
+                "total": total,
+                "payment": payment,
+                "url": url,
+            },
+        ),
     )
 
 

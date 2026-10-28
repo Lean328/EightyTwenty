@@ -12,6 +12,7 @@ class EmailMessage(BaseModel):
     recipient = models.EmailField()
     subject = models.CharField(max_length=240)
     body = models.TextField()
+    html = models.TextField(blank=True, help_text="The designed version sent alongside the text.")
     dedup_key = models.CharField(max_length=200, unique=True)
     status = models.CharField(
         max_length=12,

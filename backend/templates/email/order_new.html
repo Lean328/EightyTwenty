@@ -1,0 +1,59 @@
+{% extends "email/base.html" %}
+{% block preheader %}{{ method }} · {{ when }} · {{ order.contact_name }} · {{ total }}{% endblock %}
+{% block place %}{{ order.location.name }}{% endblock %}
+{% block content %}
+            <p style="margin:0 0 4px;font-family:Georgia,'Times New Roman',serif;font-size:15px;font-style:italic;color:#B4431F;">New app order</p>
+            <h1 style="margin:0 0 6px;font-family:Georgia,'Times New Roman',serif;font-size:28px;font-weight:normal;line-height:1.2;color:#33251F;">{{ order.number }}</h1>
+            <p style="margin:0 0 22px;color:#7A6B62;">{{ method }} · {{ when }}</p>
+
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="border-top:1px solid #E7DFD3;border-bottom:1px solid #E7DFD3;">
+              {% for label, value, href in details %}
+              <tr>
+                <td style="padding:12px 0 10px;width:96px;vertical-align:top;font-size:13px;color:#7A6B62;">{{ label }}</td>
+                <td style="padding:10px 0;vertical-align:top;">{% if href %}<a href="{{ href }}" style="color:#33251F;text-decoration:underline;">{{ value }}</a>{% else %}{{ value }}{% endif %}</td>
+              </tr>
+              {% endfor %}
+            </table>
+
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:18px;">
+              {% for line in lines %}
+              <tr>
+                <td style="padding:9px 0;width:34px;vertical-align:top;color:#7A6B62;">{{ line.qty }}×</td>
+                <td style="padding:9px 12px 9px 0;vertical-align:top;">
+                  {{ line.name }}
+                  {% if line.options %}<div style="margin-top:2px;font-size:13px;color:#7A6B62;">{{ line.options }}</div>{% endif %}
+                  {% if line.note %}<div style="margin-top:2px;font-size:13px;color:#8B5827;">Note: {{ line.note }}</div>{% endif %}
+                </td>
+                <td align="right" style="padding:9px 0;vertical-align:top;white-space:nowrap;">{{ line.amount }}</td>
+              </tr>
+              {% endfor %}
+            </table>
+
+            <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin-top:8px;border-top:1px solid #E7DFD3;">
+              {% for label, amount in adjustments %}
+              <tr>
+                <td style="padding:6px 0 0;font-size:14px;color:#7A6B62;">{{ label }}</td>
+                <td align="right" style="padding:6px 0 0;font-size:14px;color:#7A6B62;white-space:nowrap;">{{ amount }}</td>
+              </tr>
+              {% endfor %}
+              <tr>
+                <td style="padding:12px 0 0;font-size:17px;font-weight:600;">Total</td>
+                <td align="right" style="padding:12px 0 0;font-size:17px;font-weight:600;white-space:nowrap;">{{ total }}</td>
+              </tr>
+              {% if payment %}
+              <tr>
+                <td colspan="2" style="padding:4px 0 0;font-size:13px;color:#7A6B62;">{{ payment }}</td>
+              </tr>
+              {% endif %}
+            </table>
+
+            <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin-top:28px;">
+              <tr>
+                <td style="background-color:#4B2E26;border-radius:999px;">
+                  <a href="{{ url }}" style="display:inline-block;padding:12px 26px;font-size:15px;font-weight:600;color:#FFFFFF;text-decoration:none;">Open the order in BOS</a>
+                </td>
+              </tr>
+            </table>
+            <p style="margin:14px 0 0;font-size:13px;color:#7A6B62;">Accept or decline it there. The customer follows every status change in the app.</p>
+{% endblock %}
+{% block footer %}Sent to {{ order.location.name }} for each new order placed in the EightyTwenty app.{% endblock %}

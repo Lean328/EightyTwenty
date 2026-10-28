@@ -152,8 +152,28 @@ def test_email_goes_through_brevo_when_the_key_is_a_brevo_key(settings, db):
     assert payload["sender"] == {"name": "EightyTwenty", "email": "no-reply@oms.com.vn"}
     assert payload["to"] == [{"email": "sophie@example.com"}]
     assert payload["textContent"] == "Body"
+    assert "htmlContent" not in payload
     message.refresh_from_db()
     assert message.status == "sent"
+
+
+def test_every_email_also_goes_out_in_the_brand_layout(settings, db):
+    from apps.notifications.services import enqueue_email, send_with_provider
+
+    settings.EMAIL_PROVIDER = "brevo"
+    settings.EMAIL_PROVIDER_API_KEY = "any"
+    message = enqueue_email(
+        "sophie@example.com",
+        "Booking request BK-1",
+        "We received your request.\n\nDetails: https://example.com/b",
+        "layout-1",
+    )
+    assert "<h1" in message.html and "Booking request BK-1" in message.html
+    assert '<a href="https://example.com/b"' in message.html
+    with patch("apps.notifications.services.httpx.post") as post:
+        send_with_provider(message)
+    payload = post.call_args.kwargs["json"]
+    assert payload["htmlContent"] == message.html and payload["textContent"] == message.body
 
 
 def test_a_brevo_failure_is_retried_later(settings, db):

@@ -7,6 +7,7 @@ from django.conf import settings
 from django.core.mail import send_mail
 from django.db import transaction
 from django.db.models import Q
+from django.template.loader import render_to_string
 from django.utils import timezone
 
 from .models import AppNotification, EmailMessage, PushDevice
@@ -14,9 +15,15 @@ from .models import AppNotification, EmailMessage, PushDevice
 logger = logging.getLogger(__name__)
 
 
-def enqueue_email(recipient, subject, body, dedup_key):
+def enqueue_email(recipient, subject, body, dedup_key, html=""):
+    """`html` is a designed version of `body`; without one the text is set in the brand layout."""
+    html = html or render_to_string(
+        "email/message.html",
+        {"subject": subject, "paragraphs": [p.strip() for p in body.split("\n\n") if p.strip()]},
+    )
     message, created = EmailMessage.objects.get_or_create(
-        dedup_key=dedup_key, defaults={"recipient": recipient, "subject": subject, "body": body}
+        dedup_key=dedup_key,
+        defaults={"recipient": recipient, "subject": subject, "body": body, "html": html},
     )
     if created:
         transaction.on_commit(lambda: deliver_email(message.pk), robust=True)
@@ -37,7 +44,13 @@ def deliver_email(message_id):
         if settings.EMAIL_PROVIDER_API_KEY:
             send_with_provider(message)
         elif settings.DEBUG or settings.EMAIL_BACKEND.endswith("locmem.EmailBackend"):
-            send_mail(message.subject, message.body, settings.EMAIL_FROM, [message.recipient])
+            send_mail(
+                message.subject,
+                message.body,
+                settings.EMAIL_FROM,
+                [message.recipient],
+                html_message=message.html or None,
+            )
         else:
             raise RuntimeError("Email provider is not configured")
     except Exception as exc:
@@ -78,6 +91,7 @@ def send_with_provider(message):
                 "to": [{"email": recipient}],
                 "subject": subject,
                 "textContent": message.body,
+                **({"htmlContent": message.html} if message.html else {}),
             },
             timeout=10,
         )
@@ -93,6 +107,7 @@ def send_with_provider(message):
                 "to": [recipient],
                 "subject": subject,
                 "text": message.body,
+                **({"html": message.html} if message.html else {}),
             },
             timeout=5,
         )

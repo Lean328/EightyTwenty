@@ -251,6 +251,10 @@ EMAIL_REDIRECT_TO = env("EMAIL_REDIRECT_TO", default="")
 EMAIL_FROM = env("EMAIL_FROM", default="EightyTwenty <no-reply@eightytwentyfood.com.au>")
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 CLIENT_BASE_URL = env("CLIENT_BASE_URL", default="http://localhost:5173").rstrip("/")
+# This server's public address, for links to the BOS in emails (Render sets RENDER_EXTERNAL_URL).
+BOS_BASE_URL = env(
+    "BOS_BASE_URL", default=env("RENDER_EXTERNAL_URL", default="http://127.0.0.1:8000")
+).rstrip("/")
 # Where admin previews load images stored as website-relative paths (img/...); locally the
 # static website preview serves them.
 MEDIA_PREVIEW_BASE_URL = env(

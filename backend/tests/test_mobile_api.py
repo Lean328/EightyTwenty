@@ -373,9 +373,13 @@ def test_demo_order_prices_on_the_server_and_applies_side_effects(
     assert order["estimatedWait"] == "20–25 min" and order["paymentLabel"] == "Apple Pay"
     assert LoyaltyCard.objects.get(user=customer).stamps == 1
     assert AppNotification.objects.filter(user=customer, kind="loyalty").exists()
-    assert EmailMessage.objects.filter(
+    email = EmailMessage.objects.get(
         recipient="braddon@example.com", subject__contains=order["number"]
-    ).exists()
+    )
+    change_url = reverse("admin:orders_order_change", args=[order["id"]])
+    assert "Flat White, OAT ADC" in email.html and "$29.30" in email.html
+    assert f'href="{settings.BOS_BASE_URL}{change_url}"' in email.html
+    assert "Paid by Apple Pay." in email.body and change_url in email.body
     # A retry with the same key replays the order instead of charging again.
     retry = app.post(
         f"{BASE}/orders", order_body(payment={"choice": "apple_pay", "token": "demo_applepay_2"}),
