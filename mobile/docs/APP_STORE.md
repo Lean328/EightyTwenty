@@ -41,7 +41,7 @@ Cập nhật 27/10/2026 (`main`). Ký hiệu: ✅ xong và đã kiểm · ⛔ ch
 
 **Đã lên TestFlight lần đầu (27/10/2026):** build EAS `7cbedcef-…` (1.0.0, build 6) tải lên App Store Connect, app `EightyTwenty` (Apple ID app `6827542559`, SKU `eightytwenty-ios`, en-AU, ghi trong `eas.json` → `submit.production.ios.ascAppId`). Cách đã làm, không dùng Apple ID (đăng nhập Google, không nhớ mật khẩu):
 
-- **Khóa App Store Connect API** (team key, quyền Admin, tạo trên web): file `D:\Data\projects\eightytwenty-secrets\apple\AuthKey_3VFQP9H8X5.p8` (ngoài repo); Key ID / Issuer ID / team ghi trong `mobile/.env.asc` (gitignored, máy này). Máy khác: tạo lại file này cùng các biến `EXPO_ASC_API_KEY_PATH`, `EXPO_ASC_KEY_ID`, `EXPO_ASC_ISSUER_ID`, `EXPO_APPLE_TEAM_ID=988D5VKVXS`, `EXPO_APPLE_TEAM_TYPE=INDIVIDUAL`.
+- **Khóa App Store Connect API** (team key, quyền Admin, tạo trên web): file `D:\Data\secrets\eightytwenty-secrets\apple\AuthKey_3VFQP9H8X5.p8` (ngoài repo); Key ID / Issuer ID / team ghi trong `mobile/.env.asc` (gitignored, máy này). Máy khác: tạo lại file này cùng các biến `EXPO_ASC_API_KEY_PATH`, `EXPO_ASC_KEY_ID`, `EXPO_ASC_ISSUER_ID`, `EXPO_APPLE_TEAM_ID=988D5VKVXS`, `EXPO_APPLE_TEAM_TYPE=INDIVIDUAL`.
 - **Credentials trên EAS** (project `@my-an-lien/eightytwenty`): bundle id `au.com.eightytwentyfood.app` (EAS đăng ký); quyền **Push Notifications** bật bằng API của Apple (bước "Syncing capabilities" của EAS lỗi với API key → build dùng `EXPO_NO_CAPABILITY_SYNC=1`); **Distribution Certificate dùng chung với dự án Soya** (cùng team, hết hạn 16/10/2027); provisioning profile mới; **push key dùng chung của team** `QUYKTFXZ95` (tạo push key mới bắt buộc đăng nhập Apple ID).
 - **App trên App Store Connect phải tạo tay trên web** (API của Apple không cho tạo app).
 
