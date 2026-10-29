@@ -284,7 +284,9 @@ def create_order(request, data):
         reward_redeemed=data.get("rewardUsed", False),
         placed_at=placed,
         note=data.get("note") or "",
-        staff_name=(staff.get_full_name().strip() or staff.email) if staff else data.get("staff") or "",
+        staff_name=(staff.get_full_name().strip() or staff.email)
+        if staff
+        else data.get("staff") or "",
         terminal_id=terminal_of(request),
         history=data.get("history") or [],
         review_note="\n".join(notes),

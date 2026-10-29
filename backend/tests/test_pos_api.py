@@ -3400,7 +3400,9 @@ def test_order_received_by_verified_pin_staff(till, cafe, menu, cashier, staff_s
     order = Order.objects.get(number=response.data["id"])
     assert order.handled_by_id == staff_session.pk
     assert order.staff_name == "Finn Test"
-    assert order.created_by_id == cashier.pk  # Keep the device's authenticated account for traceability.
+    assert (
+        order.created_by_id == cashier.pk
+    )  # Keep the device's authenticated account for traceability.
     assert order.handled_at is not None
 
 
@@ -3411,11 +3413,16 @@ def test_order_rejects_invalid_pin_session_even_without_loyalty(till, cafe, menu
     assert not Order.objects.exists()
 
 
-@pytest.mark.parametrize("path, body", [
-    ("accept", {}),
-    ("status", {"status": "preparing", "note": "Preparing"}),
-])
-def test_order_progress_keeps_verified_pin_actor(till, cafe, menu, cashier, staff_session, path, body):
+@pytest.mark.parametrize(
+    "path, body",
+    [
+        ("accept", {}),
+        ("status", {"status": "preparing", "note": "Preparing"}),
+    ],
+)
+def test_order_progress_keeps_verified_pin_actor(
+    till, cafe, menu, cashier, staff_session, path, body
+):
     created = create(till)
     response = post(till, f"/orders/{created['id']}/{path}", body)
     assert response.status_code == 200, response.data
