@@ -556,12 +556,15 @@ class CustomerView(PosView):
 
 
 class CustomerLoyaltyView(PosView):
+    @doc(GUESTS, "A customer's coffee card", None, {200: s.PosLoyaltyBalanceOut}, (403, 404))
+    @require_staff_access("loyalty.stamp")
     def get(self, request, customer_id):
-        from .staff_sessions import require_staff_permission
-
-        require_staff_permission(request, "loyalty.stamp")
-        customer = services.customer_for(customer_id)
-        data = p.customer(customer)
+        """
+        The card as it is now, read before a stamp or a free coffee at the counter (the snapshot
+        can be minutes old): `rewards` free coffees ready + `stamps` (0–8) towards the next one.
+        Needs `X-POS-Staff`.
+        """
+        data = p.customer(services.customer_for(customer_id))
         return Response({"id": data["id"], "stamps": data["stamps"], "rewards": data["rewards"]})
 
     @doc(
@@ -577,9 +580,9 @@ class CustomerLoyaltyView(PosView):
     def put(self, request, customer_id):
         """
         `LoyaltyService.setBalance`: the card after a stamp at the counter, a free coffee redeemed
-        or a refund. This is the **same card as the app** (9 stamps → the 10th coffee is free):
-        `rewards ≥ 1` = a full card (free coffee ready), otherwise `stamps` (0–8). Rewards accumulate; `stamps` is the remainder towards the next reward. The customer sees the
-        change in the app's card history and feed.
+        or a refund. This is the **same card as the app**: every 9 stamps is one free coffee and
+        free coffees add up — `rewards` = free coffees ready, `stamps` (0–8) = towards the next
+        one. The customer sees the change in the app's card history and feed.
         """
         data = self.valid(s.PosLoyaltyIn)
         customer = services.customer_for(customer_id)

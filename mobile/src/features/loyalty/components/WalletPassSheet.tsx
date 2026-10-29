@@ -6,6 +6,7 @@ import { BottomSheet } from '@/components/layout/BottomSheet';
 import { Barcode } from '@/components/ui/Barcode';
 import { Text } from '@/components/ui/Text';
 import { Touchable } from '@/components/ui/Touchable';
+import { cardBalance } from '@/domain/loyalty';
 import { useProfile } from '@/features/profile/hooks';
 import { errorMessage } from '@/services/errors';
 import { walletPassService } from '@/services/integrations/wallet';
@@ -27,8 +28,7 @@ export function WalletPassSheet() {
   const { data: profile } = useProfile();
   const add = useAddWalletPass();
   const added = !!card?.walletPassAdded;
-  const per = card?.stampsPerReward ?? 9;
-  const stamps = card?.stamps ?? 0;
+  const { shown: stamps, per } = cardBalance(card);
 
   const pathname = usePathname();
   const addToWallet = () =>

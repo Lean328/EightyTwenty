@@ -16,10 +16,10 @@ export function orderTimingLabel(ctx: OrderContext, location: Location | undefin
   return isOpenNow(location, now) ? `ASAP · ready in about ${wait}` : `Closed now · opens ${opensAtLabel(location, now)}`;
 }
 
-/** Loyalty line shown in the cart and checkout. */
-export function earnLine(rewardReady: boolean, coffeeCount: number, stampsToGo: number): string {
+/** Loyalty line shown in the cart and checkout (stamps keep counting: free coffees add up). */
+export function earnLine(rewardReady: boolean, coffeeCount: number): string {
   if (rewardReady) return coffeeCount ? 'Your free coffee is ready to use on this order.' : 'Add any coffee and it’s on us.';
   if (!coffeeCount) return 'Add a coffee to earn a stamp on your card.';
-  const n = Math.min(coffeeCount, stampsToGo);
+  const n = coffeeCount;
   return `This order earns ${n} ${n === 1 ? 'coffee stamp.' : 'coffee stamps.'}`;
 }

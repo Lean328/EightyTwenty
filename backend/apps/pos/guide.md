@@ -70,6 +70,7 @@ cash moves and closing a shift (`cash.out`), editing a customer (`customers`), s
 | `staffAuth.verifyPin(pin)` | `POST /api/v1/pos/staff/verify-pin` | ✅ `204` = not recognised → `null` |
 | `#backend-check`: locations, categories, menu | `GET /api/v1/pos/locations`, `…/locations/{slug}/categories`, `…/locations/{slug}/menu` | ✅ same shapes as `posCatalog.ts` / `posMapping.ts` |
 | `customers.update(id, patch)` | `PUT /api/v1/pos/customers/{id}` | ✅ app customer accounts |
+| (read the card now) | `GET /api/v1/pos/customers/{id}/loyalty` | ✅ `{id, stamps, rewards}` (needs `X-POS-Staff`) |
 | `loyalty.setBalance(id, balance, reason)` | `PUT /api/v1/pos/customers/{id}/loyalty` | ✅ same card as the app (section 5) |
 | `catalog.setSoldOut(itemId, soldOut)` | `PUT /api/v1/pos/items/{itemId}/sold-out` | ✅ every café of this account |
 | `catalog.setBranchAvailability(cafe, itemId, available)` | `PUT /api/v1/pos/locations/{cafe}/items/{itemId}/availability` | ✅ |
@@ -146,11 +147,13 @@ staff and can be shown as is. The HTTP status drives the till's `ApiError.kind`:
 - **Customers** are the app's customer accounts (one list for the chain, `customers` in the snapshot, newest
   2,000). `customerId` on an order, reservation or enquiry links it when it is a customer's id. The till cannot
   create customers; people sign up in the app.
-- **Coffee card = the app's card.** One stamp per coffee, 9 stamps → the 10th coffee is free, one free coffee
-  waiting at a time. The till sees it as `stamps` 0–8 and `rewards` 0/1 (`rewards: 1` = the card is full).
-  `PUT /customers/{id}/loyalty` with the till's new balance sets the card: `rewards ≥ 1` → full card, else
-  `stamps` (capped at 8). Stamps are not added by the server for till orders: the till's own
-  `loyalty.balance` command after payment does it (as `awardLoyalty` already sends).
+- **Coffee card = the app's card.** One stamp per coffee; every 9 stamps is a free coffee and free coffees add
+  up until the customer uses them (one per order). The till sees `stamps` 0–8 (towards the next one) and
+  `rewards` (free coffees ready, 0 or more). `GET /customers/{id}/loyalty` reads the card as it is now;
+  `PUT /customers/{id}/loyalty` sets it (`rewards × 9 + stamps`). Orders sent with `serverLoyalty: true` get
+  their stamps (and the free coffee they use) from the server once fully paid, and back on a refund — the
+  till must not also send `loyalty.balance` for them. Without it, the till's own `loyalty.balance` command
+  after payment does it.
 - **Sold out:** the snapshot's `availability.soldOut` lists items sold out at every café of this account,
   `branchOff[cafe]` those sold out only here. Changes reach the website, the app and BOS at once.
 

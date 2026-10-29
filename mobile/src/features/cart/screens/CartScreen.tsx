@@ -11,7 +11,7 @@ import { EmptyState } from '@/components/ui/Feedback';
 import { Icon } from '@/components/ui/Icon';
 import { Text } from '@/components/ui/Text';
 import { Touchable } from '@/components/ui/Touchable';
-import { isRewardReady, stampsToGo } from '@/domain/loyalty';
+import { isRewardReady } from '@/domain/loyalty';
 import { useSelectedLocation } from '@/features/locations/hooks';
 import { useMenuIndex } from '@/features/menu/hooks';
 import { useGoToTab } from '@/navigation/tabNavigation';
@@ -71,7 +71,7 @@ export function CartScreen() {
         </View>
         <Rise style={styles.earn}>
           <Icon name="cup" size={20} strokeWidth={1.7} color={colors.caramelDeep} />
-          <Text style={[sans(13, 500, 1.4), styles.flex]}>{earnLine(isRewardReady(totals.stamps, totals.stampsPerReward), totals.coffeeCount, stampsToGo(totals.stamps, totals.stampsPerReward))}</Text>
+          <Text style={[sans(13, 500, 1.4), styles.flex]}>{earnLine(isRewardReady(totals.stamps, totals.stampsPerReward), totals.coffeeCount)}</Text>
         </Rise>
         <View style={styles.totals}>
           {config.features.showPrices ? <Row label="Subtotal" value={formatMoney(totals.subtotal)} /> : null}

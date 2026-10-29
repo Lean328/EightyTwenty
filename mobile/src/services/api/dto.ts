@@ -140,6 +140,10 @@ export interface LoyaltyCardDTO {
   walletPassAdded: boolean;
   /** Optional (added 27/10/2026): the server can issue an Apple Wallet pass. */
   walletPassAvailable?: boolean;
+  /** Optional (added 29/10/2026): free coffees ready (they add up); `stamps` stays capped at 9. */
+  rewards?: number;
+  /** Optional (added 29/10/2026): stamps towards the next free coffee. */
+  progressStamps?: number;
 }
 
 export interface LoyaltyActivityDTO {

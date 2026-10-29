@@ -5,6 +5,10 @@ export interface LoyaltyCard {
   stamps: number;
   /** Stamps needed for a reward — 9 (the 10th coffee is free). */
   stampsPerReward: number;
+  /** Free coffees ready — they add up until used (server card; absent in mock mode). */
+  rewards?: number;
+  /** Stamps towards the next free coffee, 0…stampsPerReward−1 (server card). */
+  progressStamps?: number;
   /** Number printed under the barcode, scanned at the counter. */
   memberNumber: string;
   eligibility: string;

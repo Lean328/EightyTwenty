@@ -10,6 +10,7 @@ import { Icon } from '@/components/ui/Icon';
 import { Text } from '@/components/ui/Text';
 import { Touchable } from '@/components/ui/Touchable';
 import { ORDER_RULES } from '@/constants/business';
+import { cardBalance } from '@/domain/loyalty';
 import { stageIndex } from '@/domain/orders';
 import { useLocation } from '@/features/locations/hooks';
 import { useLoyaltyCard } from '@/features/loyalty/hooks';
@@ -147,7 +148,7 @@ export function OrderStatusScreen() {
                 <Icon name="cupPlain" size={18} strokeWidth={1.7} color={colors.espresso} />
               </View>
               <Text style={[sans(13, 500, 1.35), styles.earnedText]}>
-                You earned {order.stampsEarned} {order.stampsEarned === 1 ? 'coffee stamp' : 'coffee stamps'} · {card?.stamps ?? 0} of {per}
+                You earned {order.stampsEarned} {order.stampsEarned === 1 ? 'coffee stamp' : 'coffee stamps'} · {cardBalance(card).shown} of {per}
               </Text>
               <Text style={[sans(13, 600), { color: colors.sand }]}>View card</Text>
             </Touchable>

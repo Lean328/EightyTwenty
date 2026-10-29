@@ -34,6 +34,8 @@ const rewardIn = new Keyframe({
 interface StampGridProps {
   stamps: number;
   perReward: number;
+  /** Free coffees ready (they add up); without it the card is ready once full. */
+  rewards?: number;
   /** Stamps added by the last order — they "press" in one by one. */
   newStamps: number;
   rewardSeen: boolean;
@@ -41,11 +43,11 @@ interface StampGridProps {
 }
 
 /** Nine stamps in a 3×3 snake (row 2 runs right-to-left) leading to the FREE token. */
-export function StampGrid({ stamps, perReward, newStamps, rewardSeen, onRewardPress }: StampGridProps) {
+export function StampGrid({ stamps, perReward, rewards, newStamps, rewardSeen, onRewardPress }: StampGridProps) {
   const [width, setWidth] = useState(W);
   const scale = Math.min(1, width / W);
   const from = stamps - newStamps;
-  const ready = stamps >= perReward;
+  const ready = rewards === undefined ? stamps >= perReward : rewards > 0;
 
   return (
     <View style={[styles.area, { height: H * scale }]} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
@@ -69,13 +71,13 @@ export function StampGrid({ stamps, perReward, newStamps, rewardSeen, onRewardPr
             </Animated.View>
           );
         })}
-        {ready ? <RewardToken animate={!rewardSeen} onPress={onRewardPress} /> : <PendingToken />}
+        {ready ? <RewardToken count={rewards ?? 1} animate={!rewardSeen} onPress={onRewardPress} /> : <PendingToken />}
       </View>
     </View>
   );
 }
 
-function RewardToken({ animate, onPress }: { animate: boolean; onPress: () => void }) {
+function RewardToken({ count, animate, onPress }: { count: number; animate: boolean; onPress: () => void }) {
   const glow = useSharedValue(0);
   useEffect(() => {
     if (animate) glow.value = withDelay(900, withRepeat(withTiming(1, { duration: 1400, easing: easing.easeOut3 }), 2, false));
@@ -84,9 +86,9 @@ function RewardToken({ animate, onPress }: { animate: boolean; onPress: () => vo
   return (
     <Animated.View entering={animate ? rewardIn : undefined} style={styles.token}>
       <Animated.View pointerEvents="none" style={[styles.glow, ring]} />
-      <Touchable onPress={onPress} accessibilityLabel="Free coffee ready" style={styles.tokenBtn}>
+      <Touchable onPress={onPress} accessibilityLabel={count > 1 ? `${count} free coffees ready` : 'Free coffee ready'} style={styles.tokenBtn}>
         <Icon name="cup" size={20} strokeWidth={1.8} />
-        <Text style={[sans(11, 700, undefined, 0.1), { color: colors.ink }]}>FREE</Text>
+        <Text style={[sans(11, 700, undefined, 0.1), { color: colors.ink }]}>{count > 1 ? `${count} FREE` : 'FREE'}</Text>
       </Touchable>
     </Animated.View>
   );

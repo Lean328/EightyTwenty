@@ -915,6 +915,6 @@ def test_admin_accepts_accumulated_rewards_and_rejects_negative_stamps(customer)
     card.refresh_from_db()
     assert card.stamps == 9
     assert (
-        "free coffee is ready"
+        "1 free coffee ready"
         in AppNotification.objects.filter(user=customer).latest("created_at").text
     )

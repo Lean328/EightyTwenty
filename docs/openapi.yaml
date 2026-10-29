@@ -11767,14 +11767,84 @@ paths:
               schema:
                 $ref: '#/components/schemas/ErrorOut'
   /api/v1/pos/customers/{customer_id}/loyalty:
+    get:
+      operationId: v1_pos_customers_loyalty_retrieve
+      description: |-
+        The card as it is now, read before a stamp or a free coffee at the counter (the snapshot
+        can be minutes old): `rewards` free coffees ready + `stamps` (0–8) towards the next one.
+        Needs `X-POS-Staff`.
+      summary: A customer's coffee card
+      parameters:
+      - in: header
+        name: X-Terminal-Id
+        schema:
+          type: string
+        description: This till, e.g. PHILLIP-TILL-1.
+      - in: path
+        name: customer_id
+        schema:
+          type: string
+        required: true
+      tags:
+      - POS · Customers & bookings
+      security:
+      - jwtAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PosLoyaltyBalanceOut'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+          description: ''
+        '400':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '401':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '409':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '429':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
+        '503':
+          description: 'App error: {error: {code, message, fields}}'
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorOut'
     put:
       operationId: v1_pos_customers_loyalty_update
       description: |-
         `LoyaltyService.setBalance`: the card after a stamp at the counter, a free coffee redeemed
-        or a refund. This is the **same card as the app** (9 stamps → the 10th coffee is free):
-        `rewards ≥ 1` = a full card (free coffee ready), otherwise `stamps` (0–8). A card holds one
-        free coffee at a time, so the till never sees `rewards` above 1. The customer sees the
-        change in the app's card history and feed.
+        or a refund. This is the **same card as the app**: every 9 stamps is one free coffee and
+        free coffees add up — `rewards` = free coffees ready, `stamps` (0–8) = towards the next
+        one. The customer sees the change in the app's card history and feed.
       summary: Set a customer's coffee card
       parameters:
       - in: header
@@ -17044,8 +17114,16 @@ components:
     LoyaltyCardOut:
       type: object
       properties:
+        progressStamps:
+          type: integer
+          description: 0–8 towards the next free coffee.
+        rewards:
+          type: integer
+          description: Free coffees ready; they add up until used.
         stamps:
           type: integer
+          description: Capped at 9 (= a free coffee is ready) for app builds that
+            predate `rewards`.
         stampsPerReward:
           type: integer
         memberNumber:
@@ -17063,7 +17141,9 @@ components:
       required:
       - eligibility
       - memberNumber
+      - progressStamps
       - rewardDescription
+      - rewards
       - stamps
       - stampsPerReward
       - walletPassAdded
@@ -19861,7 +19941,7 @@ components:
           description: 0–8 towards the next free coffee.
         rewards:
           type: integer
-          description: 1 when a free coffee is ready (9 stamps).
+          description: Free coffees ready to redeem (they add up).
         homeCafe:
           type: string
         dietary:
@@ -20153,6 +20233,21 @@ components:
       required:
       - action
       - cafe
+    PosLoyaltyBalanceOut:
+      type: object
+      properties:
+        id:
+          type: string
+        stamps:
+          type: integer
+          description: 0–8 towards the next free coffee.
+        rewards:
+          type: integer
+          description: Free coffees ready to redeem (they add up).
+      required:
+      - id
+      - rewards
+      - stamps
     PosLoyaltyInRequest:
       type: object
       properties:

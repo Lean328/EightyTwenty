@@ -235,3 +235,13 @@ def test_pending_updates_are_pushed_to_apple(customer, configured, status):
         assert WalletRegistration.objects.get().notified_version == wallet_pass.version
     else:
         assert not WalletRegistration.objects.exists()
+
+
+def test_the_pass_shows_free_coffees_that_add_up(app, customer, configured):
+    card = card_for(customer)
+    LoyaltyCard.objects.filter(pk=card.pk).update(stamps=20)  # 2 free coffees + 2 stamps
+    archive = zipfile.ZipFile(io.BytesIO(download(app).content))
+    fields = json.loads(archive.read("pass.json"))["storeCard"]
+    assert fields["headerFields"][0]["value"] == "2/9"
+    reward = next(f for f in fields["secondaryFields"] if f["key"] == "reward")
+    assert reward["value"] == "2 free coffees ready"

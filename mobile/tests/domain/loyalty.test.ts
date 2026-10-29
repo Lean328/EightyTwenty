@@ -1,4 +1,4 @@
-import { isCoffeeItem, isRewardReady, stampsAfterOrder, stampsToGo } from '@/domain/loyalty';
+import { cardBalance, cardSummary, isCoffeeItem, isRewardReady, stampsAfterOrder, stampsToGo } from '@/domain/loyalty';
 
 describe('isCoffeeItem (stamp eligibility)', () => {
   it.each([
@@ -33,5 +33,24 @@ describe('stampsAfterOrder', () => {
     expect(stampsToGo(6, 9)).toBe(3);
     expect(isRewardReady(9, 9)).toBe(true);
     expect(isRewardReady(8, 9)).toBe(false);
+  });
+});
+
+describe('cardBalance', () => {
+  it('reads free coffees that add up from the server card', () => {
+    const b = cardBalance({ stamps: 9, stampsPerReward: 9, rewards: 2, progressStamps: 3 });
+    expect(b).toEqual({ rewards: 2, progress: 3, shown: 3, per: 9 });
+    expect(cardSummary(b)).toBe('2 free coffees ready · 3 of 9 stamps');
+  });
+
+  it('shows a card that just filled up as nine stamps', () => {
+    const b = cardBalance({ stamps: 9, stampsPerReward: 9, rewards: 1, progressStamps: 0 });
+    expect(b.shown).toBe(9);
+    expect(cardSummary(b)).toBe('Free coffee ready');
+  });
+
+  it('falls back to the capped stamps without rewards (mock mode)', () => {
+    expect(cardBalance({ stamps: 9, stampsPerReward: 9 })).toEqual({ rewards: 1, progress: 0, shown: 9, per: 9 });
+    expect(cardSummary(cardBalance({ stamps: 4, stampsPerReward: 9 }))).toBe('4 of 9 stamps');
   });
 });

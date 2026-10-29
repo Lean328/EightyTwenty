@@ -12,7 +12,15 @@ from apps.core.bos_access import ALL, CHAIN, bos_locations
 from apps.core.exceptions import DomainError
 
 from . import services
-from .models import STAMPS_PER_REWARD, GiftCard, GiftCardActivity, LoyaltyActivity, LoyaltyCard
+from .models import (
+    STAMPS_PER_REWARD,
+    GiftCard,
+    GiftCardActivity,
+    LoyaltyActivity,
+    LoyaltyCard,
+    balance,
+)
+from .services import card_label, plural
 
 
 class ActivityInline(admin.TabularInline):
@@ -47,15 +55,25 @@ class GiftCardActivityInline(ActivityInline):
 
 
 def stamp_dots(card):
-    rewards, progress = divmod(card.stamps, STAMPS_PER_REWARD)
+    rewards, progress = balance(card.stamps)
     dots = format_html_join(
-        "", '<span class="{}"></span>',
+        "",
+        '<span class="{}"></span>',
         ((("is-on" if i < progress else ""),) for i in range(STAMPS_PER_REWARD)),
     )
     return format_html(
-        '<span class="bos-dots">{}</span> <span class="bos-dots-count">{}/{}</span> '
-        '<span class="bos-tag bos-tone-good">{} rewards ready</span>',
-        dots, progress, STAMPS_PER_REWARD, rewards,
+        '<span class="bos-dots" title="{} of {} stamps">{}</span> <span class="bos-dots-count">'
+        "{}/{}</span>{}",
+        progress,
+        STAMPS_PER_REWARD,
+        dots,
+        progress,
+        STAMPS_PER_REWARD,
+        format_html(
+            ' <span class="bos-tag bos-tone-good">{} ready</span>', plural(rewards, "free coffee")
+        )
+        if rewards
+        else "",
     )
 
 
@@ -114,7 +132,9 @@ class LoyaltyCardAdmin(OperationsAdmin):
             'formmethod="post" formnovalidate>+1 stamp</button> '
             '<button type="submit" class="bos-btn bos-btn-sm" formaction="{}" '
             'formmethod="post" formnovalidate {}>Redeem free coffee</button>',
-            stamp, redeem, "" if obj.stamps >= STAMPS_PER_REWARD else "disabled",
+            stamp,
+            redeem,
+            "" if obj.stamps >= STAMPS_PER_REWARD else "disabled",
         )
 
     def get_fieldsets(self, request, obj=None):
@@ -130,9 +150,10 @@ class LoyaltyCardAdmin(OperationsAdmin):
         form = super().get_form(request, obj, **kwargs)
         if "stamps" in form.base_fields:
             form.base_fields["stamps"].label = "Correct the count"
-            form.base_fields[
-                "stamps"
-            ].help_text = "Total stamp units, including saved rewards: 20 means 2 rewards + 2 stamps. For a coffee bought, use +1 stamp below."
+            form.base_fields["stamps"].help_text = (
+                "Every stamp not spent yet: 20 = 2 free coffees + 2 stamps. "
+                "For a coffee bought, use +1 stamp below."
+            )
         return form
 
     def get_readonly_fields(self, request, obj=None):
@@ -183,9 +204,7 @@ class LoyaltyCardAdmin(OperationsAdmin):
                 self.message_user(request, str(exc.detail), messages.WARNING)
             else:
                 name = card.user.get_full_name() or card.user.email
-                self.message_user(
-                    request, f"{done} for {name}: {card.stamps // STAMPS_PER_REWARD} rewards, {card.stamps % STAMPS_PER_REWARD}/{STAMPS_PER_REWARD} stamps."
-                )
+                self.message_user(request, f"{done} for {name}: {card_label(card.stamps)}.")
             back = request.POST.get("next") or request.META.get("HTTP_REFERER", "")
             if url_has_allowed_host_and_scheme(back, {request.get_host()}, request.is_secure()):
                 return redirect(back)
@@ -199,6 +218,7 @@ class LoyaltyCardAdmin(OperationsAdmin):
         context = {
             "card": obj,
             "full": obj is not None and obj.stamps >= STAMPS_PER_REWARD,
+            "rewards": plural(balance(obj.stamps)[0], "free coffee") if obj else "",
             "show_save": chain,
             "show_save_and_continue": chain,
         }

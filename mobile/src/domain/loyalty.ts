@@ -34,6 +34,40 @@ export function stampsAfterOrder(params: {
   return { stamps, earned: Math.max(0, stamps - base) };
 }
 
+export interface CardBalance {
+  /** Free coffees ready to use (one per order). */
+  rewards: number;
+  /** Stamps towards the next free coffee. */
+  progress: number;
+  /** Stamps to draw on the card: a card that has just filled up shows all nine. */
+  shown: number;
+  per: number;
+}
+
+/**
+ * Free coffees add up on the server card (`rewards` + `progressStamps`); a card without them
+ * (mock mode, older server) only has `stamps`, capped at the reward threshold.
+ */
+export function cardBalance(card?: { stamps: number; stampsPerReward: number; rewards?: number; progressStamps?: number } | null): CardBalance {
+  const per = card?.stampsPerReward ?? 9;
+  const stamps = card?.stamps ?? 0;
+  const rewards = card?.rewards ?? (stamps >= per ? 1 : 0);
+  const progress = card?.progressStamps ?? (stamps >= per ? 0 : stamps);
+  return { rewards, progress, shown: rewards > 0 && progress === 0 ? per : progress, per };
+}
+
+/** "Free coffee ready" / "2 free coffees ready" */
+export function freeCoffeesLabel(rewards: number): string {
+  return rewards === 1 ? 'Free coffee ready' : `${rewards} free coffees ready`;
+}
+
+/** "3 of 9 stamps", "Free coffee ready", "2 free coffees ready · 3 of 9 stamps" */
+export function cardSummary(balance: CardBalance): string {
+  const stamps = `${balance.progress} of ${balance.per} stamps`;
+  if (!balance.rewards) return stamps;
+  return balance.progress ? `${freeCoffeesLabel(balance.rewards)} · ${stamps}` : freeCoffeesLabel(balance.rewards);
+}
+
 export function stampsToGo(stamps: number, stampsPerReward: number): number {
   return Math.max(0, stampsPerReward - stamps);
 }

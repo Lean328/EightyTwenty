@@ -4,6 +4,7 @@ import { BottomSheet } from '@/components/layout/BottomSheet';
 import { Barcode } from '@/components/ui/Barcode';
 import { Button } from '@/components/ui/Button';
 import { Text } from '@/components/ui/Text';
+import { cardBalance, cardSummary } from '@/domain/loyalty';
 import { useProfile } from '@/features/profile/hooks';
 import { useUiStore } from '@/store/ui';
 import { colors, eyebrow, fontFamilies, inkA, sans, serif } from '@/theme';
@@ -24,7 +25,7 @@ export function MemberCardSheet() {
           {profile?.name}
         </Text>
         <Text style={[sans(13, 400, 1.4), styles.sub]}>
-          {card?.stamps ?? 0} of {card?.stampsPerReward ?? 9} stamps
+          {cardSummary(cardBalance(card))}
         </Text>
         <View style={styles.box} accessible accessibilityLabel={`Member number ${card?.memberNumber ?? ''}`}>
           <Barcode value={card?.memberNumber} height={76} />

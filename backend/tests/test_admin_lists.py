@@ -109,14 +109,18 @@ def test_staff_stamp_and_redeem_at_the_counter(cafe):
     assert AuditLog.objects.filter(entity_id=str(card.pk), actor=staff).exists()
     assert "Redeem free coffee" in body(client, listing)
 
-    client.post(stamp)  # a full card takes no more stamps
+    for _ in range(9):  # free coffees add up: the stamps keep counting
+        client.post(stamp)
+    card.refresh_from_db()
+    assert card.stamps == 18
+    assert "2 free coffees" in body(client, listing)
+    redeem = reverse("admin:loyalty_loyaltycard_redeem", args=[card.pk])
+    client.post(redeem)
     card.refresh_from_db()
     assert card.stamps == 9
-    client.post(reverse("admin:loyalty_loyaltycard_redeem", args=[card.pk]))
-    card.refresh_from_db()
-    assert card.stamps == 0
     assert LoyaltyActivity.objects.filter(card=card, description="Free coffee redeemed").exists()
-    client.post(reverse("admin:loyalty_loyaltycard_redeem", args=[card.pk]))  # nothing to redeem
+    client.post(redeem)
+    client.post(redeem)  # nothing left to redeem
     card.refresh_from_db()
     assert card.stamps == 0
 
@@ -168,3 +172,14 @@ def test_gift_cards_and_enquiries_lead_with_the_customer(cafe, chain):
     enquiries = body(client, reverse("admin:enquiries_enquiry_changelist"))
     first = enquiries.index('<th class="field-name">')
     assert "Noah Taylor" in enquiries[first : first + 200]
+
+
+def test_card_messages_count_free_coffees_that_add_up():
+    from apps.loyalty.services import card_label, stamp_message
+
+    assert card_label(3) == "3/9"
+    assert card_label(20) == "2 free coffees · 2/9"
+    assert stamp_message(3) == "Stamp added — 6 more until your free coffee."
+    assert stamp_message(9) == "Your free coffee is ready to redeem."
+    assert stamp_message(18) == "You have 2 free coffees ready to redeem."
+    assert stamp_message(12) == "Stamp added — 1 free coffee ready, 6 more to the next one."

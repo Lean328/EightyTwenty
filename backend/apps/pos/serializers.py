@@ -308,6 +308,12 @@ class PosLoyaltyIn(serializers.Serializer):
     reason = text(200)
 
 
+class PosLoyaltyBalanceOut(serializers.Serializer):
+    id = serializers.CharField()
+    stamps = serializers.IntegerField(help_text="0–8 towards the next free coffee.")
+    rewards = serializers.IntegerField(help_text="Free coffees ready to redeem (they add up).")
+
+
 class PosSoldOutIn(serializers.Serializer):
     soldOut = serializers.BooleanField()
 
@@ -545,7 +551,7 @@ class PosCustomerOut(serializers.Serializer):
     phone = serializers.CharField(allow_blank=True)
     email = serializers.CharField()
     stamps = serializers.IntegerField(help_text="0–8 towards the next free coffee.")
-    rewards = serializers.IntegerField(help_text="Number of earned free coffees available.")
+    rewards = serializers.IntegerField(help_text="Free coffees ready to redeem (they add up).")
     homeCafe = serializers.CharField(allow_blank=True)
     dietary = serializers.ListField(child=serializers.CharField())
     notes = serializers.CharField(allow_blank=True)

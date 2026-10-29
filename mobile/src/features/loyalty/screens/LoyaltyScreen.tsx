@@ -11,7 +11,7 @@ import { Icon } from '@/components/ui/Icon';
 import { TextAction } from '@/components/ui/Links';
 import { Text } from '@/components/ui/Text';
 import { Touchable } from '@/components/ui/Touchable';
-import { isRewardReady, stampsToGo } from '@/domain/loyalty';
+import { cardBalance, freeCoffeesLabel } from '@/domain/loyalty';
 import { useMenuStore } from '@/features/menu/menuStore';
 import { useBottomSpace } from '@/hooks/useBottomSpace';
 import { useNow } from '@/hooks/useNow';
@@ -41,10 +41,10 @@ export function LoyaltyScreen() {
   const bottom = useBottomSpace(28, true);
   useTabReselect('loyalty', () => scroll.current?.scrollTo({ y: 0, animated: true }));
 
-  const per = card?.stampsPerReward ?? 9;
-  const stamps = card?.stamps ?? 0;
-  const ready = isRewardReady(stamps, per);
-  const away = stampsToGo(stamps, per);
+  const { rewards, progress, shown, per } = cardBalance(card);
+  const ready = rewards > 0;
+  const away = per - progress;
+  const toGo = away === 1 ? '1 coffee to go' : `${away} coffees to go`;
 
   // Leaving the tab settles the stamp animation (prototype `leaving()`).
   useFocusEffect(
@@ -87,13 +87,13 @@ export function LoyaltyScreen() {
           <View style={styles.countRow}>
             <View>
               <Text accessibilityRole="header" style={[serif(30, 400, 1, -0.02), { color: colors.ink }]}>
-                {stamps} of {per}
+                {shown} of {per}
               </Text>
-              <Text style={[sans(13, 400, 1.2), styles.toGo]}>{ready ? 'Free coffee ready' : away === 1 ? '1 coffee to go' : `${away} coffees to go`}</Text>
+              <Text style={[sans(13, 400, 1.2), styles.toGo]}>{ready ? (progress ? `${freeCoffeesLabel(rewards)} · ${toGo}` : freeCoffeesLabel(rewards)) : toGo}</Text>
             </View>
             <Text style={[sans(12), { color: colors.textMuted, paddingBottom: 2 }]}>1 coffee = 1 stamp</Text>
           </View>
-          <StampGrid stamps={stamps} perReward={per} newStamps={newStamps} rewardSeen={rewardSeen} onRewardPress={() => setMemberCardOpen(true)} />
+          <StampGrid stamps={shown} perReward={per} rewards={rewards} newStamps={newStamps} rewardSeen={rewardSeen} onRewardPress={() => setMemberCardOpen(true)} />
           <View style={styles.actions}>
             <View style={[styles.notch, { left: -26 }]} />
             <View style={[styles.notch, { right: -26 }]} />
@@ -123,8 +123,8 @@ export function LoyaltyScreen() {
               <View style={styles.rewardCup}>
                 <Icon name="cup" size={26} strokeWidth={1.6} color={colors.caramel} />
               </View>
-              <Text style={[serif(28, 400, 1, -0.015), styles.rewardTitle]}>Free coffee</Text>
-              <Text style={[sans(13, 400, 1.3), styles.rewardSub]}>Any coffee, any size.</Text>
+              <Text style={[serif(28, 400, 1, -0.015), styles.rewardTitle]}>{rewards > 1 ? `${rewards} free coffees` : 'Free coffee'}</Text>
+              <Text style={[sans(13, 400, 1.3), styles.rewardSub]}>{rewards > 1 ? 'Any coffee, any size · one per order.' : 'Any coffee, any size.'}</Text>
               <View style={styles.rewardCode}>
                 <Barcode value={card?.memberNumber} height={56} />
                 <Text style={[styles.number, { fontFamily: fontFamilies.mono }]}>{card?.memberNumber}</Text>

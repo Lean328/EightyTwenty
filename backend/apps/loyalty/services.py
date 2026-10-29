@@ -11,7 +11,14 @@ from apps.core.exceptions import DomainError
 from apps.core.services import audit, snapshot
 from apps.notifications.services import notify
 
-from .models import STAMPS_PER_REWARD, GiftCard, GiftCardActivity, LoyaltyActivity, LoyaltyCard
+from .models import (
+    STAMPS_PER_REWARD,
+    GiftCard,
+    GiftCardActivity,
+    LoyaltyActivity,
+    LoyaltyCard,
+    balance,
+)
 
 ELIGIBILITY = "Any coffee or hot drink, any size, at any EightyTwenty café."
 REWARD = "Your 10th coffee is free."
@@ -38,11 +45,23 @@ def plural(count, word):
     return f"{count} {word}{'' if count == 1 else 's'}"
 
 
+def card_label(stamps):
+    """'2 free coffees · 3/9', or '3/9' while none is ready."""
+    rewards, progress = balance(stamps)
+    count = f"{progress}/{STAMPS_PER_REWARD}"
+    return f"{plural(rewards, 'free coffee')} · {count}" if rewards else count
+
+
 def stamp_message(stamps):
-    to_go = STAMPS_PER_REWARD - stamps
-    if to_go <= 0:
-        return "Your free coffee is ready to redeem."
-    return f"Stamp added — {to_go} more until your free coffee."
+    rewards, progress = balance(stamps)
+    to_go = STAMPS_PER_REWARD - progress
+    if not rewards:
+        return f"Stamp added — {to_go} more until your free coffee."
+    if progress == 0:
+        if rewards == 1:
+            return "Your free coffee is ready to redeem."
+        return f"You have {plural(rewards, 'free coffee')} ready to redeem."
+    return f"Stamp added — {plural(rewards, 'free coffee')} ready, {to_go} more to the next one."
 
 
 def card_for(user, lock=False):

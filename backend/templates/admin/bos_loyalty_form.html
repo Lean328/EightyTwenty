@@ -2,12 +2,12 @@
 {% load bos_admin %}
 {% block submit_buttons_bottom %}
 <div class="submit-row bos-booking-actions">
-  <p class="bos-actions-note">{% icon 'coffee' %} {% if full %}A free coffee is available; new stamps continue to accumulate.{% else %}Add a stamp for each coffee bought at the counter.{% endif %}</p>
+  <p class="bos-actions-note">{% icon 'coffee' %} {% if full %}{{ rewards }} ready to redeem. New stamps keep adding up.{% else %}Add a stamp for each coffee bought at the counter.{% endif %}</p>
   {% if card %}
     {% if full %}
       <button type="submit" formaction="{% url 'admin:loyalty_loyaltycard_redeem' card.pk %}" formmethod="post" formnovalidate class="bos-btn bos-btn-primary" name="next" value="{{ request.get_full_path }}">Redeem free coffee</button>
     {% endif %}
-      <button type="submit" formaction="{% url 'admin:loyalty_loyaltycard_stamp' card.pk %}" formmethod="post" formnovalidate class="bos-btn bos-btn-primary" name="next" value="{{ request.get_full_path }}">{% icon 'plus' %} +1 stamp</button>
+    <button type="submit" formaction="{% url 'admin:loyalty_loyaltycard_stamp' card.pk %}" formmethod="post" formnovalidate class="bos-btn{% if not full %} bos-btn-primary{% endif %}" name="next" value="{{ request.get_full_path }}">{% icon 'plus' %} +1 stamp</button>
   {% endif %}
   {% if show_save %}<input type="submit" value="Save correction" class="bos-btn" name="_continue">{% endif %}
   <a href="{% url 'admin:loyalty_loyaltycard_changelist' %}" class="bos-btn bos-btn-ghost">Back to coffee cards</a>

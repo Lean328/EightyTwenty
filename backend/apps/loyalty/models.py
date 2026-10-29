@@ -9,6 +9,11 @@ from apps.core.models import BaseModel, ManagedModel
 STAMPS_PER_REWARD = 9
 
 
+def balance(stamps):
+    """(free coffees ready, stamps towards the next one): every 9 stamps is one free coffee."""
+    return divmod(stamps, STAMPS_PER_REWARD)
+
+
 def member_number():
     return f"8020 {secrets.randbelow(10**4):04d} {secrets.randbelow(10**4):04d}"
 
@@ -27,7 +32,9 @@ class LoyaltyCard(ManagedModel):
         settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="loyalty_card"
     )
     member_number = models.CharField(max_length=20, unique=True, default=member_number)
-    stamps = models.PositiveIntegerField(default=0, help_text="Total unspent stamp units; each nine units is one reward.")
+    stamps = models.PositiveIntegerField(
+        default=0, help_text="Total unspent stamp units; each nine units is one reward."
+    )
     wallet_pass_added = models.BooleanField(default=False)
 
     class Meta(ManagedModel.Meta):

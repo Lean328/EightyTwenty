@@ -12,7 +12,7 @@ import { Icon } from '@/components/ui/Icon';
 import { Text } from '@/components/ui/Text';
 import { TextField } from '@/components/ui/TextField';
 import { Touchable } from '@/components/ui/Touchable';
-import { isRewardReady, stampsToGo } from '@/domain/loyalty';
+import { isRewardReady } from '@/domain/loyalty';
 import { earnLine, orderTimingLabel } from '@/features/cart/copy';
 import { useCartTotals } from '@/features/cart/hooks';
 import { useSelectedLocation } from '@/features/locations/hooks';
@@ -236,7 +236,7 @@ export function CheckoutScreen() {
 
         <View style={styles.earn}>
           <Icon name="cupPlain" size={16} strokeWidth={1.7} color={colors.caramelDeep} />
-          <Text style={[sans(12, 400, 1.45), styles.flexSub]}>{earnLine(isRewardReady(totals.stamps, totals.stampsPerReward), totals.coffeeCount, stampsToGo(totals.stamps, totals.stampsPerReward))}</Text>
+          <Text style={[sans(12, 400, 1.45), styles.flexSub]}>{earnLine(isRewardReady(totals.stamps, totals.stampsPerReward), totals.coffeeCount)}</Text>
         </View>
         <Text style={[sans(12, 400, 1.45), styles.policy]}>Once submitted, our kitchen gets straight to work, so orders cannot be changed or cancelled.</Text>
         {paymentProvider.isDemo ? <Text style={[sans(12, 400, 1.45), styles.policy]}>Demo mode — no payment is taken.</Text> : null}

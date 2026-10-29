@@ -453,9 +453,11 @@ class SavedCardOut(serializers.Serializer):
 
 
 class LoyaltyCardOut(serializers.Serializer):
-    progressStamps = serializers.IntegerField()
-    rewards = serializers.IntegerField()
-    stamps = serializers.IntegerField()
+    progressStamps = serializers.IntegerField(help_text="0–8 towards the next free coffee.")
+    rewards = serializers.IntegerField(help_text="Free coffees ready; they add up until used.")
+    stamps = serializers.IntegerField(
+        help_text="Capped at 9 (= a free coffee is ready) for app builds that predate `rewards`."
+    )
     stampsPerReward = serializers.IntegerField()
     memberNumber = serializers.CharField()
     eligibility = serializers.CharField()

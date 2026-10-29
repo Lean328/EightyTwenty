@@ -154,7 +154,7 @@ Polling `GET /orders/{id}` every 2 s (30/min) and the feed every 60 s fit well i
 The server re-checks everything the app checks, in Canberra time:
 
 - **Order pricing** — the port of the app's `computeTotals`, in integer cents: subtotal → +10%
-  delivery → −free coffee (one unit of the cheapest coffee line, only with 9 stamps and
+  delivery → −free coffee (one unit of the cheapest coffee line, only with ≥ 9 stamps and
   `useReward: true`) → +2.95% card surcharge (`saved_card`/`new_card`, never Apple Pay) on
   (subtotal + delivery − reward) → −gift card (up to what is left) → total. The two rate steps are
   rounded half-up to a cent (10% of 2365¢ = 237¢; 2.95% of 11000¢ = 325¢). The delivery and
@@ -215,7 +215,7 @@ Everything above is managed in the BOS workspace (https://eightytwenty-api.onren
 | Menu → Categories | "Short name" = the label on the app's category rail. |
 | Locations → Locations → "Mobile app" | `area` (card label) and `headline` (Home featured card). |
 | Website → App offers / App FAQs | The app's Offers and Help content. |
-| People → **Coffee cards** | Search a member number (shown under the barcode in the app) and change the stamps: +1 at the counter, 0 when the free coffee is redeemed. History is recorded and the customer sees it. |
+| People → **Coffee cards** | Search a member number (shown under the barcode in the app) and change the stamps: +1 at the counter, −9 when a free coffee is redeemed (free coffees add up). History is recorded and the customer sees it. |
 | People → **Gift cards** | Chain owner only: raise a balance to top it up (recorded as "Added to your balance", customer notified). |
 
 ## 6. Testing checklist

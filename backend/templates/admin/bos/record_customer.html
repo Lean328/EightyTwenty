@@ -12,7 +12,7 @@
         <div class="bos-stamps" role="img" aria-label="{{ customer.stamp_progress }} of {{ customer.stamps|length }} stamps">
           {% for filled in customer.stamps %}<span class="{% if filled %}is-on{% endif %}">{% icon 'coffee' %}</span>{% endfor %}
         </div>
-        <p class="bos-card-foot">{{ customer.reward_count }} rewards ready · {{ customer.stamp_progress }} of {{ customer.stamps|length }} stamps</p>
+        <p class="bos-card-foot">{% if customer.rewards %}{{ customer.rewards }} ready · {% endif %}{{ customer.stamp_progress }} of {{ customer.stamps|length }} stamps · every 10th coffee is free</p>
       {% else %}
         <div class="bos-empty bos-empty-sm"><p>The card opens with the first coffee in the app.</p></div>
       {% endif %}

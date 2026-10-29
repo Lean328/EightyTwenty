@@ -16,7 +16,9 @@ import { colors, creamA, eyebrow, sans, serif } from '@/theme';
 import { useOffers } from '../hooks';
 
 /** Short loyalty status line ("Three more for a free coffee." style, as in the prototype). */
-export function stampsAwayLine(stamps: number, per: number = LOYALTY_RULES.stampsPerReward): string {
+export function stampsAwayLine(stamps: number, per: number = LOYALTY_RULES.stampsPerReward, rewards?: number): string {
+  if (rewards && rewards > 1) return `You have ${rewards} free coffees ready.`;
+  if (rewards) return 'Your free coffee is ready.';
   const away = stampsToGo(stamps, per);
   if (!away) return 'Your free coffee is ready.';
   return away === 1 ? 'One more for a free coffee.' : `${away} more for a free coffee.`;
@@ -50,7 +52,7 @@ export function OffersScreen() {
           <View style={styles.flex}>
             <Text style={[eyebrow(10, 0.14), { color: colors.sand }]}>Always on</Text>
             <Text style={[serif(21, 400, 1.15), styles.free]}>Your 10th coffee is free.</Text>
-            <Text style={[sans(12, 400, 1.4), styles.away]}>{stampsAwayLine(card?.stamps ?? 0, card?.stampsPerReward)}</Text>
+            <Text style={[sans(12, 400, 1.4), styles.away]}>{stampsAwayLine(card?.progressStamps ?? card?.stamps ?? 0, card?.stampsPerReward, card?.rewards)}</Text>
           </View>
         </Touchable>
       </ScrollView>

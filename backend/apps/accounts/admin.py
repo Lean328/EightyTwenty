@@ -17,7 +17,8 @@ from apps.core.bos_access import CHAIN, MANAGER, OWNERS, bos_location_ids, bos_l
 from apps.core.services import audit, snapshot
 from apps.enquiries.models import Enquiry
 from apps.locations.models import Location
-from apps.loyalty.models import STAMPS_PER_REWARD, GiftCard, LoyaltyCard
+from apps.loyalty.models import STAMPS_PER_REWARD, GiftCard, LoyaltyCard, balance
+from apps.loyalty.services import card_label, plural
 from apps.orders.models import Order
 from apps.pos import pins
 
@@ -142,6 +143,7 @@ class AssignmentInline(OperationsInline):
 def customer_summary(user):
     """What a customer has with us: coffee card, gift card, orders, bookings and enquiries."""
     card = LoyaltyCard.objects.filter(user=user).first()
+    rewards, progress = balance(card.stamps if card else 0)
     gift = GiftCard.objects.filter(user=user).first()
     profile = CustomerProfile.objects.filter(user=user).select_related("preferred_location").first()
     orders = Order.objects.filter(customer=user, channel=Order.Channel.APP)
@@ -170,9 +172,9 @@ def customer_summary(user):
         },
         "email": user.email,
         "card": card,
-        "stamps": [i < (card.stamps % STAMPS_PER_REWARD if card else 0) for i in range(STAMPS_PER_REWARD)],
-        "reward_count": card.stamps // STAMPS_PER_REWARD if card else 0,
-        "stamp_progress": card.stamps % STAMPS_PER_REWARD if card else 0,
+        "stamps": [i < progress for i in range(STAMPS_PER_REWARD)],
+        "rewards": plural(rewards, "free coffee") if rewards else "",
+        "stamp_progress": progress,
         "gift": gift,
         "gift_balance": ui.aud(gift.balance_cents if gift else 0),
         "profile": ui.facts(
@@ -527,7 +529,7 @@ class CustomerAdmin(UserAdmin):
     @admin.display(description="Coffee card")
     def stamps(self, obj):
         card = getattr(obj, "loyalty_card", None)
-        return f"{card.stamps // STAMPS_PER_REWARD} rewards · {card.stamps % STAMPS_PER_REWARD}/{STAMPS_PER_REWARD}" if card else "—"
+        return card_label(card.stamps) if card else "—"
 
     @admin.display(description="Gift card")
     def gift_balance(self, obj):

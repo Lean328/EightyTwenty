@@ -75,7 +75,7 @@ def _cup(draw, x, y, d, ink):
         )
 
 
-def strip_image(stamps, per_reward, scale):
+def strip_image(stamps, per_reward, scale, ready=False):
     slots = per_reward + 1  # the last slot is the free coffee
     stamps = max(0, min(stamps, per_reward))
     k = scale * SUPERSAMPLE
@@ -104,7 +104,7 @@ def strip_image(stamps, per_reward, scale):
             box = (x, y, x + diameter, y + diameter)
             centre = (x + diameter / 2, y + diameter / 2)
             if index == slots:
-                full = stamps >= per_reward
+                full = ready or stamps >= per_reward
                 draw.ellipse(box, fill=SAND if full else ESPRESSO_DEEP, outline=SAND, width=ring)
                 draw.text(centre, "FREE", font=font, fill=ESPRESSO if full else SAND, anchor="mm")
             elif index <= stamps:
@@ -115,11 +115,12 @@ def strip_image(stamps, per_reward, scale):
     return image.resize((STRIP[0] * scale, STRIP[1] * scale), Image.LANCZOS).convert("RGB")
 
 
-def strips(stamps, per_reward):
-    """strip.png / strip@2x.png / strip@3x.png for this many stamps."""
+def strips(stamps, per_reward, ready=False):
+    """strip.png / strip@2x.png / strip@3x.png: `stamps` towards the next free coffee, the FREE
+    slot lit while one is `ready`."""
     files = {}
     for scale, name in ((1, "strip.png"), (2, "strip@2x.png"), (3, "strip@3x.png")):
         buffer = io.BytesIO()
-        strip_image(stamps, per_reward, scale).save(buffer, format="PNG", optimize=True)
+        strip_image(stamps, per_reward, scale, ready).save(buffer, format="PNG", optimize=True)
         files[name] = buffer.getvalue()
     return files

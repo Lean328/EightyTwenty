@@ -631,7 +631,9 @@ def adjust(request, order, data):
         and change["mode"] in {"refund", "void"}
         and change["amount"] < refundable
     ):
-        raise AppError("CONFLICT", "Partial refunds for orders using a reward need manager review.", 409)
+        raise AppError(
+            "CONFLICT", "Partial refunds for orders using a reward need manager review.", 409
+        )
 
     validate_pos_loyalty_adjustment(order, data)
     validate_refund_allocations(order, change)
@@ -689,7 +691,6 @@ def adjust(request, order, data):
         and order.status in {"cancelled", "declined"}
         and order.pos_reward_reserved_at is not None
         and order.pos_loyalty_processed_at is None
-
     ):
         order = return_unpaid_pos_order_reward(request, order)
     if (
@@ -1611,6 +1612,7 @@ def validate_pos_loyalty_adjustment(order, data):
         available = max(0, lines[key].qty - previously_refunded.get(key, 0))
         if qty > available:
             raise AppError("CONFLICT", "More item units were returned than remain available.", 409)
+
 
 def settle_pos_order_loyalty(request, order):
     if not order.pos_loyalty_managed or not order.customer_id:

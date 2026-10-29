@@ -28,7 +28,8 @@ from django.db import close_old_connections, transaction
 from django.db.models import F
 from django.utils import timezone
 
-from .models import STAMPS_PER_REWARD, LoyaltyCard, WalletPass, WalletRegistration
+from .models import STAMPS_PER_REWARD, LoyaltyCard, WalletPass, WalletRegistration, balance
+from .services import plural
 from .wallet_art import strips
 
 logger = logging.getLogger(__name__)
@@ -92,8 +93,7 @@ def cafes():
 def pass_json(wallet_pass):
     card = wallet_pass.card
     user = card.user
-    stamps = min(card.stamps, STAMPS_PER_REWARD)
-    ready_now = stamps >= STAMPS_PER_REWARD
+    rewards, stamps = balance(card.stamps)  # free coffees add up; stamps = towards the next
     away = STAMPS_PER_REWARD - stamps
     barcode = {
         # The same characters as the app's barcode: the counter scans it into BOS search.
@@ -135,22 +135,20 @@ def pass_json(wallet_pass):
                 {
                     "key": "reward",
                     "label": "FREE COFFEE",
-                    "value": "Ready to enjoy" if ready_now else f"{away} more to go",
+                    "value": f"{plural(rewards, 'free coffee')} ready"
+                    if rewards
+                    else f"{away} more to go",
                     "textAlignment": "PKTextAlignmentRight",
-                    **(
-                        {"changeMessage": "Your free coffee is ready — show your card."}
-                        if ready_now
-                        else {}
-                    ),
+                    **({"changeMessage": "%@ — show your card."} if rewards else {}),
                 },
             ],
             "backFields": [
                 {
                     "key": "how",
                     "label": "How it works",
-                    "value": f"One stamp for every coffee. Collect {STAMPS_PER_REWARD} stamps and "
-                    "your next coffee is free — any coffee, any size. Show this card at the "
-                    "counter; it updates by itself.",
+                    "value": f"One stamp for every coffee. Every {STAMPS_PER_REWARD} stamps is a free "
+                    "coffee — any coffee, any size — and free coffees add up until you use "
+                    "them. Show this card at the counter; it updates by itself.",
                 },
                 {
                     "key": "cafes",
@@ -190,7 +188,8 @@ def build_pkpass(wallet_pass):
     files = {"pass.json": json.dumps(pass_json(wallet_pass), indent=2).encode()}
     for asset in sorted(ASSETS.glob("*.png")):
         files[asset.name] = asset.read_bytes()
-    files.update(strips(min(wallet_pass.card.stamps, STAMPS_PER_REWARD), STAMPS_PER_REWARD))
+    rewards, stamps = balance(wallet_pass.card.stamps)
+    files.update(strips(stamps, STAMPS_PER_REWARD, ready=rewards > 0))
     manifest = json.dumps(
         {name: hashlib.sha1(data).hexdigest() for name, data in files.items()}, indent=2
     ).encode()
